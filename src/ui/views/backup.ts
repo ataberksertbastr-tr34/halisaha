@@ -49,7 +49,7 @@ export function openImportConfirm(next: State): void {
 
 const REASONS: Record<string, Parameters<typeof t>[0]> = {
   "legacy-import": "reasonLegacy", "pre-migration": "reasonPreMig", "before-import": "reasonBeforeImport",
-  "before-reset": "reasonBeforeReset", "before-restore": "reasonBeforeRestore",
+  "before-reset": "reasonBeforeReset", "before-restore": "reasonBeforeRestore", "before-delete": "reasonBeforeDelete",
 };
 
 function when(ts: number): string {

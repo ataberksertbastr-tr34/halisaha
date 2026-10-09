@@ -64,4 +64,9 @@ export const en: Record<MsgKey, string> = {
   saveFailed: "Couldn't save! Make a backup now.", backupShared: "Backup shared", backupDownloaded: "Backup downloaded", fileBad: "Couldn't read the file.",
   cancel: "Cancel", backupTitle: "Football organizer backup", otherTab: "Changes from another tab loaded", restoreSection: "Restore",
   storageLocal: "IndexedDB isn't available in this browser; data is kept in a smaller storage. Back up often.",
+  undo: "Undo", undone: "Undone", playerDeleted: "{n} deleted", matchDeleted: "Match deleted", matchCancelled: "Match cancelled",
+  guestRemoved: "{n} removed", teamsCleared: "Teams cleared", movedTo: "{n} → {t}", unassigned: "{n} taken off the team",
+  addedTo: "{n} → {t}", matchReopened: "Match reopened", fieldDeleted: "Field deleted", allDeleted: "All data deleted",
+  settled: "{n}: debt settled", allMarkedPaid: "Everyone marked as paid", madePassive: "{n} made inactive", madeActive: "{n} made active",
+  reasonBeforeDelete: "Before delete/cancel",
 };

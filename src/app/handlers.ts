@@ -1,6 +1,6 @@
 /** Tüm kullanıcı eylemleri. Eski uygulamadaki act() / onField() ile aynı davranış. */
 import { t } from "../i18n";
-import { commit, render, replaceState, store, today, ui, type FilterKey } from "./store";
+import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { go, route, type Tab } from "./router";
 import { registerActions } from "./actions";
 import type { Match, Pos } from "../domain/types";
@@ -8,10 +8,10 @@ import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
 import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, shareBackup } from "../data/backup";
-import { listSnapshots, lockedSnapshot, readSnapshot, updateMeta } from "../data/persist";
+import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
-import { currentMatch, getMatch, setAtt } from "../domain/lineup";
+import { currentMatch, getMatch, getP, setAtt } from "../domain/lineup";
 import { isDue, payersOf } from "../domain/money";
 import { generateTeams } from "../domain/teams";
 import { makeMatch } from "../domain/schedule";
@@ -38,6 +38,10 @@ export function newMatch(): void {
 }
 
 let pendingImport: State | null = null;
+
+function nameOf(m: Match, id: string): string {
+  return getP(store.s, m, id)?.name || "";
+}
 
 function markExported(): void {
   updateMeta({ lastExportAt: Date.now(), reminderSnoozeUntil: 0 }).then(render);
@@ -124,57 +128,64 @@ registerActions({
   rmGuest: (ds) => {
     const m = cur();
     if (!m) return;
-    m.guests = m.guests.filter((g) => g.id !== ds.id);
-    delete m.att[ds.id!];
-    m.order = m.order.filter((x) => x !== ds.id);
-    delete m.paid[ds.id!];
-    commit();
+    const g = m.guests.find((x) => x.id === ds.id);
+    mutate(t("guestRemoved", { n: g ? g.name : "" }), () => {
+      m.guests = m.guests.filter((x) => x.id !== ds.id);
+      delete m.att[ds.id!];
+      m.order = m.order.filter((x) => x !== ds.id);
+      delete m.paid[ds.id!];
+    });
   },
   gen: () => {
     const m = cur();
     if (!m) return;
-    generateTeams(store.s, m);
-    commit();
-    toast(t("teamsDone"));
+    mutate(t("teamsDone"), () => generateTeams(store.s, m));
   },
   manual: () => {
     const m = cur();
     if (!m) return;
-    m.teams = { a: [], b: [] };
-    m.manualTeams = true;
+    const had = m.teams.a.length + m.teams.b.length > 0;
     ui.f.team = { q: "", pos: "" };
-    commit();
+    mutate(had ? t("teamsCleared") : null, () => {
+      m.teams = { a: [], b: [] };
+      m.manualTeams = true;
+    });
   },
   move: (ds) => {
     const m = cur();
     if (!m) return;
     const id = ds.id!;
-    if (m.teams.a.includes(id)) {
-      m.teams.a = m.teams.a.filter((x) => x !== id);
-      m.teams.b.push(id);
-    } else {
-      m.teams.b = m.teams.b.filter((x) => x !== id);
-      m.teams.a.push(id);
-    }
-    commit();
+    const toB = m.teams.a.includes(id);
+    mutate(t("movedTo", { n: nameOf(m, id), t: toB ? t("teamB") : t("teamA") }), () => {
+      if (toB) {
+        m.teams.a = m.teams.a.filter((x) => x !== id);
+        m.teams.b.push(id);
+      } else {
+        m.teams.b = m.teams.b.filter((x) => x !== id);
+        m.teams.a.push(id);
+      }
+    });
   },
   unassign: (ds) => {
     const m = cur();
     if (!m) return;
-    m.teams.a = m.teams.a.filter((x) => x !== ds.id);
-    m.teams.b = m.teams.b.filter((x) => x !== ds.id);
-    m.manualTeams = true;
-    commit();
+    mutate(t("unassigned", { n: nameOf(m, ds.id!) }), () => {
+      m.teams.a = m.teams.a.filter((x) => x !== ds.id);
+      m.teams.b = m.teams.b.filter((x) => x !== ds.id);
+      m.manualTeams = true;
+    });
   },
   addTo: (ds) => {
     const m = cur();
     if (!m) return;
-    m.teams[ds.team as "a" | "b"].push(ds.id!);
+    const side = ds.team as "a" | "b";
     if (ui.f.team.q) {
       ui.f.team.q = "";
       ui.refocus = "q-team";
     }
-    commit();
+    mutate(t("addedTo", { n: nameOf(m, ds.id!), t: side === "a" ? t("teamA") : t("teamB") }), () => {
+      m.teams[side].push(ds.id!);
+    });
   },
   msg: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
@@ -196,34 +207,37 @@ registerActions({
     const m = cur();
     if (!m) return;
     const a1 = val("#scA"), b1 = val("#scB");
-    m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : null;
-    m.status = "played";
     ui.matchId = null;
-    commit();
-    toast(t("matchDone"));
+    mutate(t("matchDone"), () => {
+      m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : null;
+      m.status = "played";
+    });
   },
   reopen: (ds) => {
     const x = getMatch(store.s, ds.id);
     if (!x) return;
-    x.status = "open";
     ui.matchId = x.id;
     go({ name: "match" });
-    commit();
+    mutate(t("matchReopened"), () => {
+      x.status = "open";
+    });
     window.scrollTo(0, 0);
   },
   cancelMatch: () => {
     const m = cur();
     if (!m) return;
-    m.status = "cancelled";
     ui.matchId = null;
-    commit();
+    mutate(t("matchCancelled"), () => {
+      m.status = "cancelled";
+    }, { lock: "before-delete" });
   },
   delMatch: () => {
     const m = cur();
     if (!m) return;
-    store.s.matches = store.s.matches.filter((x) => x.id !== m.id);
     ui.matchId = null;
-    commit();
+    mutate(t("matchDeleted"), () => {
+      store.s.matches = store.s.matches.filter((x) => x.id !== m.id);
+    }, { lock: "before-delete" });
   },
   paid: (ds) => {
     const x = getMatch(store.s, ds.mid);
@@ -247,15 +261,16 @@ registerActions({
   allPaid: (ds) => {
     const x = getMatch(store.s, ds.id);
     if (!x) return;
-    payersOf(store.s, x).forEach((id) => (x.paid[id] = true));
     ui.payId = x.id;
-    commit();
+    mutate(t("allMarkedPaid"), () => payersOf(store.s, x).forEach((id) => (x.paid[id] = true)));
   },
   settle: (ds) => {
-    store.s.matches.forEach((x) => {
-      if (x.status !== "cancelled" && isDue(x, today()) && payersOf(store.s, x).includes(ds.id!)) x.paid[ds.id!] = true;
+    const name = getP(store.s, null, ds.id!)?.name || store.s.matches.flatMap((m) => m.guests).find((g) => g.id === ds.id)?.name || "";
+    mutate(t("settled", { n: name }), () => {
+      store.s.matches.forEach((x) => {
+        if (x.status !== "cancelled" && isDue(x, today()) && payersOf(store.s, x).includes(ds.id!)) x.paid[ds.id!] = true;
+      });
     });
-    commit();
   },
   addPlayer: () => {
     const r = addPlayerNamed(val("#newName"), Number(val("#newRate")), val("#newPos") as Pos);
@@ -267,11 +282,13 @@ registerActions({
   bulkAdd: () => {
     const lines = val("#bulk").split(/\r?\n/).map(cleanBulkLine).filter(Boolean);
     let n = 0;
-    lines.forEach((l) => {
-      if (addPlayerNamed(l, 3, "")) n++;
+    mutate(() => (n ? t("added", { n }) : null), () => {
+      lines.forEach((l) => {
+        if (addPlayerNamed(l, 3, "")) n++;
+      });
+      if (!n) return false;
     });
-    commit();
-    toast(t("added", { n }));
+    if (!n) toast(t("added", { n }));
   },
   editP: (ds) => {
     ui.editId = ui.editId === ds.id ? null : ds.id!;
@@ -286,13 +303,18 @@ registerActions({
   active: (ds) => {
     const p = store.s.players.find((x) => x.id === ds.id);
     if (!p) return;
-    p.active = p.active === false;
-    commit();
+    const nowActive = p.active === false;
+    mutate(t(nowActive ? "madeActive" : "madePassive", { n: p.name }), () => {
+      p.active = nowActive;
+    });
   },
   delPlayer: (ds) => {
-    store.s.players = store.s.players.filter((x) => x.id !== ds.id);
+    const p = store.s.players.find((x) => x.id === ds.id);
+    if (!p) return;
     ui.editId = null;
-    commit();
+    mutate(t("playerDeleted", { n: p.name }), () => {
+      store.s.players = store.s.players.filter((x) => x.id !== ds.id);
+    }, { lock: "before-delete" });
   },
   tglSet: (ds) => {
     const k = ds.k as "gkFree" | "round";
@@ -350,16 +372,17 @@ registerActions({
   delField: (ds) => {
     const f = getField(store.s, ds.id);
     if (!f) return;
-    store.s.matches.forEach((x) => {
-      if (x.fieldId === f.id) {
-        x.field = f.name;
-        x.fieldId = "";
-      }
-    });
-    store.s.fields = store.s.fields.filter((x) => x.id !== f.id);
-    if (store.s.settings.defaultFieldId === f.id) store.s.settings.defaultFieldId = "";
     closeModal();
-    commit();
+    mutate(t("fieldDeleted"), () => {
+      store.s.matches.forEach((x) => {
+        if (x.fieldId === f.id) {
+          x.field = f.name;
+          x.fieldId = "";
+        }
+      });
+      store.s.fields = store.s.fields.filter((x) => x.id !== f.id);
+      if (store.s.settings.defaultFieldId === f.id) store.s.settings.defaultFieldId = "";
+    }, { lock: "before-delete" });
   },
   export: () => openText(t("exportData"), backupText(store.s), true, true),
   importOpen: () => openImportSheet(),
@@ -368,12 +391,8 @@ registerActions({
     const next = pendingImport;
     pendingImport = null;
     if (!next) return;
-    lockedSnapshot(store.s, "before-import").finally(() => {
-      replaceState(next);
-      closeModal();
-      commit();
-      toast(t("importOk"));
-    });
+    closeModal();
+    mutate(t("importOk"), () => replaceState(next), { lock: "before-import" });
   },
   shareBackup: () => {
     shareBackup(store.s, t("backupTitle")).then((r) => {
@@ -395,23 +414,17 @@ registerActions({
   },
   restoreVersion: (ds) => {
     const id = Number(ds.id);
-    readSnapshot(id).then(async (next) => {
+    readSnapshot(id).then((next) => {
       if (!next) return;
-      await lockedSnapshot(store.s, "before-restore");
-      replaceState(next);
       closeModal();
-      commit();
-      toast(t("restored"));
+      mutate(t("restored"), () => replaceState(next), { lock: "before-restore" });
     });
   },
   reset: () => {
-    lockedSnapshot(store.s, "before-reset").finally(() => {
-      const lang = store.s.settings.lang;
-      const next = defaults();
-      next.settings.lang = lang;
-      replaceState(next);
-      commit();
-    });
+    const lang = store.s.settings.lang;
+    const next = defaults();
+    next.settings.lang = lang;
+    mutate(t("allDeleted"), () => replaceState(next), { lock: "before-reset" });
   },
 });
 

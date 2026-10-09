@@ -34,5 +34,5 @@ export function openFieldEditor(id: string | null, target: "match" | "default" |
     '<div class="grid2"><label class="fld">' + esc(t("phoneShort")) + '<input type="tel" id="fe-phone" value="' + esc(f.phone || "") + '"></label>' +
     '<label class="fld">' + esc(t("fieldPrice")) + '<input type="number" id="fe-price" min="0" inputmode="decimal" value="' + esc(f.price || "") + '"></label></div></div>' +
     '<div class="row mt"><button type="button" class="btn primary grow" data-a="saveField" data-id="' + esc(f.id) + '">' + esc(t("save")) + "</button>" +
-    (f.id ? '<button type="button" class="btn danger" data-a="delField" data-id="' + esc(f.id) + '" data-confirm="1">' + esc(t("deleteField")) + "</button>" : "") + "</div>");
+    (f.id ? '<button type="button" class="btn danger" data-a="delField" data-id="' + esc(f.id) + '">' + esc(t("deleteField")) + "</button>" : "") + "</div>");
 }

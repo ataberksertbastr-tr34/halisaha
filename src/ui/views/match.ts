@@ -84,7 +84,7 @@ function resultBlock(m: Match): string {
     '<input type="number" id="scA" min="0" inputmode="numeric" aria-label="' + esc(t("teamA")) + '" value="' + (m.score ? m.score.a : "") + '"><span class="score" aria-hidden="true">–</span>' +
     '<input type="number" id="scB" min="0" inputmode="numeric" aria-label="' + esc(t("teamB")) + '" value="' + (m.score ? m.score.b : "") + '"><span class="sw sw-b" aria-hidden="true"></span></div>' +
     '<button type="button" class="btn primary block" data-a="finish">' + esc(t("finish")) + "</button>" +
-    '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch" data-confirm="1">' + esc(t("cancelMatch")) + '</button><button type="button" class="btn danger sm" data-a="delMatch" data-confirm="1">' + esc(t("deleteMatch")) + "</button></div></section>";
+    '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch">' + esc(t("cancelMatch")) + '</button><button type="button" class="btn danger sm" data-a="delMatch">' + esc(t("deleteMatch")) + "</button></div></section>";
 }
 
 export function historyBlock(): string {

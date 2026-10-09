@@ -34,7 +34,7 @@ export function viewPlayers(): string {
         '<label class="fld">' + esc(t("phone")) + '<input type="tel" data-f="p.phone" data-id="' + esc(p.id) + '" value="' + esc(p.phone || "") + '" placeholder="05xx xxx xx xx" autocomplete="off"></label></div>' +
         '<div><div class="lbl">' + esc(t("rating")) + '</div><div class="seg rate" role="group" aria-label="' + esc(t("rating")) + '">' +
         [1, 2, 3, 4, 5].map((v) => '<button type="button" data-a="rate" data-id="' + esc(p.id) + '" data-v="' + v + '" class="' + (r === v ? "on" : "") + '" aria-pressed="' + (r === v) + '">' + v + "</button>").join("") + "</div></div>" +
-        '<div class="row"><button type="button" class="btn sm" data-a="active" data-id="' + esc(p.id) + '">' + esc(p.active === false ? t("active") : t("passive")) + '</button><button type="button" class="btn sm danger" data-a="delPlayer" data-id="' + esc(p.id) + '" data-confirm="1">' + esc(t("del")) + "</button></div></div>";
+        '<div class="row"><button type="button" class="btn sm" data-a="active" data-id="' + esc(p.id) + '">' + esc(p.active === false ? t("active") : t("passive")) + '</button><button type="button" class="btn sm danger" data-a="delPlayer" data-id="' + esc(p.id) + '">' + esc(t("del")) + "</button></div></div>";
     }
     h += "</li>";
   });

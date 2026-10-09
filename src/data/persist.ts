@@ -23,8 +23,6 @@ export interface Meta {
 type Mode = "idb" | "local";
 let mode: Mode = "idb";
 let meta: Meta = { firstUseAt: Date.now(), lastExportAt: 0, reminderSnoozeUntil: 0 };
-let writing: Promise<void> | null = null;
-let pending: State | null = null;
 let onError: (e: unknown) => void = () => undefined;
 let channel: BroadcastChannel | null = null;
 const tabId = Math.random().toString(36).slice(2);
@@ -87,37 +85,57 @@ async function writeNow(s: State): Promise<void> {
   channel?.postMessage({ type: "saved", from: tabId, updatedAt: s.updatedAt });
 }
 
-/** Değişikliği sıraya koyar; aynı anda tek yazma yapılır, son durum mutlaka yazılır. */
-export function saveState(s: State): Promise<void> {
-  pending = s;
-  if (writing) return writing;
-  writing = (async () => {
-    while (pending) {
-      const next = pending;
-      pending = null;
+/**
+ * Sıralı yazma kuyruğu: kilitli sürümler ve kayıtlar geldiği sırayla yazılır.
+ * Art arda gelen kayıtlar tek yazmada birleşir (her zaman en son durum yazılır).
+ */
+type Op = { kind: "lock"; data: string; reason: string } | { kind: "save" };
+const queue: Op[] = [];
+let latest: State | null = null;
+let running: Promise<void> | null = null;
+
+function run(): Promise<void> {
+  if (running) return running;
+  running = (async () => {
+    while (queue.length) {
+      const op = queue.shift()!;
       try {
-        await writeNow(next);
+        if (op.kind === "lock") {
+          if (mode === "idb") await snapPut({ at: Date.now(), data: op.data, ...summary(JSON.parse(op.data)), locked: true, reason: op.reason }, { coalesceMs: COALESCE_MS, keep: KEEP_SNAPSHOTS, forceNew: true });
+        } else if (latest) {
+          const s = latest;
+          try {
+            await writeNow(s);
+          } catch (e) {
+            onError(e);
+            writeLocal(s); // son çare
+          }
+        }
       } catch (e) {
-        onError(e);
-        // Son çare: localStorage'a da yaz
-        writeLocal(next);
+        console.warn(e);
       }
     }
-    writing = null;
+    running = null;
   })();
-  return writing;
+  return running;
 }
 
-/** Bekleyen yazma varsa bitmesini bekler (güncelleme/kapanış öncesi). */
+/** Değişikliği sıraya koyar. */
+export function saveState(s: State): Promise<void> {
+  latest = s;
+  if (!queue.some((o) => o.kind === "save")) queue.push({ kind: "save" });
+  return run();
+}
+
+/** Bekleyen yazmaların bitmesini bekler (güncelleme/kapanış öncesi). */
 export async function flush(): Promise<void> {
-  while (writing) await writing;
+  while (running) await running;
 }
 
-/** Riskli işlemden (yedek yükleme, sıfırlama, sürüme dönme) önce mevcut durumu kilitli sürüm olarak sakla. */
-export async function lockedSnapshot(s: State, reason: string): Promise<void> {
-  if (mode !== "idb") return;
-  await flush();
-  await snapPut({ at: Date.now(), data: JSON.stringify(s), ...summary(s), locked: true, reason }, { coalesceMs: COALESCE_MS, keep: KEEP_SNAPSHOTS, forceNew: true });
+/** Riskli işlemden önceki durumu kilitli sürüm olarak sıraya koyar (sonraki kayıttan önce yazılır). */
+export function lockedSnapshot(s: State, reason: string): Promise<void> {
+  queue.push({ kind: "lock", data: JSON.stringify(s), reason });
+  return run();
 }
 
 export async function listSnapshots(): Promise<Snapshot[]> {

@@ -62,6 +62,11 @@ export const tr = {
   saveFailed: "Kaydedilemedi! Hemen yedek al.", backupShared: "Yedek paylaşıldı", backupDownloaded: "Yedek indirildi", fileBad: "Dosya okunamadı.",
   cancel: "Vazgeç", backupTitle: "Halı Saha yedeği", otherTab: "Başka sekmedeki değişiklikler yüklendi", restoreSection: "Geri yükleme",
   storageLocal: "Bu tarayıcıda IndexedDB kullanılamıyor; veriler daha sınırlı bir alanda tutuluyor. Sık yedek al.",
+  undo: "Geri al", undone: "Geri alındı", playerDeleted: "{n} silindi", matchDeleted: "Maç silindi", matchCancelled: "Maç iptal edildi",
+  guestRemoved: "{n} çıkarıldı", teamsCleared: "Takımlar temizlendi", movedTo: "{n} → {t}", unassigned: "{n} takımdan çıkarıldı",
+  addedTo: "{n} → {t}", matchReopened: "Maç tekrar açıldı", fieldDeleted: "Saha silindi", allDeleted: "Tüm veriler silindi",
+  settled: "{n}: borç kapatıldı", allMarkedPaid: "Herkes ödedi olarak işaretlendi", madePassive: "{n} pasif yapıldı", madeActive: "{n} aktif yapıldı",
+  reasonBeforeDelete: "Silme/iptal öncesi",
 } as const;
 
 export type MsgKey = keyof typeof tr;

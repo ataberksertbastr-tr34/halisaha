@@ -1,11 +1,11 @@
 /** Uygulama girişi: veriyi yükler, olayları bağlar, ilk ekranı çizer. */
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
-import { replaceState, setPersister, setRenderer, store, ui } from "./app/store";
+import { replaceState, setLockHook, setPersister, setRenderer, store, ui } from "./app/store";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
 import { importFromFile, onEnter, onField } from "./app/handlers";
-import { flush, getMeta, listenOtherTabs, loadState, onSaveError, requestPersistence, saveState } from "./data/persist";
+import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
 import { hasData, reminderDue, daysSince } from "./data/backup";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
@@ -27,6 +27,7 @@ async function boot(): Promise<void> {
     saveState(st);
     if (!getMeta().persisted && hasData(st)) requestPersistence();
   });
+  setLockHook(lockedSnapshot);
   onSaveError(() => toast(t("saveFailed")));
   listenOtherTabs((next) => {
     if (isModalOpen()) return;
