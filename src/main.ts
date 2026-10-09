@@ -9,7 +9,13 @@ import { migrate } from "./domain/migrate";
 import { readLegacyLocal, writeLocal } from "./data/local";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
-import { runToastAction } from "./ui/toast";
+import { runToastAction, toast } from "./ui/toast";
+import { addBanner, bannerHTML, renderBanners } from "./ui/banner";
+import { refreshHeroStatus } from "./ui/shell";
+import { IC } from "./ui/icons";
+import { registerActions } from "./app/actions";
+import { applyUpdate, initPWA, promptInstall, pwa } from "./pwa/register";
+import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import type { FilterKey } from "./app/store";
 
@@ -26,7 +32,29 @@ function boot(): void {
   setRenderer(renderApp);
   syncFromLocation();
   bindEvents();
+  setupPWA();
   renderApp();
+}
+
+function setupPWA(): void {
+  addBanner(() =>
+    pwa.updateReady()
+      ? bannerHTML({ icon: IC.download, title: esc(t("updateReady")), text: esc(t("updateText")), actions: '<button type="button" class="btn sm primary" data-a="applyUpdate">' + esc(t("update")) + "</button>" })
+      : "",
+  );
+  registerActions({
+    applyUpdate: () => applyUpdate(),
+    install: () => {
+      promptInstall().catch(() => toast(t("installHint")));
+    },
+  });
+  pwa.onChange(() => {
+    renderBanners();
+    refreshHeroStatus();
+  });
+  window.addEventListener("online", refreshHeroStatus);
+  window.addEventListener("offline", refreshHeroStatus);
+  initPWA();
 }
 
 function bindEvents(): void {

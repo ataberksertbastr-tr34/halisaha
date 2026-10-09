@@ -8,6 +8,8 @@ import { fieldOf } from "../domain/fields";
 import { capOf, currentMatch, lineup } from "../domain/lineup";
 import { dayName } from "../domain/messages";
 import { applyFilter } from "./components";
+import { renderBanners } from "./banner";
+import { pwa } from "../pwa/register";
 import { IC } from "./icons";
 import { viewMatch } from "./views/match";
 import { viewTeams } from "./views/teams";
@@ -38,6 +40,7 @@ export function renderApp(): void {
   document.title = t("appName");
   applyTheme();
   renderHero();
+  renderBanners();
   renderTabs();
   const r = route();
   const view = document.getElementById("view")!;
@@ -53,7 +56,7 @@ export function renderApp(): void {
 function renderHero(): void {
   const S = store.s;
   const m = currentMatch(S, ui.matchId, today());
-  let h = '<div class="hero-in"><div class="brand"><span class="brand-name">' + esc(t("appName")) + '</span><span class="sync" id="sync">' + esc(t("syncLocal")) + "</span></div>";
+  let h = '<div class="hero-in"><div class="brand"><span class="brand-name">' + esc(t("appName")) + '</span><span class="brand-acts">' + heroStatus() + "</span></div>";
   if (m) {
     const { playing } = lineup(S, m);
     const c = capOf(S, m);
@@ -65,6 +68,18 @@ function renderHero(): void {
       '<div class="hero-count"><b>' + playing.length + "/" + c + "</b><span>" + esc(left > 0 ? t("spotsLeft", { n: left }) : t("fullSquad")) + "</span></div></div>";
   } else h += '<div class="hero-empty">' + esc(t("noMatch")) + "</div>";
   document.getElementById("hero")!.innerHTML = h + "</div>";
+}
+
+/** Sağ üst köşe: çevrimdışı durumu ve (destekleniyorsa) "Yükle" düğmesi. */
+export function heroStatus(): string {
+  let h = navigator.onLine === false ? '<span class="sync off" id="sync">' + esc(t("offline")) + "</span>" : '<span class="sync" id="sync">' + esc(t("syncLocal")) + "</span>";
+  if (pwa.canInstall()) h += '<button type="button" class="herobtn" data-a="install">' + IC.install + esc(t("install")) + "</button>";
+  return h;
+}
+
+export function refreshHeroStatus(): void {
+  const el = document.querySelector("#hero .brand-acts");
+  if (el) el.innerHTML = heroStatus();
 }
 
 function renderTabs(): void {

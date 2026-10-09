@@ -44,6 +44,11 @@ export const tr = {
   latePays: "Geç iptal: payını öder", exemptHint: "Geç iptal edenin yerine biri geldiyse \"Muaf tut\" de.",
   theme: "Tema", themeSystem: "Sistem", themeLight: "Açık", themeDark: "Koyu",
   legend: "✓ Var   ? Belki   ✕ Yok   ! Geç iptal",
+  updateReady: "Yeni sürüm hazır", updateText: "Güncelleyince verilerin aynen kalır.", update: "Güncelle",
+  install: "Yükle", installApp: "Uygulamayı yükle", offline: "Çevrimdışı", appSection: "Uygulama",
+  installHint: "Ana ekrana kurarsan uygulama gibi açılır ve internetsiz de çalışır.",
+  iosInstall: "iPhone'da: Safari'de alttaki Paylaş düğmesine dokun, sonra \"Ana Ekrana Ekle\" de.",
+  installedOk: "Uygulama bu cihazda kurulu.", version: "Sürüm",
 } as const;
 
 export type MsgKey = keyof typeof tr;

@@ -46,4 +46,9 @@ export const en: Record<MsgKey, string> = {
   latePays: "Late cancel: pays share", exemptHint: "If someone replaced a late canceller, tap \"Exempt\".",
   theme: "Theme", themeSystem: "System", themeLight: "Light", themeDark: "Dark",
   legend: "✓ In   ? Maybe   ✕ Out   ! Late cancel",
+  updateReady: "New version ready", updateText: "Your data stays exactly as it is.", update: "Update",
+  install: "Install", installApp: "Install the app", offline: "Offline", appSection: "App",
+  installHint: "Install it on your home screen to open it like an app and use it offline.",
+  iosInstall: "On iPhone: tap the Share button in Safari, then \"Add to Home Screen\".",
+  installedOk: "The app is installed on this device.", version: "Version",
 };

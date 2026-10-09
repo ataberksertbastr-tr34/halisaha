@@ -4,6 +4,8 @@ import { store } from "../../app/store";
 import { esc, trSort } from "../../domain/text";
 import { mapsUrl } from "../../domain/fields";
 import { fieldOptions } from "../components";
+import { isIOS, isStandalone, pwa } from "../../pwa/register";
+import { IC } from "../icons";
 
 export function viewSettings(): string {
   const S = store.s;
@@ -40,5 +42,16 @@ export function viewSettings(): string {
   h += '<div class="row mt"><button type="button" class="toggle' + (s.gkFree ? " on" : "") + '" data-a="tglSet" data-k="gkFree" aria-pressed="' + s.gkFree + '">' + esc(t("gkFree")) + "</button>" +
     '<button type="button" class="toggle' + (s.round ? " on" : "") + '" data-a="tglSet" data-k="round" aria-pressed="' + s.round + '">' + esc(t("round")) + "</button></div></section>";
   h += '<section class="section" aria-labelledby="h-bk"><h2 id="h-bk">' + esc(t("backup")) + '</h2><div class="row"><button type="button" class="btn" data-a="export">' + esc(t("exportData")) + '</button><button type="button" class="btn" data-a="importOpen">' + esc(t("importData")) + '</button><button type="button" class="btn danger" data-a="reset" data-confirm="1">' + esc(t("resetAll")) + "</button></div></section>";
+  h += appSection();
   return h;
+}
+
+function appSection(): string {
+  let body: string;
+  if (isStandalone()) body = '<p class="muted m0">' + esc(t("installedOk")) + "</p>";
+  else if (pwa.canInstall()) body = '<p class="muted">' + esc(t("installHint")) + '</p><button type="button" class="btn primary" data-a="install">' + IC.install + esc(t("installApp")) + "</button>";
+  else if (isIOS()) body = '<p class="muted">' + esc(t("installHint")) + '</p><p class="m0">' + esc(t("iosInstall")) + "</p>";
+  else body = '<p class="muted m0">' + esc(t("installHint")) + "</p>";
+  return '<section class="section" aria-labelledby="h-app"><h2 id="h-app">' + esc(t("appSection")) + "</h2>" + body +
+    '<p class="small muted mt">' + esc(t("version")) + " " + esc(__APP_VERSION__) + "</p></section>";
 }

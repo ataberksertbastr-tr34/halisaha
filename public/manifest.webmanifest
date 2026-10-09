@@ -1,0 +1,28 @@
+{
+  "id": "./",
+  "name": "Halı Saha Organizatörü",
+  "short_name": "Halı Saha",
+  "description": "Haftalık halı saha maçlarını organize et: kadro, takımlar, saha ve ödemeler. Çevrimdışı çalışır.",
+  "lang": "tr",
+  "dir": "ltr",
+  "start_url": "./#/match",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#EDF1EB",
+  "theme_color": "#1E6A42",
+  "categories": ["sports", "productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Maç", "short_name": "Maç", "url": "./#/match", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Takımlar", "short_name": "Takımlar", "url": "./#/teams", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ödemeler", "short_name": "Ödemeler", "url": "./#/pay", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

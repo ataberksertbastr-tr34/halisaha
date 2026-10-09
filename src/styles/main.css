@@ -1,3 +1,5 @@
+@import "./fonts.css";
+
 /* ==========================================================================
    Halı Saha Organizatörü — görsel kimlik: halı saha yeşili, yelek renkleri
    (Sarılar #E2F01C, Turuncular #FF6A1A), Barlow / Barlow Condensed.
@@ -183,7 +185,7 @@ select { padding-right: 30px; }
 .pos { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 1px; color: #13201A; }
 .pos-GK { background: #FFE07A; } .pos-DEF { background: #BFD8FF; } .pos-MID { background: #C9EDC9; } .pos-FWD { background: #FFC8B3; }
 .seg { display: flex; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; flex: 0 0 auto; }
-.seg button { border: none; background: var(--surface); width: 42px; height: 44px; padding: 0; font-size: 16px; font-weight: 800; color: var(--muted); border-left: 1px solid var(--line-2); }
+.seg button { border: none; background: var(--surface); width: 42px; height: 44px; padding: 0; font-size: 16px; font-weight: 700; color: var(--muted); border-left: 1px solid var(--line-2); }
 .seg button:first-child { border-left: none; }
 .seg button.on-in { background: var(--ok); color: var(--on-ok); }
 .seg button.on-maybe { background: var(--warn); color: var(--on-warn); }
@@ -263,7 +265,7 @@ select { padding-right: 30px; }
 #toast:not(:has(.toast-act)) { padding-right: 16px; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .toast-msg { flex: 1 1 auto; min-width: 0; padding: 6px 0; }
-.toast-act { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--bibA); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; font-size: 14px; }
+.toast-act { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--bibA); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: 14px; }
 :root[data-theme="dark"] .toast-act { color: var(--turf); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .toast-act { color: var(--turf); } }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
@@ -284,3 +286,15 @@ details summary { cursor: pointer; font-weight: 600; min-height: 44px; display: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- uyarı şeritleri ---------- */
+.banner { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 10px 10px 10px 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); flex-wrap: wrap; }
+.banner.info { border-left: 6px solid var(--turf); }
+.banner.warn { border-left: 6px solid var(--bibB); }
+.banner-ic { color: var(--turf); display: flex; }
+.banner.warn .banner-ic { color: var(--bibB); }
+.banner-ic svg { width: 24px; height: 24px; }
+.banner-tx { flex: 1 1 160px; min-width: 0; }
+.banner-tx strong { display: block; }
+.banner-tx span { display: block; font-size: 13px; color: var(--muted); }
+.banner-acts { display: flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
