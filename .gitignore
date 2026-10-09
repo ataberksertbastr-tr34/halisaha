@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+# Kişisel veri asla repoya girmez: yedek dosyaları
+halisaha-yedek-*.json
+*.backup.json
