@@ -11,11 +11,11 @@ export function sheetHead(title: string): string {
 }
 
 /** Paylaşılacak metni gösterir (share=true) ya da yedek yapıştırma alanı açar. */
-export function openText(title: string, text: string, share: boolean): void {
+export function openText(title: string, text: string, share: boolean, isBackup = false): void {
   showModal(sheetHead(title) +
     '<textarea id="mtext" aria-label="' + esc(title) + '"' + (share ? " readonly" : ' placeholder="' + esc(t("importHint")) + '" autofocus') + ">" + esc(text) + "</textarea>" +
     '<div class="row mt">' + (share
-      ? '<button type="button" class="btn primary grow" data-a="copy">' + esc(t("copy")) + '</button><a class="btn grow" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(text) + '">' + esc(t("whatsapp")) + "</a>"
+      ? '<button type="button" class="btn primary grow" data-a="copy"' + (isBackup ? ' data-backup="1"' : "") + ">" + esc(t("copy")) + "</button>" + (isBackup ? "" : '<a class="btn grow" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(text) + '">' + esc(t("whatsapp")) + "</a>")
       : '<button type="button" class="btn primary grow" data-a="doImport">' + esc(t("load")) + "</button>") +
     "</div>");
 }

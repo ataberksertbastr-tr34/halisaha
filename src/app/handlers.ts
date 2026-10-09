@@ -6,6 +6,10 @@ import { registerActions } from "./actions";
 import type { Match, Pos } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
+import type { State } from "../domain/types";
+import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, shareBackup } from "../data/backup";
+import { listSnapshots, lockedSnapshot, readSnapshot, updateMeta } from "../data/persist";
+import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
 import { currentMatch, getMatch, setAtt } from "../domain/lineup";
 import { isDue, payersOf } from "../domain/money";
@@ -31,6 +35,30 @@ export function newMatch(): void {
   if (route().name !== "teams") go({ name: "match" });
   commit();
   window.scrollTo(0, 0);
+}
+
+let pendingImport: State | null = null;
+
+function markExported(): void {
+  updateMeta({ lastExportAt: Date.now(), reminderSnoozeUntil: 0 }).then(render);
+}
+
+/** Yedek metnini doğrular, özet + onay sayfasını açar. */
+export function tryImport(text: string): void {
+  try {
+    pendingImport = parseBackup(text);
+    openImportConfirm(pendingImport);
+  } catch (e) {
+    pendingImport = null;
+    toast(e instanceof BackupError && e.code === "future" ? t("importFuture") : t("importBad"));
+  }
+}
+
+export function importFromFile(input: HTMLInputElement): void {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  readFileText(f).then(tryImport, () => toast(t("fileBad")));
+  input.value = "";
 }
 
 /** İsim boşsa false, aynı isim varsa null, eklenirse true. */
@@ -155,9 +183,12 @@ registerActions({
     const text = k === "invite" ? msgInvite(store.s, mm) : k === "teams" ? msgTeams(store.s, mm) : msgPay(store.s, mm);
     openText(k === "invite" ? t("inviteMsg") : k === "teams" ? t("shareTeams") : t("payReminder"), text, true);
   },
-  copy: () => {
+  copy: (ds) => {
     const ta = $<HTMLTextAreaElement>("#mtext");
-    if (ta) copyText(ta.value);
+    if (!ta) return;
+    copyText(ta.value).then((ok) => {
+      if (ok && ds.backup) markExported();
+    });
   },
   copyIban: () => copyText(store.s.settings.iban),
   closeModal: () => closeModal(),
@@ -330,26 +361,57 @@ registerActions({
     closeModal();
     commit();
   },
-  export: () => openText(t("exportData"), JSON.stringify(store.s), true),
-  importOpen: () => openText(t("importData"), "", false),
-  doImport: () => {
-    try {
-      const next = parseBackup(val("#mtext"));
+  export: () => openText(t("exportData"), backupText(store.s), true, true),
+  importOpen: () => openImportSheet(),
+  doImport: () => tryImport(val("#mtext")),
+  confirmImport: () => {
+    const next = pendingImport;
+    pendingImport = null;
+    if (!next) return;
+    lockedSnapshot(store.s, "before-import").finally(() => {
       replaceState(next);
       closeModal();
       commit();
       toast(t("importOk"));
-    } catch (e) {
-      if (!(e instanceof BackupError)) console.warn(e);
-      toast(t("importBad"));
-    }
+    });
+  },
+  shareBackup: () => {
+    shareBackup(store.s, t("backupTitle")).then((r) => {
+      if (r === "cancelled") return;
+      markExported();
+      toast(r === "shared" ? t("backupShared") : t("backupDownloaded"));
+    });
+  },
+  downloadBackup: () => {
+    downloadBackup(store.s);
+    markExported();
+    toast(t("backupDownloaded"));
+  },
+  snoozeBackup: () => {
+    updateMeta({ reminderSnoozeUntil: Date.now() + REMIND_EVERY_DAYS * DAY }).then(render);
+  },
+  versions: () => {
+    listSnapshots().then(openVersionsSheet).catch(() => openVersionsSheet([]));
+  },
+  restoreVersion: (ds) => {
+    const id = Number(ds.id);
+    readSnapshot(id).then(async (next) => {
+      if (!next) return;
+      await lockedSnapshot(store.s, "before-restore");
+      replaceState(next);
+      closeModal();
+      commit();
+      toast(t("restored"));
+    });
   },
   reset: () => {
-    const lang = store.s.settings.lang;
-    const next = defaults();
-    next.settings.lang = lang;
-    replaceState(next);
-    commit();
+    lockedSnapshot(store.s, "before-reset").finally(() => {
+      const lang = store.s.settings.lang;
+      const next = defaults();
+      next.settings.lang = lang;
+      replaceState(next);
+      commit();
+    });
   },
 });
 

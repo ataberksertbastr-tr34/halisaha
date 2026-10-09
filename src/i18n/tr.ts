@@ -49,6 +49,19 @@ export const tr = {
   installHint: "Ana ekrana kurarsan uygulama gibi açılır ve internetsiz de çalışır.",
   iosInstall: "iPhone'da: Safari'de alttaki Paylaş düğmesine dokun, sonra \"Ana Ekrana Ekle\" de.",
   installedOk: "Uygulama bu cihazda kurulu.", version: "Sürüm",
+  backupNever: "Henüz yedek almadın.", backupAgo: "Son yedek: {n} gün önce.", backupToday: "Son yedek: bugün.",
+  shareBackup: "Yedeği paylaş", downloadBackup: "Dosya olarak indir", chooseFile: "Dosya seç", orPaste: "ya da yedek metnini yapıştır:",
+  importConfirm: "Yedek yüklensin mi?", importSummary: "Yedekte {p} oyuncu ve {m} maç var.",
+  importReplace: "Şu anki veriler ({p} oyuncu, {m} maç) bu yedekle değiştirilecek. Önce otomatik bir yerel sürüm alınır.",
+  importFuture: "Bu yedek uygulamanın daha yeni bir sürümünden. Önce uygulamayı güncelle.",
+  localVersions: "Otomatik yerel sürümler", localVersionsHint: "Her değişiklik bu cihazda otomatik kaydedilir; son 10 sürüm saklanır. Yanlışlıkla bir şey silersen eski bir sürüme dönebilirsin.",
+  restoreThis: "Bu sürüme dön", versionSummary: "{p} oyuncu · {m} maç", noVersions: "Henüz yerel sürüm yok.", restored: "Seçilen sürüme dönüldü",
+  reasonLegacy: "Eski uygulamadan alındı", reasonPreMig: "Güncelleme öncesi", reasonBeforeImport: "Yedek yükleme öncesi", reasonBeforeReset: "Silme öncesi", reasonBeforeRestore: "Sürüme dönme öncesi",
+  reminderTitle: "Yedek alma zamanı", reminderText: "Son yedeğin {n} gün önce. Telefon kaybolursa veriler gitmesin.", reminderNever: "Henüz hiç yedek almadın. Telefon kaybolursa veriler gitmesin.", later: "Sonra",
+  persistOn: "Kalıcı depolama açık: tarayıcı verileri kendiliğinden silmez.", persistOff: "Tarayıcı yer açmak için verileri silebilir; düzenli yedek al.",
+  saveFailed: "Kaydedilemedi! Hemen yedek al.", backupShared: "Yedek paylaşıldı", backupDownloaded: "Yedek indirildi", fileBad: "Dosya okunamadı.",
+  cancel: "Vazgeç", backupTitle: "Halı Saha yedeği", otherTab: "Başka sekmedeki değişiklikler yüklendi", restoreSection: "Geri yükleme",
+  storageLocal: "Bu tarayıcıda IndexedDB kullanılamıyor; veriler daha sınırlı bir alanda tutuluyor. Sık yedek al.",
 } as const;
 
 export type MsgKey = keyof typeof tr;

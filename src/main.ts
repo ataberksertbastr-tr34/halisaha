@@ -4,9 +4,9 @@ import { setLang, t } from "./i18n";
 import { replaceState, setPersister, setRenderer, store, ui } from "./app/store";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
-import { onEnter, onField } from "./app/handlers";
-import { migrate } from "./domain/migrate";
-import { readLegacyLocal, writeLocal } from "./data/local";
+import { importFromFile, onEnter, onField } from "./app/handlers";
+import { flush, getMeta, listenOtherTabs, loadState, onSaveError, requestPersistence, saveState } from "./data/persist";
+import { hasData, reminderDue, daysSince } from "./data/backup";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
 import { runToastAction, toast } from "./ui/toast";
@@ -19,21 +19,41 @@ import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import type { FilterKey } from "./app/store";
 
-function boot(): void {
-  let s;
-  try {
-    s = migrate(readLegacyLocal());
-  } catch {
-    s = migrate(null);
-  }
+async function boot(): Promise<void> {
+  const s = await loadState();
   replaceState(s);
   setLang(store.s.settings.lang);
-  setPersister(writeLocal);
+  setPersister((st) => {
+    saveState(st);
+    if (!getMeta().persisted && hasData(st)) requestPersistence();
+  });
+  onSaveError(() => toast(t("saveFailed")));
+  listenOtherTabs((next) => {
+    if (isModalOpen()) return;
+    replaceState(next);
+    renderApp();
+    toast(t("otherTab"));
+  });
   setRenderer(renderApp);
   syncFromLocation();
   bindEvents();
   setupPWA();
+  setupBackupReminder();
   renderApp();
+  if (hasData(store.s)) requestPersistence().then(() => undefined);
+}
+
+function setupBackupReminder(): void {
+  addBanner(() => {
+    const meta = getMeta();
+    const now = Date.now();
+    if (!reminderDue(meta, now, hasData(store.s))) return "";
+    const text = meta.lastExportAt ? t("reminderText", { n: daysSince(meta.lastExportAt, now) }) : t("reminderNever");
+    return bannerHTML({
+      icon: IC.download, tone: "warn", title: esc(t("reminderTitle")), text: esc(text),
+      actions: '<button type="button" class="btn sm primary" data-a="shareBackup">' + esc(t("shareBackup")) + '</button><button type="button" class="btn sm ghost" data-a="snoozeBackup">' + esc(t("later")) + "</button>",
+    });
+  });
 }
 
 function setupPWA(): void {
@@ -43,7 +63,7 @@ function setupPWA(): void {
       : "",
   );
   registerActions({
-    applyUpdate: () => applyUpdate(),
+    applyUpdate: () => applyUpdate(flush),
     install: () => {
       promptInstall().catch(() => toast(t("installHint")));
     },
@@ -74,6 +94,7 @@ function bindEvents(): void {
   });
   document.addEventListener("change", (e) => {
     const el = e.target as HTMLInputElement;
+    if (el.id === "importFile") return importFromFile(el);
     if (el.dataset && el.dataset.f) onField(el);
   });
   document.addEventListener("input", (e) => {
@@ -96,4 +117,7 @@ function bindEvents(): void {
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderApp());
 }
 
-boot();
+boot().catch((e) => {
+  console.error(e);
+  document.getElementById("view")!.textContent = "Uygulama açılamadı. Sayfayı yenile.";
+});

@@ -6,6 +6,7 @@ import { mapsUrl } from "../../domain/fields";
 import { fieldOptions } from "../components";
 import { isIOS, isStandalone, pwa } from "../../pwa/register";
 import { IC } from "../icons";
+import { backupSection } from "./backup";
 
 export function viewSettings(): string {
   const S = store.s;
@@ -41,7 +42,7 @@ export function viewSettings(): string {
   });
   h += '<div class="row mt"><button type="button" class="toggle' + (s.gkFree ? " on" : "") + '" data-a="tglSet" data-k="gkFree" aria-pressed="' + s.gkFree + '">' + esc(t("gkFree")) + "</button>" +
     '<button type="button" class="toggle' + (s.round ? " on" : "") + '" data-a="tglSet" data-k="round" aria-pressed="' + s.round + '">' + esc(t("round")) + "</button></div></section>";
-  h += '<section class="section" aria-labelledby="h-bk"><h2 id="h-bk">' + esc(t("backup")) + '</h2><div class="row"><button type="button" class="btn" data-a="export">' + esc(t("exportData")) + '</button><button type="button" class="btn" data-a="importOpen">' + esc(t("importData")) + '</button><button type="button" class="btn danger" data-a="reset" data-confirm="1">' + esc(t("resetAll")) + "</button></div></section>";
+  h += backupSection();
   h += appSection();
   return h;
 }
