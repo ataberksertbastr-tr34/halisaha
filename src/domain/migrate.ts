@@ -8,7 +8,7 @@
  *  - Daha yeni bir uygulamadan gelen yedek reddedilir (veri kaybını önlemek için).
  */
 import { defaults, SCHEMA_VERSION } from "./schema";
-import type { Att, Car, Draw, Expense, ExtraCharge, Field, Game, GameType, Infraction, Kind, Match, PairRule, Payment, Player, Pos, Queue, Sanction, Side, State } from "./types";
+import type { Att, Bracket, Car, Draw, Expense, ExtraCharge, Field, Game, GameType, Infraction, Kind, Match, PairRule, Payment, Player, Pos, Queue, Sanction, Sheet, Side, State } from "./types";
 import { KINDS } from "./types";
 import { payersOf, shareOf } from "./money";
 import { clampRating, uid } from "./text";
@@ -145,15 +145,51 @@ function v3to4(s: Raw): Raw {
   return s;
 }
 
+/**
+ * v4 → v5 (turnuva, puan cetveli, sakatlık, korner serisi):
+ *  - Her etkinliğe boş sakatlık listesi ve puan cetveli eklenir.
+ *  - Turnuva tablosu ve korner serisi isteğe bağlıdır; eski veride yoktur.
+ *  - Hiçbir hesap değişmez.
+ */
+function v4to5(s: Raw): Raw {
+  s.matches.forEach((m: Raw) => {
+    if (!isObj(m)) return;
+    if (!isObj(m.injured)) m.injured = {};
+    if (!Array.isArray(m.sheets)) m.sheets = [];
+  });
+  return s;
+}
+
 /** Sürüm N'den N+1'e geçiş adımları (v1→v2 yukarıdaki legacyV1toV2'dir). */
 const STEPS: Record<number, (s: Raw) => Raw> = {
   2: v2to3,
   3: v3to4,
+  4: v4to5,
 };
 
 function detectVersion(s: Raw): number {
   const v = Math.floor(num(s.v, 1));
   return v >= 1 ? v : 1;
+}
+
+function normBracket(b: Raw): Bracket {
+  const seeds = arr(b.seeds).map((x: Raw) => (Array.isArray(x) ? x.map(str).filter(Boolean) : null)).map((x: string[] | null) => (x && x.length ? x : null));
+  // Yuva sayısı 2'nin kuvveti olmalı; değilse eksik yuvalar bay olur
+  let n = 2;
+  while (n < seeds.length) n *= 2;
+  while (seeds.length < n) seeds.push(null);
+  const picks: Bracket["picks"] = {};
+  if (isObj(b.picks)) {
+    for (const k in b.picks) {
+      const p = b.picks[k];
+      if (!isObj(p) || !/^\d+-\d+$/.test(k)) continue;
+      const out: Bracket["picks"][string] = { key: str(p.key) };
+      if (p.gid) out.gid = str(p.gid);
+      if (p.win === "a" || p.win === "b") out.win = p.win;
+      picks[k] = out;
+    }
+  }
+  return { seeds, picks };
 }
 
 /** Tip güvenliği için son temizlik: eksik alanları varsayılanla doldurur, hiçbir bilgiyi silmez. */
@@ -255,12 +291,22 @@ function normalize(s: Raw): State {
       ...(isObj(m.draw) ? { draw: { game: str(m.draw.game), size: Math.max(1, Math.round(num(m.draw.size, 2))), pairs: !!m.draw.pairs, groups: arr(m.draw.groups).map(ids) } as Draw } : { draw: undefined }),
       ...(isObj(m.queue) ? { queue: { order: ids(m.queue.order), table: ids(m.queue.table), streak: Math.max(0, Math.round(num(m.queue.streak))) } as Queue } : { queue: undefined }),
       ...(isObj(m.clock) ? { clock: { start: num(m.clock.start), acc: Math.max(0, num(m.clock.acc)) } } : { clock: undefined }),
+      injured: flags(m.injured),
+      sheets: arr(m.sheets).filter(isObj).map((x: Raw): Sheet => ({
+        id: str(x.id) || uid(), t: Math.max(0, Math.round(num(x.t))), key: str(x.key), game: str(x.game), low: !!x.low, start: num(x.start),
+        seats: arr(x.seats).map(ids).filter((g: string[]) => g.length), rows: arr(x.rows).map((r: Raw) => arr(r).map((v) => num(v))), done: !!x.done,
+        ...(x.gid ? { gid: str(x.gid) } : {}),
+      })).filter((x: Sheet) => x.seats.length >= 2),
+      ...(isObj(m.bracket) && Array.isArray(m.bracket.seeds) ? { bracket: normBracket(m.bracket) } : { bracket: undefined }),
+      ...(isObj(m.corners) ? { corners: { a: Math.max(0, Math.round(num(m.corners.a))), b: Math.max(0, Math.round(num(m.corners.b))) } } : { corners: undefined }),
     };
   }).map((m: Match) => {
     // Boş isteğe bağlı alanları at (yedek temiz kalsın)
     if (!m.draw) delete m.draw;
     if (!m.queue) delete m.queue;
     if (!m.clock) delete m.clock;
+    if (!m.bracket) delete m.bracket;
+    if (!m.corners) delete m.corners;
     return m;
   });
   s.payments = arr(s.payments).filter(isObj).map((p: Raw): Payment => {

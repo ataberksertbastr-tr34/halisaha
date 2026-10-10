@@ -11,7 +11,7 @@ export function match(id: string, extra: Partial<Match> = {}): Match {
     id, kind: "football", title: "", cap: 0, lockH: 24, date: "2026-10-13", time: "21:00", fieldId: "", price: 3000, format: 7, status: "open",
     att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
     locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false,
-    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], ...extra,
+    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], injured: {}, sheets: [], ...extra,
   };
 }
 
