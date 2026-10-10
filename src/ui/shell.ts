@@ -76,9 +76,30 @@ export function renderApp(): void {
   }
 }
 
+/**
+ * Üst bölüm. Etkinlik sekmesinde tam "maç günü" başlığı (arma, tarih, mekân,
+ * kadro ölçeri, durum rozetleri); diğer sayfalarda ince kulüp çubuğu ve
+ * dokununca Etkinlik sekmesine götüren "sıradaki etkinlik" rozeti.
+ */
 function renderHero(): void {
   const S = store.s;
+  const el = document.getElementById("hero")!;
   const m = currentMatch(S, ui.matchId, today());
+  const full = route().name === "match";
+  el.classList.toggle("compact", !full);
+  const crestSmall = '<img class="brand-crest" src="brand/crest.webp" width="26" height="29" alt="" aria-hidden="true" decoding="async">';
+  if (!full) {
+    let next = "";
+    if (m) {
+      const k = kindOf(m);
+      const { playing } = lineup(S, m);
+      const c = capOf(S, m);
+      const label = dayName(m.date).slice(0, 3) + " " + m.time + (isFootball(m) ? "" : " · " + eventTitle(m));
+      next = '<button type="button" class="hero-next" data-a="tab" data-v="match" aria-label="' + esc(t("nextMatch") + ": " + dayName(m.date) + " " + m.time) + '">' + (IC[k.icon as IconKey] || IC.ball) + "<span>" + esc(label) + "</span><b>" + playing.length + (c ? "/" + c : "") + "</b></button>";
+    }
+    el.innerHTML = '<div class="hero-in"><div class="brand"><span class="brand-name">' + crestSmall + "Predators</span>" + next + '<span class="brand-acts">' + heroStatus() + "</span></div></div>";
+    return;
+  }
   let h = '<div class="hero-in"><img class="hero-crest" src="brand/crest.webp" width="321" height="360" alt="" aria-hidden="true" decoding="async"><div class="brand"><span class="brand-name">Predators<small>' + esc(t("organizer")) + '</small></span><span class="brand-acts">' + heroStatus() + "</span></div>";
   if (m) {
     const fb = isFootball(m);
@@ -88,17 +109,19 @@ function renderHero(): void {
     const left = c - playing.length;
     const f = fieldOf(S, m);
     const kicker = fb ? t("nextMatch") : eventTitle(m);
+    const pct = c ? Math.min(100, Math.round((playing.length / c) * 100)) : 0;
     h += '<div class="hero-main"><div class="minw0"><div class="hero-kicker">' + (IC[k.icon as IconKey] || IC.ball) + "<span>" + esc(kicker) + "</span></div>" +
       '<div class="hero-day">' + esc(dayName(m.date)) + " " + esc(m.time) + "</div>" +
-      '<div class="hero-sub">' + esc(ddmm(m.date)) + (f ? ", " + esc(f.name) : "") + "</div>" +
-      '<div class="hero-count"><b>' + playing.length + (c ? "/" + c : "") + "</b><span>" + esc(c ? (left > 0 ? t("spotsLeft", { n: left }) : t("fullSquad")) : t("going")) + "</span></div></div></div>";
+      '<div class="hero-sub"><span>' + esc(ddmm(m.date)) + "</span>" + (f ? '<i aria-hidden="true"></i><span>' + esc(f.name) + "</span>" : "") + "</div></div></div>" +
+      '<div class="hero-meter"><div class="hero-count"><b>' + playing.length + (c ? "/" + c : "") + "</b><span>" + esc(c ? (left > 0 ? t("spotsLeft", { n: left }) : t("fullSquad")) : t("going")) + "</span></div>" +
+      (c ? '<div class="hm-bar' + (left <= 0 ? " full" : "") + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + c + '" aria-valuenow="' + playing.length + '" aria-label="' + esc(t("squadFill")) + '"><i style="--p:' + pct + '%"></i></div>' : "") + "</div>";
     const chips: string[] = [];
     if (isLocked(m, new Date())) chips.push('<span class="hero-chip locked">' + IC.lock + esc(t("locked")) + "</span>");
     chips.push('<span class="hero-chip' + (m.reserved ? "" : " warn") + '">' + (m.reserved ? IC.check : IC.alert) + esc(m.reserved ? t("reserved") : t("notReserved")) + "</span>");
     if (!fb || kindOf(m).agree.length) chips.push(prepHeroChip(m));
     h += '<div class="hero-chips">' + chips.join("") + "</div>";
-  } else h += '<div class="hero-empty">' + esc(t("noEvent")) + "</div>";
-  document.getElementById("hero")!.innerHTML = h + "</div>";
+  } else h += '<div class="hero-empty">' + esc(t("noEvent")) + '</div><p class="hero-hint">' + esc(t("noEventHint")) + "</p>";
+  el.innerHTML = h + "</div>";
 }
 
 /** Sağ üst köşe: çevrimdışı durumu ve (destekleniyorsa) "Yükle" düğmesi. */
