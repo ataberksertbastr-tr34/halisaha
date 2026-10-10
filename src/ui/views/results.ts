@@ -11,7 +11,10 @@ import { isOpen, store, today } from "../../app/store";
 import type { Game, Match } from "../../domain/types";
 import { esc } from "../../domain/text";
 import { active, getP, lineup } from "../../domain/lineup";
-import { agreeValue, isFootball, kindOf } from "../../domain/kinds";
+import { agreeValue, isCup, isFootball, kindOf, L, postProgress } from "../../domain/kinds";
+import { champion, playable, resolveBracket } from "../../domain/bracket";
+import { sheetFor } from "../../domain/sheet";
+import { checkRow } from "./prep";
 import { gamesTally, replay, scoreLine } from "../../domain/scoring";
 import { partners, tableGame } from "../../domain/draw";
 import { teamName } from "../../domain/teamstyle";
@@ -27,7 +30,9 @@ export function resultBlock(m: Match): string {
   else if (k.score === "sets") h += setsScore(m);
   else h += tablesScore(m);
   h += noShowBlock(m);
+  h += injuredBlock(m);
   if (!isFootball(m)) h += mvpBlock(m);
+  h += closingBlock(m);
   h += '<button type="button" class="btn block mt" data-a="discNew" data-mid="' + esc(m.id) + '">' + IC.gavel + esc(t("discRecord")) + "</button>";
   h += '<button type="button" class="btn primary block mt" data-a="finish">' + esc(isFootball(m) ? t("finish") : t("finishEvent")) + "</button>" +
     '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch">' + esc(isFootball(m) ? t("cancelMatch") : t("cancelEvent")) + '</button><button type="button" class="btn danger sm" data-a="delMatch">' + esc(isFootball(m) ? t("deleteMatch") : t("deleteEvent")) + "</button></div></section>";
@@ -41,7 +46,18 @@ function footballScore(m: Match): string {
   h += '<div class="scorebox"><span class="sw sw-a" aria-hidden="true"></span>' +
     '<input type="number" id="scA" min="0" inputmode="numeric" aria-label="' + esc(teamName(S, "a")) + '" value="' + (m.score ? m.score.a : "") + '"><span class="score" aria-hidden="true">–</span>' +
     '<input type="number" id="scB" min="0" inputmode="numeric" aria-label="' + esc(teamName(S, "b")) + '" value="' + (m.score ? m.score.b : "") + '"><span class="sw sw-b" aria-hidden="true"></span></div>';
-  return h + goalsBlock(m);
+  return h + cornersBlock(m) + goalsBlock(m);
+}
+
+/** Üç korner bir penaltı (Kural 7.6): yalnızca maç öncesi anlaşıldıysa görünür. */
+function cornersBlock(m: Match): string {
+  if (agreeValue(m, "corners") !== "yes" || m.status !== "open") return "";
+  const S = store.s;
+  const c = m.corners || { a: 0, b: 0 };
+  const dots = (n: number) => '<span class="cdots" aria-hidden="true">' + [0, 1, 2].map((i) => '<i class="' + (i < n ? "on" : "") + '"></i>').join("") + "</span>";
+  const side = (x: "a" | "b") => '<button type="button" class="cside ' + x + '" data-a="corner" data-side="' + x + '" aria-label="' + esc(t("cornerFor", { t: teamName(S, x), n: c[x] })) + '"><span class="sw sw-' + x + '" aria-hidden="true"></span><span class="minw0">' + esc(teamName(S, x)) + "</span>" + dots(c[x]) + "</button>";
+  return '<div class="corners"><div class="cr-head"><span>' + esc(t("cornersTitle")) + "</span>" + ruleChip("7.6") + (c.a || c.b ? '<button type="button" class="linkbtn" data-a="cornerReset">' + esc(t("reset")) + "</button>" : "") + "</div>" +
+    '<div class="cr-sides">' + side("a") + side("b") + '</div><p class="small muted m0">' + esc(t("cornersHint")) + "</p></div>";
 }
 
 /** Gol kaydı ve maçın oyuncusu; takımlar kurulduysa takım takım. */
@@ -119,7 +135,9 @@ function setsScore(m: Match): string {
   const k = kindOf(m);
   const ruleTxt = m.kind === "volleyball" ? "18.2" : m.kind === "footvolley" ? "19.5" : "20.1";
   h += '<p class="small muted tight">' + esc(t("setsHint")) + " " + ruleChip(ruleTxt) + "</p>";
-  if (m.kind === "volleyball") {
+  if (isCup(m)) {
+    h += cupSummary(m);
+  } else if (m.kind === "volleyball") {
     const tally = gamesTally(m);
     if (tally) h += '<div class="tally"><span>' + esc(teamName(S, "a")) + "</span><b>" + tally.a + " – " + tally.b + "</b><span>" + esc(teamName(S, "b")) + "</span></div>";
     if (m.teams.a.length && m.teams.b.length) h += '<button type="button" class="btn primary block" data-a="newGame" data-mode="teams">' + IC.scoreboard + esc(t("startMatchAB", { a: teamName(S, "a"), b: teamName(S, "b") })) + "</button>";
@@ -133,6 +151,18 @@ function setsScore(m: Match): string {
   }
   const games = m.games.slice().reverse();
   if (games.length) h += '<ul class="games mt">' + games.map((g) => gameRow(m, g)).join("") + "</ul>";
+  return h;
+}
+
+/** Turnuva özeti (sonuç bölümünde): şampiyon ya da sıradaki maç sayısı. */
+function cupSummary(m: Match): string {
+  if (!m.bracket || !m.bracket.seeds.length) return '<button type="button" class="btn primary block" data-a="goTeams">' + IC.trophy + esc(t("cupGo")) + "</button>";
+  const rounds = resolveBracket(m.bracket, m.games);
+  const champ = champion(rounds);
+  const name = (ids: string[]) => ids.map((id) => (getP(store.s, m, id)?.name || "?").split(" ")[0]).join(" & ");
+  let h = champ ? '<div class="champ"><span class="champ-ic">' + IC.trophy + '</span><div class="minw0"><span class="champ-k">' + esc(t("cupChampion")) + '</span><b class="champ-n">' + esc(name(champ)) + "</b></div></div>"
+    : '<p class="small muted tight">' + esc(t("cupLeft", { n: playable(rounds).length })) + "</p>";
+  h += '<button type="button" class="btn' + (champ ? "" : " primary") + ' block" data-a="goTeams">' + IC.trophy + esc(t("cupTable")) + "</button>";
   return h;
 }
 
@@ -156,6 +186,11 @@ function tablesScore(m: Match): string {
       h += '<div class="row mt-s"><span class="small muted">' + esc(t("whoWon")) + "</span>" + grp.map((id) => '<button type="button" class="btn xs" data-a="tableWin" data-t="' + i + '" data-id="' + esc(id) + '">' + esc(name(id)) + "</button>").join("") + "</div>";
       if (d.game === "tavla" && grp.length === 2) h += '<button type="button" class="btn sm block mt-s" data-a="newGame" data-mode="tavla" data-t="' + i + '">' + IC.scoreboard + esc(t("tavlaScore")) + "</button>";
     }
+    if (d.game !== "tavla" && grp.length >= 2) {
+      const sh = sheetFor(m.sheets, d, i);
+      const meta = sh ? (sh.done ? t("sheetDone") : t("sheetHands", { n: sh.rows.length })) : t("sheetNone");
+      h += '<button type="button" class="btn sm block mt-s sheetbtn" data-a="sheetOpen" data-t="' + i + '">' + IC.list + "<span>" + esc(t("sheetTitle")) + '</span><span class="sb-meta">' + esc(meta) + "</span></button>";
+    }
     h += "</div>";
   });
   return h + gamesList(m);
@@ -167,6 +202,32 @@ function gamesList(m: Match): string {
 }
 
 /* ---------- ortak ---------- */
+
+/** Sakatlananlar (Kural 8.3, 15.6): oyunu bırakır, organizatöre haber verir. */
+function injuredBlock(m: Match): string {
+  const S = store.s;
+  const ids = active(S, m);
+  if (!ids.length) return "";
+  const rule = isFootball(m) ? "8.3" : "15.6";
+  return "<h3>" + esc(t("injuredTitle")) + " " + ruleChip(rule) + '</h3><p class="small muted">' + esc(t("injuredHint")) + '</p><div class="phchips">' +
+    ids.map((id) => {
+      const on = !!m.injured[id];
+      return '<button type="button" class="fchip' + (on ? " warnc" : "") + '" data-a="injured" data-id="' + esc(id) + '" aria-pressed="' + on + '">' + (on ? "✚ " : "") + esc(getP(S, m, id)?.name || id) + "</button>";
+    }).join("") + "</div>";
+}
+
+/** Kapanış listesi: etkinlik bitince yapılacaklar (yelek, soyunma odası, ekipman, hesap). */
+function closingBlock(m: Match): string {
+  const k = kindOf(m);
+  if (!k.post.length) return "";
+  const p = postProgress(m);
+  const key = "post-" + m.id;
+  const all = p.done === p.total;
+  return '<details class="closing mt" data-keep="' + esc(key) + '"' + (isOpen(key, m.date <= today() && !all) ? " open" : "") + "><summary>" +
+    '<span class="prep-sum"><span class="navic sm">' + IC.check + '</span><span class="minw0"><strong>' + esc(t("closingTitle")) + '</strong><span class="meta">' + esc(t("prepMeta", { d: p.done, n: p.total })) + "</span></span>" +
+    '<span class="ring' + (all ? " full" : "") + '" style="--p:' + Math.round((p.done / Math.max(1, p.total)) * 100) + '" aria-hidden="true"></span></span></summary><ul class="checks">' +
+    k.post.map((c) => checkRow(c.key, !!m.checks[c.key], L(c), c.rule, "check", m.id)).join("") + "</ul></details>";
+}
 function noShowBlock(m: Match): string {
   const S = store.s;
   const { playing } = lineup(S, m);

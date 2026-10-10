@@ -100,6 +100,7 @@ function attendanceBlock(m: Match): string {
   const rel = reliability(S);
   const disc = statusMap(S);
   const noShowPrev = noShowLastTime(S, m);
+  const hurt = injuredLastTime(m);
   const pen = penalized(S, m);
   // Davet edilmeyenler listede görünmez (yanıtı varsa görünür)
   const people = [...S.players.filter((p) => p.active !== false && (!!m.att[p.id] || !blockedHard(m, p.id, disc))), ...m.guests];
@@ -144,6 +145,7 @@ function attendanceBlock(m: Match): string {
       (dm[p.id] ? ' <span class="tag debt">' + esc(t("debtTag")) + "</span>" : "") +
       (pen.has(p.id) ? ' <span class="tag wait">' + esc(t("penaltyTag")) + "</span>" : noShowPrev.has(p.id) ? ' <span class="tag debt">' + esc(t("noshowLast")) + "</span>" : "") +
       (ds && ds.warnings && !block ? ' <span class="tag wait">' + esc(t("warnN", { n: ds.warnings })) + "</span>" : "") +
+      (hurt.has(p.id) ? ' <span class="tag wait">✚ ' + esc(t("injuredTag")) + "</span>" : "") +
       (r && r.commits >= 3 && r.score < 80 ? ' <span class="tag wait">' + esc(t("relTag", { n: r.score })) + "</span>" : "");
     h += '<li class="prow" data-n="' + esc(norm(p.name)) + '" data-p="' + esc(p.pos || "") + '" data-s="' + (s === "late" ? "out" : s || "none") + '" data-id="' + esc(p.id) + '"><div class="pmain">' +
       '<span class="num">' + (pos >= 0 ? pos + 1 : "") + '</span><div class="pname"><strong>' + esc(p.name) + '</strong><span class="meta"><span class="pips" aria-label="' + esc(t("rating")) + " " + (p.rating || 3) + '">' + pips(p.rating) + "</span>" + (fb ? posBadge(p) : "") + tags + "</span></div>" +
@@ -160,6 +162,14 @@ function attendanceBlock(m: Match): string {
     '<select id="guestHost" aria-label="' + esc(t("host")) + '"><option value="">' + esc(t("hostNone")) + "</option>" + hosts.map((p) => '<option value="' + esc(p.id) + '">' + esc(t("host") + ": " + p.name) + "</option>").join("") + "</select>" +
     '<button type="button" class="btn" data-a="addGuest">' + esc(t("add")) + "</button></div></section>";
   return h;
+}
+
+/** Bir önceki oynanmış etkinlikte sakatlananlar (Kural 15.6: organizatör durumu sorar). */
+function injuredLastTime(m: Match): Set<string> {
+  const prev = store.s.matches.filter((x) => x.status === "played" && x.id !== m.id && (x.date + x.time) < (m.date + m.time)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const out = new Set<string>();
+  for (const x of prev.slice(0, 1)) for (const id in x.injured || {}) out.add(id);
+  return out;
 }
 
 /** İhraç/davet edilmeyen/tür yasaklı: listede gösterilmez. */
@@ -180,6 +190,8 @@ export function historyBlock(): string {
     if (m.status === "played" && m.score && fb && (m.agree.dessert ?? "yes") === "yes") sub = m.score.a !== m.score.b ? t("dessert", { t: m.score.a < m.score.b ? teamName(S, "a") : teamName(S, "b") }) : t("draw");
     else if (m.status === "played" && m.score && fb) sub = m.score.a === m.score.b ? t("draw") : "";
     else if (m.status === "played" && !fb && m.games.length) sub = t("gamesPlayed", { n: m.games.filter((g) => g.done).length });
+    const hurtN = Object.keys(m.injured || {}).length;
+    if (hurtN) sub = (sub ? sub + " · " : "") + t("injuriesN", { n: hurtN });
     const f = fieldOf(S, m);
     h += '<div class="hist"><div class="minw0"><strong>' + (fb ? "" : kindIcon(m).replace("<svg", '<svg class="kic"')) + esc(dayName(m.date)) + " " + esc(ddmm(m.date)) + '</strong> <span class="muted small">' + esc(m.time) + (fb ? "" : " · " + esc(eventTitle(m))) + (f ? ", " + esc(f.name) : "") + "</span>" + (sub ? '<div class="small muted">' + esc(sub) + "</div>" : "") +
       '</div><div class="row nowrap">' + res + '<button type="button" class="btn xs ghost" data-a="reopen" data-id="' + esc(m.id) + '">' + esc(t("reopen")) + "</button></div></div>";

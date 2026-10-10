@@ -95,6 +95,20 @@ veriler gider; bu yüzden **düzenli yedek al**.
 - **Kura:** ayak tenisi tekli/çiftli/üçlü dengeli takım kurası, masa tenisi
   "kazanan kalır" sırası (üst üste sınır), kıraathane masa ve eş kurası
   (okey, 101, batak, king, pişti, tavla).
+- **Turnuva (Kural 20.1):** masa tenisinde (tekler/çiftler) ve ayak tenisinde
+  "Düzen: Turnuva" seçilince kurayla eleme tablosu kurulur; bay geçenler
+  dengeli dağılır, eşleşmeye dokununca skor tabelası açılır, kazanan bir
+  sonraki tura kendiliğinden çıkar, şampiyon ilan edilir ve tablo tek
+  dokunuşla paylaşılır. Masa tenisi turnuvasında maçlar 5 oyunda 3 olur.
+- **Puan cetveli (Kural 21.1–21.2):** kıraathanede her masa için el el puan;
+  usul masada seçilir (101'de düşük, batak/king/pişti/puanlı okeyde yüksek
+  toplam kazanır, okey 20'den başlar) ve el yazıldıktan sonra değişmez. Toplam
+  ve önde olan anında görünür; "Masayı bitir" sonucu kaydeder.
+- **Maç günü yardımcıları:** üç korner bir penaltı anlaşıldıysa korner serisi
+  sayacı (Kural 7.6), ilk 15–20 dakikada 3+ fark olursa takas hatırlatması
+  (3.4), sakatlananların kaydı ve bir sonraki etkinlikte hatırlatma (8.3, 15.6),
+  her türe özel kapanış listesi (yelekler 3.3, soyunma odası 10.1, replikalar
+  17.4, raket ve masa 20.8, hesap ve masa düzeni 21.7–21.8 …).
 - **Disiplin (Bölüm 9, Ek tablo):** ihlal kaydı; yönetmeliğin öngördüğü yaptırım
   önerilir (1. uyarı → 2. bir maç ceza → 3. davet edilmez; kavga, replika,
   maske, alkol, zarar bedeli…). Cezalı, uzaklaştırılmış ya da borçlu kişi
@@ -129,7 +143,9 @@ veriler gider; bu yüzden **düzenli yedek al**.
   maddeler arası bağlantılı, her madde numarasıyla ("Kural 2.3") paylaşılır.
 - **Geri al:** silme, iptal, takım değişikliği gibi her işlemden sonra.
 - Türkçe / İngilizce, açık (fildişi) / koyu (gece) tema; Predators renkleri
-  (gece siyahı, altın, bordo, krem).
+  (gece siyahı, altın, bordo, krem). Etkinlik sekmesinde armalı "maç günü"
+  başlığı ve kadro doluluk çubuğu; diğer sayfalarda ince kulüp çubuğu ve
+  sıradaki etkinlik rozeti. Ana ekrandan açılınca armalı açılış ekranı.
 
 ---
 
@@ -156,7 +172,7 @@ npm run e2e       # uçtan uca testler (Playwright, derlenmiş uygulama üzerind
 
 | Yol | İçerik |
 |---|---|
-| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`) |
+| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), turnuva tablosu (`bracket.ts`), puan cetveli (`sheet.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`) |
 | `src/data/` | IndexedDB, otomatik yerel sürümler, yedek dosyası |
 | `src/ui/` | Görünümler, alt sayfalar, saha çizimi ve sürükle-bırak |
 | `src/app/` | Durum (Geri al dahil), eylemler, yönlendirme |

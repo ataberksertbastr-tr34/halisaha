@@ -64,6 +64,8 @@ async function boot(): Promise<void> {
   setupReservationReminder();
   autoSchedule();
   renderApp();
+  // Açılış ekranı (yalnızca ana ekrandan açılınca görünür) animasyondan sonra kalkar
+  window.setTimeout(() => document.getElementById("splash")?.remove(), 1600);
   // Uygulama ertesi gün öne geldiğinde yeni maç günlerini planla, hatırlatmaları tazele
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {

@@ -57,6 +57,8 @@ export interface KindDef {
   /** İlgili yönetmelik bölümleri */
   sections: string[];
   checks: CheckItem[];
+  /** Kapanış listesi: etkinlik bitince (yelek, soyunma odası, ekipman, hesap …) */
+  post: CheckItem[];
   agree: AgreeItem[];
   brief: Reminder[];
 }
@@ -91,6 +93,12 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "bibs", rule: "3.3", tr: "Yelekler ve top hazır", en: "Bibs and ball ready" },
       { key: "gear", rule: "4.3", tr: "Ekipman hatırlatıldı: çivili krampon, saat, yüzük, kolye yok", en: "Gear reminder sent: no studs, watches, rings or necklaces" },
     ],
+    post: [
+      { key: "post.bibs", rule: "3.3", tr: "Yelekler oyunculardan geri toplandı", en: "Bibs collected back from players" },
+      { key: "post.balls", rule: "5.6", tr: "Toplar eksiksiz toplandı", en: "All balls collected" },
+      { key: "post.room", rule: "10.1", tr: "Soyunma odası temiz bırakıldı", en: "Changing room left clean" },
+      { key: "post.paid", rule: "2.3", tr: "Saha ücretleri IBAN'a geldi", en: "Field fees received on the IBAN" },
+    ],
     agree: [
       { key: "dur", rule: "4.1", tr: "Maç süresi", en: "Duration", def: "2x30", opts: [{ v: "2x30", tr: "2 × 30 dk (devre arası en fazla 5 dk)", en: "2 × 30 min (max 5 min half-time)" }, { v: "60", tr: "Tek devre 60 dk", en: "Single 60 min half" }] },
       { key: "gk", rule: "3.5", tr: "Kaleci", en: "Goalkeeper", def: "fixed", opts: [{ v: "fixed", tr: "Sabit kaleciler", en: "Regular keepers" }, { v: "10m", tr: "10 dakikada bir değişim", en: "Rotate every 10 minutes" }, { v: "2g", tr: "2 golde bir değişim", en: "Rotate every 2 goals" }] },
@@ -118,6 +126,12 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "safe", rule: "16.3", tr: "Güvenli alan: namlu tıkacı takılı, emniyet kapalı", en: "Safe zone: barrel plugs on, safety engaged" },
       { key: "outfit", rule: "16.8", tr: "Kıyafet duyuruldu: uzun kollu, kalın, kapalı ayakkabı", en: "Dress code sent: long sleeves, thick clothes, closed shoes" },
       C.warmup, C.sober, C.travel,
+    ],
+    post: [
+      { key: "post.gear", rule: "16.1", tr: "Kiralık ekipman ve maskeler tesise teslim edildi", en: "Rented gear and masks returned to the venue" },
+      { key: "post.plugs", rule: "16.3", tr: "Silahlarda namlu tıkacı takılı, emniyet kapalı", en: "Barrel plugs on, markers on safe" },
+      { key: "post.extras", rule: "15.4", tr: "Ek boya ve kişisel harcamalar kapandı", en: "Extra paint and personal costs settled" },
+      { key: "post.paid", rule: "15.4", tr: "Paylar IBAN'a geldi", en: "Shares received on the IBAN" },
     ],
     agree: [
       { key: "range", rule: "16.6", tr: "Yakın mesafe", en: "Minimum distance", def: "5", opts: [{ v: "5", tr: "5 metre", en: "5 metres" }, { v: "venue", tr: "Tesisin belirlediği mesafe", en: "Venue's distance" }] },
@@ -148,6 +162,12 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "outfit", rule: "17.9", tr: "Kıyafet duyuruldu: uzun kollu, eldiven, bot", en: "Dress code sent: long sleeves, gloves, boots" },
       C.warmup, C.sober, C.travel,
     ],
+    post: [
+      { key: "post.bagged", rule: "17.4", tr: "Replikalar çantada/kılıfta, şarjörler çıkarıldı", en: "Replicas bagged, magazines out" },
+      { key: "post.gear", rule: "17.1", tr: "Kiralık ekipman tesise teslim edildi", en: "Rented gear returned to the venue" },
+      { key: "post.extras", rule: "15.4", tr: "Ek mermi ve kişisel harcamalar kapandı", en: "Extra ammo and personal costs settled" },
+      { key: "post.paid", rule: "15.4", tr: "Paylar IBAN'a geldi", en: "Shares received on the IBAN" },
+    ],
     agree: [
       { key: "ricochet", rule: "17.5", tr: "Seken mermi", en: "Ricochets", def: "", opts: [{ v: "no", tr: "Vuruş sayılmaz", en: "Don't count" }, { v: "yes", tr: "Vuruş sayılır", en: "Count as hits" }] },
       { key: "replica", rule: "17.5", tr: "Replikaya isabet", en: "Hit on the replica", def: "", opts: [{ v: "no", tr: "Sayılmaz", en: "Doesn't count" }, { v: "yes", tr: "Vuruş sayılır", en: "Counts as a hit" }] },
@@ -174,6 +194,11 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "shoes", rule: "18.7", tr: "Salon ayakkabısı hatırlatıldı; yüzük, saat, kolye yok", en: "Indoor shoes reminder sent; no rings, watches, necklaces" },
       C.warmup, C.sober,
     ],
+    post: [
+      { key: "post.net", rule: "18.1", tr: "Top ve file toplandı", en: "Ball and net packed away" },
+      { key: "post.room", rule: "10.1", tr: "Salon ve soyunma odası temiz bırakıldı", en: "Hall and changing room left clean" },
+      { key: "post.paid", rule: "15.4", tr: "Paylar IBAN'a geldi", en: "Shares received on the IBAN" },
+    ],
     agree: [
       { key: "fmt", rule: "18.2", tr: "Format", en: "Format", def: "bo3", opts: [{ v: "bo3", tr: "3 set: 25 – 25 – 15", en: "Best of 3: 25 – 25 – 15" }, { v: "bo3s", tr: "3 set: 21 – 21 – 15 (süre kısıtlı)", en: "Best of 3: 21 – 21 – 15 (short)" }, { v: "bo1", tr: "Tek set 25 (süre kısıtlı)", en: "Single set to 25 (short)" }] },
       { key: "size", rule: "18.1", tr: "Takım", en: "Team size", def: "6", opts: [{ v: "4", tr: "4 kişilik", en: "4 a side" }, { v: "5", tr: "5 kişilik", en: "5 a side" }, { v: "6", tr: "6 kişilik", en: "6 a side" }] },
@@ -195,7 +220,12 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "ball", rule: "19.1", tr: "Top, file ve saha hazır", en: "Ball, net and court ready" },
       C.warmup, C.sober,
     ],
+    post: [
+      { key: "post.net", rule: "19.1", tr: "Top ve file toplandı", en: "Ball and net packed away" },
+      { key: "post.paid", rule: "15.4", tr: "Paylar IBAN'a geldi", en: "Shares received on the IBAN" },
+    ],
     agree: [
+      { key: "org", rule: "19.1", tr: "Düzen", en: "Format", def: "free", opts: [{ v: "free", tr: "Serbest maçlar", en: "Open matches" }, { v: "cup", tr: "Turnuva · eleme", en: "Knockout tournament" }] },
       { key: "fmt", rule: "19.1", tr: "Format", en: "Format", def: "2", opts: [{ v: "1", tr: "Tekli", en: "Singles" }, { v: "2", tr: "Çiftli", en: "Doubles" }, { v: "3", tr: "Üçlü", en: "Triples" }] },
       { key: "sets", rule: "19.5", tr: "Set", en: "Sets", def: "bo3", opts: [{ v: "bo3", tr: "3 set, 15 sayı", en: "Best of 3, to 15" }, { v: "bo1", tr: "Tek set 15", en: "Single set to 15" }] },
     ],
@@ -214,7 +244,12 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
     checks: [
       { key: "gear", rule: "20.8", tr: "Raket ve top hazır; masaya oturulmaz, raket fırlatılmaz hatırlatıldı", en: "Bats and balls ready; no sitting on the table, no throwing bats" },
     ],
+    post: [
+      { key: "post.gear", rule: "20.8", tr: "Raket ve toplar toplandı, masa sağlam", en: "Bats and balls packed, table undamaged" },
+      { key: "post.paid", rule: "15.4", tr: "Masa ücreti payları IBAN'a geldi", en: "Table fee shares received on the IBAN" },
+    ],
     agree: [
+      { key: "org", rule: "20.1", tr: "Düzen", en: "Format", def: "queue", opts: [{ v: "queue", tr: "Kazanan kalır (20.7)", en: "Winner stays (20.7)" }, { v: "cup", tr: "Turnuva · eleme (20.1)", en: "Knockout tournament (20.1)" }] },
       { key: "bo", rule: "20.1", tr: "Maç", en: "Match", def: "3", opts: [{ v: "3", tr: "3 oyunda 2", en: "Best of 3" }, { v: "5", tr: "5 oyunda 3 (turnuva)", en: "Best of 5 (tournament)" }] },
       { key: "queue", rule: "20.7", tr: "Masa sırası", en: "Table queue", def: "3", opts: [{ v: "3", tr: "Kazanan kalır, en fazla 3 maç", en: "Winner stays, max 3" }, { v: "2", tr: "Kazanan kalır, en fazla 2 maç", en: "Winner stays, max 2" }, { v: "0", tr: "Kazanan kalır, sınırsız", en: "Winner stays, no limit" }] },
       { key: "mode", rule: "20.6", tr: "Oynanış", en: "Play", def: "single", opts: [{ v: "single", tr: "Tekler", en: "Singles" }, { v: "double", tr: "Çiftler", en: "Doubles" }] },
@@ -237,6 +272,10 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
       { key: "bill", rule: "21.7", tr: "Hesap usulü konuşuldu", en: "Bill split agreed" },
       { key: "smoke", rule: "21.8", tr: "Sigara için açık alan belirlendi", en: "Outdoor smoking spot agreed" },
     ],
+    post: [
+      { key: "post.bill", rule: "21.7", tr: "Hesap masadan kalkmadan kapandı", en: "Bill settled before leaving the table" },
+      { key: "post.tidy", rule: "21.8", tr: "Taşlar, kartlar ve tavla toplandı; masa düzenli", en: "Tiles, cards and backgammon packed; table tidy" },
+    ],
     agree: [
       { key: "okey", rule: "21.2", tr: "Okeyde çifte gitme", en: "Okey: going pairs", def: "", opts: [yes, no] },
       { key: "batak", rule: "21.2", tr: "Batakta ihale", en: "Batak: bidding", def: "", opts: [yes, no] },
@@ -257,6 +296,10 @@ export const KIND_DEFS: Record<Kind, KindDef> = {
     id: "other", icon: "flag", emoji: "🎉", name: { tr: "Diğer etkinlik", en: "Other event" }, short: { tr: "Etkinlik", en: "Event" },
     teams: "two", score: "rounds", cap: 0, lockH: 24, minutes: 120, time: "20:00", physical: true, sections: ["15"],
     checks: [C.rulesShared, C.travel],
+    post: [
+      { key: "post.venue", rule: "15.5", tr: "Mekân ve ekipman düzgün teslim edildi", en: "Venue and gear handed back in good order" },
+      { key: "post.paid", rule: "15.4", tr: "Paylar IBAN'a geldi", en: "Shares received on the IBAN" },
+    ],
     agree: [],
     brief: [R.pay, R.facility, R.conduct, R.sober],
   },
@@ -282,6 +325,15 @@ export function agreeValue(m: Pick<Match, "kind" | "agree">, key: string): strin
 export function pendingAgreements(m: Pick<Match, "kind" | "agree">): AgreeItem[] {
   return kindDef(m.kind).agree.filter((a) => !agreeValue(m, a.key));
 }
+
+/** Kapanış listesi durumu: tamamlanan / toplam. */
+export function postProgress(m: Pick<Match, "kind" | "checks">): { done: number; total: number } {
+  const items = kindDef(m.kind).post;
+  return { done: items.filter((c) => m.checks?.[c.key]).length, total: items.length };
+}
+
+/** Turnuva düzeni seçildi mi (Kural 20.1; ayak tenisi ve masa tenisi). */
+export const isCup = (m: Pick<Match, "kind" | "agree">): boolean => (m.kind === "tabletennis" || m.kind === "footvolley") && agreeValue(m, "org") === "cup";
 
 /** Hazırlık durumu: tamamlanan / toplam (rezervasyon dahil). */
 export function checkProgress(m: Pick<Match, "kind" | "checks" | "reserved">): { done: number; total: number } {
