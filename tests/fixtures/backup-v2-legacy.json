@@ -1,0 +1,326 @@
+{
+  "v": 2,
+  "updatedAt": 1791588796363,
+  "settings": {
+    "defaultFieldId": "7yvbk2tjn6",
+    "price": 3400,
+    "iban": "TR00 0000 0000 0000 0000 0000 00",
+    "ibanName": "Organizatör Deneme",
+    "slots": [
+      {
+        "d": 2,
+        "t": "21:00"
+      },
+      {
+        "d": 4,
+        "t": "21:00"
+      }
+    ],
+    "format": 7,
+    "gkFree": true,
+    "round": true,
+    "lang": "tr"
+  },
+  "fields": [
+    {
+      "id": "7yvbk2tjn6",
+      "name": "Yeşil Vadi Halı Saha",
+      "address": "Örnek Mah. Deneme Sk. No:1",
+      "link": "https://maps.app.goo.gl/ornekLink",
+      "phone": "0212 000 00 00",
+      "price": 3600,
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": "onj8gibjqe",
+      "name": "Çamlık Spor Tesisi",
+      "address": "",
+      "link": "",
+      "phone": "",
+      "price": 3000,
+      "lat": null,
+      "lng": null
+    }
+  ],
+  "players": [
+    {
+      "id": "7rt74stjul",
+      "name": "Kaleci Kemal",
+      "rating": 3,
+      "pos": "GK",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "4mmpwwhjum",
+      "name": "Eldiven Ercan",
+      "rating": 3,
+      "pos": "GK",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "jy3ola7jum",
+      "name": "Defans Doğan",
+      "rating": 3,
+      "pos": "DEF",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "1u0n846jum",
+      "name": "Stoper Şükrü",
+      "rating": 3,
+      "pos": "DEF",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "vbiplnfjum",
+      "name": "Bek Bülent",
+      "rating": 2,
+      "pos": "DEF",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "zaaonsyjum",
+      "name": "Orta Ömer",
+      "rating": 5,
+      "pos": "MID",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "ke4u1ofjum",
+      "name": "Pasör Polat",
+      "rating": 3,
+      "pos": "MID",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "ka3rt7wjum",
+      "name": "Çalımcı Çağrı",
+      "rating": 3,
+      "pos": "MID",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "x92zsnejum",
+      "name": "İlker İleri",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "atbix25jum",
+      "name": "Forvet Fırat",
+      "rating": 3,
+      "pos": "FWD",
+      "phone": "0555 000 00 01",
+      "active": true
+    },
+    {
+      "id": "2wup7gbjum",
+      "name": "Golcü Gökhan",
+      "rating": 5,
+      "pos": "FWD",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "rzisujhjum",
+      "name": "Ümit Uydurma",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "2jjdr77jum",
+      "name": "Ozan Örnek",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "iuyzc4wjum",
+      "name": "Irmak Iğdır",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "q2ztshqjum",
+      "name": "Zeki Zorlu",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "64oisitjum",
+      "name": "Ali Aslan",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": true
+    },
+    {
+      "id": "r1ycir1jum",
+      "name": "Veli Vural",
+      "rating": 3,
+      "pos": "",
+      "phone": "",
+      "active": false
+    }
+  ],
+  "matches": [
+    {
+      "id": "y8je97vl2z",
+      "date": "2026-10-13",
+      "time": "21:00",
+      "fieldId": "7yvbk2tjn6",
+      "price": 3600,
+      "format": 6,
+      "status": "played",
+      "att": {
+        "7rt74stjul": "in",
+        "4mmpwwhjum": "in",
+        "jy3ola7jum": "in",
+        "1u0n846jum": "in",
+        "vbiplnfjum": "in",
+        "zaaonsyjum": "in",
+        "ke4u1ofjum": "in",
+        "ka3rt7wjum": "in",
+        "x92zsnejum": "in",
+        "atbix25jum": "in",
+        "2wup7gbjum": "in",
+        "rzisujhjum": "in",
+        "2jjdr77jum": "in",
+        "iuyzc4wjum": "in",
+        "q2ztshqjum": "maybe",
+        "64oisitjum": "late",
+        "gyjmyeytlsg": "in"
+      },
+      "order": [
+        "7rt74stjul",
+        "4mmpwwhjum",
+        "jy3ola7jum",
+        "1u0n846jum",
+        "vbiplnfjum",
+        "zaaonsyjum",
+        "ke4u1ofjum",
+        "ka3rt7wjum",
+        "x92zsnejum",
+        "atbix25jum",
+        "2wup7gbjum",
+        "rzisujhjum",
+        "2jjdr77jum",
+        "iuyzc4wjum",
+        "gyjmyeytlsg"
+      ],
+      "guests": [
+        {
+          "id": "gyjmyeytlsg",
+          "name": "Misafir Mert",
+          "rating": 3,
+          "pos": "MID"
+        }
+      ],
+      "paid": {
+        "jy3ola7jum": true,
+        "zaaonsyjum": true
+      },
+      "exempt": {
+        "64oisitjum": true
+      },
+      "teams": {
+        "a": [
+          "7rt74stjul",
+          "zaaonsyjum",
+          "iuyzc4wjum",
+          "1u0n846jum",
+          "2jjdr77jum",
+          "atbix25jum",
+          "rzisujhjum"
+        ],
+        "b": [
+          "4mmpwwhjum",
+          "2wup7gbjum",
+          "jy3ola7jum",
+          "x92zsnejum",
+          "ke4u1ofjum",
+          "vbiplnfjum",
+          "ka3rt7wjum"
+        ]
+      },
+      "score": {
+        "a": 7,
+        "b": 5
+      },
+      "manualTeams": false
+    },
+    {
+      "id": "33uchi6m5v",
+      "date": "2026-10-15",
+      "time": "21:00",
+      "fieldId": "onj8gibjqe",
+      "price": 3000,
+      "format": 7,
+      "status": "open",
+      "att": {
+        "7rt74stjul": "in",
+        "2wup7gbjum": "in",
+        "zaaonsyjum": "in",
+        "atbix25jum": "in",
+        "vbiplnfjum": "out"
+      },
+      "order": [
+        "7rt74stjul",
+        "2wup7gbjum",
+        "zaaonsyjum",
+        "atbix25jum"
+      ],
+      "guests": [],
+      "paid": {
+        "2wup7gbjum": true
+      },
+      "exempt": {},
+      "teams": {
+        "a": [],
+        "b": []
+      },
+      "score": null
+    },
+    {
+      "id": "wzarwcqmiu",
+      "date": "2026-10-20",
+      "time": "21:00",
+      "fieldId": "7yvbk2tjn6",
+      "price": 3600,
+      "format": 7,
+      "status": "cancelled",
+      "att": {
+        "7rt74stjul": "in"
+      },
+      "order": [
+        "7rt74stjul"
+      ],
+      "guests": [],
+      "paid": {},
+      "exempt": {},
+      "teams": {
+        "a": [],
+        "b": []
+      },
+      "score": null
+    }
+  ]
+}
