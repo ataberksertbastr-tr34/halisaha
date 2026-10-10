@@ -65,6 +65,13 @@ export const UPCOMING = 4;
 
 export const slotKey = (date: string, time: string): string => date + " " + time;
 
+/**
+ * Otomatik maçın kimliği zamanından türetilir ("a" + tarih ve saat rakamları,
+ * ör. "a202610152100"). İki cihaz aynı maçı çevrimdışıyken oluşturursa kimlik
+ * aynı olur ve eşitlemede tek maç olarak birleşir.
+ */
+export const slotId = (date: string, time: string): string => "a" + (date + time).replace(/\D/g, "");
+
 /** Bugünden itibaren haftalık günlere düşen sıradaki n maç zamanı (bugünün saati geçmişse bugün sayılmaz). */
 export function upcomingSlots(s: State, now: Date, n = UPCOMING): { date: string; time: string }[] {
   const slots = activeSlots(s);
@@ -88,17 +95,22 @@ export function upcomingSlots(s: State, now: Date, n = UPCOMING): { date: string
 /**
  * Önümüzdeki n maç günü için maç yoksa oluşturur (otomatik planlama).
  * Aynı gün ve saatte maç varsa (iptal edilmiş olsa bile) ya da organizatör
- * o maçı silmişse/tarihini değiştirmişse yeniden oluşturmaz.
+ * o maçı silmişse/tarihini değiştirmişse yeniden oluşturmaz. Yeni maçın
+ * kimliği zamanından türetilir (slotId); eski maçların kimlikleri değişmez.
  */
 export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
   if (!s.settings.autoSchedule) return [];
   const have = new Set(s.matches.filter(isFootball).map((m) => slotKey(m.date, m.time)));
   const skipped = new Set(s.skipped);
+  const ids = new Set(s.matches.map((m) => m.id));
   const created: Match[] = [];
   for (const { date, time } of upcomingSlots(s, now, n)) {
     const key = slotKey(date, time);
     if (have.has(key) || skipped.has(key)) continue;
-    const m = footballMatch(s, date, time, { auto: true });
+    // Zamandan türetilen kimlik başka bir maçta kullanılıyorsa (ör. maç taşındı) rastgele kimlik
+    const id = slotId(date, time);
+    const m = footballMatch(s, date, time, ids.has(id) ? { auto: true } : { auto: true, id });
+    ids.add(m.id);
     applyFixed(s, m);
     s.matches.push(m);
     created.push(m);

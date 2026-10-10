@@ -1,6 +1,6 @@
 /** Maç planlama, rezervasyon hatırlatması ve takvim (.ics). */
 import { describe, expect, it } from "vitest";
-import { ensureUpcoming, makeMatch, needsReservation, nextSlot, rememberSkip, upcomingSlots } from "../src/domain/schedule";
+import { ensureUpcoming, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
 import { match, player, state } from "./helpers/factory";
 
@@ -49,6 +49,28 @@ describe("otomatik planlama", () => {
     expect(s.matches.map((m) => m.date).sort()).toEqual(["2026-10-15", "2026-10-21", "2026-10-22"]);
     // Pencere ilerleyince yeni gün eklenir
     expect(ensureUpcoming(s, NOW, 5).map((m) => m.date)).toEqual(["2026-10-27"]);
+  });
+  it("otomatik maçın kimliği zamanından türetilir; eski maçların kimliği değişmez", () => {
+    const s = state([], [match("x", { date: "2026-10-13", time: "21:00" })]);
+    const made = ensureUpcoming(s, NOW);
+    expect(made.map((m) => m.id)).toEqual(["a202610152100", "a202610202100", "a202610222100"]);
+    expect(s.matches[0].id).toBe("x");
+    expect(slotId("2026-10-15", "21:00")).toBe("a202610152100");
+  });
+  it("iki cihaz aynı maçı ayrı ayrı oluşturursa kimlikler aynıdır", () => {
+    const phone = state([player("a", "Sabit Selim", 3, "", { fixed: true })]);
+    const pc = state();
+    expect(ensureUpcoming(phone, NOW).map((m) => m.id)).toEqual(ensureUpcoming(pc, NOW).map((m) => m.id));
+  });
+  it("türetilen kimlik başka bir maçta kullanılıyorsa rastgele kimlik verilir", () => {
+    // Organizatör 15 Ekim maçını 20:00'ye almış (kimlik aynı kalır); 21:00 yeniden oluşturulursa çakışmamalı
+    const moved = match("a202610152100", { date: "2026-10-15", time: "20:00", auto: true });
+    const s = state([], [moved]);
+    const made = ensureUpcoming(s, NOW);
+    const again = made.find((m) => m.date === "2026-10-15" && m.time === "21:00")!;
+    expect(again.id).not.toBe("a202610152100");
+    expect(new Set(s.matches.map((m) => m.id)).size).toBe(s.matches.length);
+    expect(made.filter((m) => m !== again).map((m) => m.id)).toEqual(["a202610132100", "a202610202100", "a202610222100"]);
   });
   it("ayar kapalıysa hiçbir şey oluşturmaz", () => {
     const s = state([], [], { autoSchedule: false });
