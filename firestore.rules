@@ -1,0 +1,10 @@
+rules_version = '2';
+// Her hesap yalnızca kendi verisini okur ve yazar (users/{uid}/...).
+// Firebase konsolunda: Firestore Database → Kurallar → bu içerik → Yayınla.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
