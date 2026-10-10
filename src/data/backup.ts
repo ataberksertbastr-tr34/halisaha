@@ -23,11 +23,11 @@ export function hasData(s: State): boolean {
 }
 
 /** Haftalık hatırlatma: veri varsa ve son yedekten (ya da ilk kullanımdan) 7 gün geçtiyse, ertelenmemişse. */
-export function reminderDue(meta: Meta, now: number, dataExists: boolean): boolean {
+export function reminderDue(meta: Meta, now: number, dataExists: boolean, everyDays = REMIND_EVERY_DAYS): boolean {
   if (!dataExists) return false;
   if (now < (meta.reminderSnoozeUntil || 0)) return false;
   const since = meta.lastExportAt || meta.firstUseAt || now;
-  return now - since >= REMIND_EVERY_DAYS * DAY;
+  return now - since >= everyDays * DAY;
 }
 
 export function daysSince(ts: number, now: number): number {

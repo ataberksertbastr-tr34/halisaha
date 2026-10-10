@@ -906,6 +906,13 @@ export function onEnter(e: KeyboardEvent): void {
   } else if (id === "guestName") {
     e.preventDefault();
     document.querySelector<HTMLElement>('[data-a="addGuest"]')?.click();
+  } else if (id === "sync-email" || id === "sync-pw") {
+    e.preventDefault();
+    if (id === "sync-email") document.getElementById("sync-pw")?.focus();
+    else document.querySelector<HTMLElement>('[data-a="syncEmailIn"]')?.click();
+  } else if (id === "sync-newpw") {
+    e.preventDefault();
+    document.querySelector<HTMLElement>('[data-a="syncSetPw"]')?.click();
   } else if (id === "q-att" || id === "q-team") {
     e.preventDefault();
     const key = id.slice(2) as FilterKey;

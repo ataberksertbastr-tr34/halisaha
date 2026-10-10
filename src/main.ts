@@ -1,7 +1,7 @@
 /** Uygulama girişi: veriyi yükler, olayları bağlar, ilk ekranı çizer. */
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
-import { commit, replaceState, setLockHook, setPersister, setRenderer, store, ui } from "./app/store";
+import { applyExternal, commit, replaceState, setChangeHook, setLockHook, setPersister, setRenderer, store, storeVersion, ui } from "./app/store";
 import { ensureUpcoming, needsReservation } from "./domain/schedule";
 import { fieldOf, telHref } from "./domain/fields";
 import { dayName } from "./domain/messages";
@@ -11,7 +11,10 @@ import { dispatch, needsConfirm } from "./app/actions";
 import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
 import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
-import { hasData, reminderDue, daysSince } from "./data/backup";
+import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
+import { initSync, onSyncChange, syncChanged, syncView } from "./sync";
+import { refreshSyncSection, syncBanner } from "./ui/views/sync";
+import "./app/syncActions";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
 import { runToastAction, toast } from "./ui/toast";
@@ -59,6 +62,7 @@ async function boot(): Promise<void> {
   setRenderer(renderApp);
   syncFromLocation();
   bindEvents();
+  setupSync();
   setupPWA();
   setupBackupReminder();
   setupReservationReminder();
@@ -72,6 +76,30 @@ async function boot(): Promise<void> {
     }
   });
   if (hasData(store.s)) requestPersistence().then(() => undefined);
+}
+
+/** Cihazlar arası eşitleme (Firebase). Giriş yapılmamışsa hiçbir şey yüklenmez. */
+function setupSync(): void {
+  setChangeHook(syncChanged);
+  initSync({
+    getState: () => store.s,
+    version: storeVersion,
+    apply: (next) => {
+      if (isModalOpen()) return false;
+      applyExternal(next, t("syncPulled"));
+      autoSchedule();
+      return true;
+    },
+    lock: lockedSnapshot,
+    hasData,
+    lang: () => store.s.settings.lang,
+  });
+  addBanner(syncBanner);
+  onSyncChange(() => {
+    refreshSyncSection();
+    refreshHeroStatus();
+    renderBanners();
+  });
 }
 
 function autoSchedule(): void {
@@ -95,7 +123,10 @@ function setupBackupReminder(): void {
   addBanner(() => {
     const meta = getMeta();
     const now = Date.now();
-    if (!reminderDue(meta, now, hasData(store.s))) return "";
+    // Eşitleme çalışıyorsa veri bulutta da durur: hatırlatma ayda bire iner.
+    const sv = syncView();
+    const synced = !!sv.user && now - sv.status.lastSyncAt < 7 * DAY;
+    if (!reminderDue(meta, now, hasData(store.s), synced ? 30 : undefined)) return "";
     const text = meta.lastExportAt ? t("reminderText", { n: daysSince(meta.lastExportAt, now) }) : t("reminderNever");
     return bannerHTML({
       icon: IC.download, tone: "warn", title: esc(t("reminderTitle")), text: esc(text),

@@ -27,6 +27,7 @@ import { viewMore } from "./views/more";
 import { viewStats } from "./views/stats";
 import { viewPlayer } from "./views/player";
 import { viewRules } from "./views/rules";
+import { syncChip } from "./views/sync";
 
 const VIEWS: Partial<Record<RouteName, () => string>> = {
   match: viewMatch, teams: viewTeams, pay: viewPay, players: viewPlayers, more: viewMore,
@@ -103,7 +104,7 @@ function renderHero(): void {
 
 /** Sağ üst köşe: çevrimdışı durumu ve (destekleniyorsa) "Yükle" düğmesi. */
 export function heroStatus(): string {
-  let h = navigator.onLine === false ? '<span class="sync off" id="sync">' + esc(t("offline")) + "</span>" : '<span class="sync" id="sync">' + esc(t("syncLocal")) + "</span>";
+  let h = syncChip();
   if (pwa.canInstall()) h += '<button type="button" class="herobtn" data-a="install">' + IC.install + esc(t("install")) + "</button>";
   return h;
 }

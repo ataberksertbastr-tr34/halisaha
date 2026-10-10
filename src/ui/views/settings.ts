@@ -7,6 +7,7 @@ import { fieldOptions, subHeader } from "../components";
 import { isIOS, isStandalone, pwa } from "../../pwa/register";
 import { IC } from "../icons";
 import { backupSection } from "./backup";
+import { syncSection } from "./sync";
 import { templatesSection } from "./templates";
 import { BIB_COLORS, teamColor, teamName } from "../../domain/teamstyle";
 import { L } from "../../domain/kinds";
@@ -16,7 +17,7 @@ export function viewSettings(): string {
   const S = store.s;
   const s = S.settings;
   const dayOpts = (sel: number | "") => '<option value="">—</option>' + DAYS[s.lang].map((d, i) => '<option value="' + i + '"' + (String(sel) === String(i) ? " selected" : "") + ">" + esc(d) + "</option>").join("");
-  let h = subHeader(t("tabSettings"), "more") + '<section class="section" aria-labelledby="h-fields"><h2 id="h-fields">' + esc(t("fields")) + "</h2>";
+  let h = subHeader(t("tabSettings"), "more") + syncSection() + '<section class="section" aria-labelledby="h-fields"><h2 id="h-fields">' + esc(t("fields")) + "</h2>";
   if (!S.fields.length) h += '<p class="muted small">' + esc(t("noFields")) + "</p>";
   else {
     h += '<div class="flist">';
