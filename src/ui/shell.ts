@@ -19,10 +19,11 @@ import { viewSettings } from "./views/settings";
 import { viewMore } from "./views/more";
 import { viewStats } from "./views/stats";
 import { viewPlayer } from "./views/player";
+import { viewRules } from "./views/rules";
 
 const VIEWS: Partial<Record<RouteName, () => string>> = {
   match: viewMatch, teams: viewTeams, pay: viewPay, players: viewPlayers, more: viewMore,
-  settings: viewSettings, stats: viewStats, player: viewPlayer,
+  settings: viewSettings, stats: viewStats, player: viewPlayer, rules: viewRules,
 };
 
 const TAB_ITEMS: [Tab, MsgKey, keyof typeof IC][] = [
@@ -53,6 +54,7 @@ export function renderApp(): void {
   view.innerHTML = (VIEWS[r.name] || viewMatch)();
   document.body.dataset.route = r.name;
   (Object.keys(ui.f) as FilterKey[]).forEach(applyFilter);
+  if (r.name === "rules" && r.arg) document.getElementById("rule-" + r.arg)?.scrollIntoView({ block: r.arg.startsWith("s") ? "start" : "center" });
   if (ui.refocus) {
     const el = document.getElementById(ui.refocus);
     if (el) el.focus({ preventScroll: true });

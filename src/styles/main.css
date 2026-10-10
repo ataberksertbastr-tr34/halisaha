@@ -452,3 +452,20 @@ details[open] > summary::after { transform: rotate(-135deg); }
 .tile span { font-size: 12px; color: var(--muted); font-weight: 600; }
 .res { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; flex: 0 0 auto; background: var(--surface-3); color: var(--ink); }
 .res-w { background: var(--ok); color: var(--on-ok); } .res-l { background: var(--bad); color: var(--on-bad); }
+
+/* ---------- kurallar ---------- */
+.rfinder { margin: 0 0 12px; border-radius: var(--radius); border: 1px solid var(--line); padding: 2px 12px 8px; top: 0; }
+.rfinder .filters { margin-left: 0; margin-right: 0; padding: 0; }
+.rfinder .fchip { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; text-decoration: none; }
+.rules { list-style: none; margin: 0; padding: 0; }
+.rule { display: flex; align-items: flex-start; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); scroll-margin-top: 140px; }
+.rule:first-child { border-top: none; }
+.rule-tx { flex: 1 1 auto; display: flex; gap: 10px; min-width: 0; line-height: 1.5; }
+.rule-tx strong { font-weight: 700; }
+.rnum { font-family: var(--display); font-weight: 800; font-size: 15px; color: var(--turf); min-width: 30px; flex: 0 0 auto; padding-top: 1px; }
+:root[data-theme="dark"] .rnum { color: var(--bibA); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rnum { color: var(--bibA); } }
+.rule.focus { background: color-mix(in srgb, var(--bibA) 25%, transparent); border-radius: 10px; padding-left: 8px; padding-right: 4px; }
+.golden .rnum { min-width: 22px; }
+mark { background: color-mix(in srgb, var(--bibA) 70%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+section[id^="rule-s"] { scroll-margin-top: 12px; }

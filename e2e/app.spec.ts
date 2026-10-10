@@ -197,3 +197,25 @@ test("takımlar: sahada sürükle-bırak takas, kilit ve eşleşme kuralı", asy
   expect(errors).toEqual([]);
   await ctx.close();
 });
+
+test("kurallar: arama, derin bağlantı ve madde paylaşımı", async ({ browser }) => {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    (window as unknown as { __shared: unknown[] }).__shared = [];
+    navigator.share = async (d?: ShareData) => {
+      (window as unknown as { __shared: unknown[] }).__shared.push(d);
+    };
+  });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await page.goto("/#/rules/2.4");
+  await expect(page.locator("#rule-2\\.4")).toHaveClass(/focus/);
+  await page.locator("#rule-2\\.4 [data-a=shareRule]").click();
+  const shared = await page.evaluate(() => (window as unknown as { __shared: { text: string }[] }).__shared[0].text);
+  expect(shared).toMatch(/^📖 Kural 2\.4 – Borçlu oyuncu\n/);
+  await page.locator("#q-rules").fill("krampon");
+  await expect(page.locator(".rule")).toHaveCount(3); // altın kural 5, 4.3, 10.1
+  await expect(page.locator("#q-rules")).toHaveValue("krampon");
+  expect(errors).toEqual([]);
+  await ctx.close();
+});

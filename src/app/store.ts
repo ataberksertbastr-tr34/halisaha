@@ -27,6 +27,8 @@ export interface UIState {
   payTab: "match" | "people" | "cash";
   /** Kasa bölümünde seçili ay (YYYY-AA) */
   month: string;
+  /** Kurallarda arama */
+  ruleQ: string;
   /** İstatistiklerde seçili sezon ("all" = tüm zamanlar) */
   season: string;
   /** Sahada takas için seçilen oyuncu */
@@ -41,7 +43,7 @@ export interface UIState {
 export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
-  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "", open: {}, swapPick: null, ruleTogether: true, season: "",
+  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "", open: {}, swapPick: null, ruleTogether: true, season: "", ruleQ: "",
   f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" }, people: { q: "", pos: "" } },
 };
 

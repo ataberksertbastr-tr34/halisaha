@@ -111,6 +111,8 @@ export const tr = {
   cardMatches: "Maç", cardWdl: "G / B / M", cardGoals: "Gol", cardRate: "Katılım", cardMvp: "Maçın oyuncusu", cardRel: "Güvenilirlik", cardPerf: "Performans", cardBalance: "Bakiye",
   recentMatches: "Son maçlar", payHistory: "Ödeme geçmişi", resultW: "G", resultD: "B", resultL: "M", editPlayer: "Oyuncuyu düzenle", notFound: "Bulunamadı.",
   moreStats: "Sezon tablosu, en çok gelenler, gol krallığı", moreRules: "Grup kuralları, aranabilir, madde madde paylaş", moreSettings: "Sahalar, ücret, şablonlar, yedekleme",
+  rulesSearch: "Kurallarda ara (ör. geç iptal, 2.3)…", goldenRule: "Altın kural", shareRule: "Paylaş: {n}", shareGolden: "10 altın kuralı paylaş",
+  rulesTr: "", noRuleMatch: "Bu aramaya uyan kural yok.", ruleN: "Kural {n}", jumpTo: "Bölüme git",
 } as const;
 
 export type MsgKey = keyof typeof tr;

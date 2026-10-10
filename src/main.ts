@@ -23,6 +23,19 @@ import { applyUpdate, initPWA, promptInstall, pwa } from "./pwa/register";
 import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import { updateTemplatePreview } from "./ui/views/templates";
+
+/** Kural araması: yazarken yeniden çiz, imleci koru. */
+function searchRules(q: string): void {
+  ui.ruleQ = q;
+  const input = document.getElementById("q-rules") as HTMLInputElement | null;
+  const pos = input?.selectionStart ?? q.length;
+  renderApp();
+  const again = document.getElementById("q-rules") as HTMLInputElement | null;
+  if (again) {
+    again.focus({ preventScroll: true });
+    again.setSelectionRange(pos, pos);
+  }
+}
 import type { FilterKey } from "./app/store";
 
 async function boot(): Promise<void> {
@@ -133,6 +146,7 @@ function bindEvents(): void {
   document.addEventListener("input", (e) => {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
+    if (el.id === "q-rules") return searchRules(el.value);
     const k = el.dataset && (el.dataset.q as FilterKey | undefined);
     if (k) {
       ui.f[k].q = el.value;

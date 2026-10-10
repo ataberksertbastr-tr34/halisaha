@@ -8,6 +8,7 @@ import { IC } from "../icons";
 
 const ITEMS: [string, keyof typeof IC, MsgKey, MsgKey][] = [
   ["stats", "chart", "statsTitle", "moreStats"],
+  ["rules", "book", "rulesTitle", "moreRules"],
   ["settings", "settings", "tabSettings", "moreSettings"],
 ];
 

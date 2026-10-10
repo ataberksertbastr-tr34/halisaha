@@ -23,6 +23,8 @@ import { generateTeams, swapPlayers } from "../domain/teams";
 import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
+import { ruleBook } from "../ui/views/rules";
+import { findRule, ruleShareText, stripMd } from "../domain/rules";
 import { isIOS } from "../pwa/register";
 import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
@@ -147,6 +149,19 @@ registerActions({
     render();
     window.scrollTo(0, 0);
   }),
+  shareRule: (ds) => {
+    const it = findRule(ruleBook(), ds.id!);
+    if (it) shareText(ruleShareText(it, t("goldenRule")));
+  },
+  shareGolden: () => {
+    const b = ruleBook();
+    shareText("⭐ " + b.goldenTitle + "\n\n" + b.golden.map((g) => g.id.slice(1) + ". " + stripMd(g.text)).join("\n"));
+  },
+  clearRuleQ: () => {
+    ui.ruleQ = "";
+    render();
+    document.getElementById("q-rules")?.focus();
+  },
   season: (ds) => {
     ui.season = ds.v!;
     render();

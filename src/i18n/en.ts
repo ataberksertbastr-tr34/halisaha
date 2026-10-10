@@ -113,4 +113,6 @@ export const en: Record<MsgKey, string> = {
   cardMatches: "Matches", cardWdl: "W / D / L", cardGoals: "Goals", cardRate: "Attendance", cardMvp: "Player of the match", cardRel: "Reliability", cardPerf: "Performance", cardBalance: "Balance",
   recentMatches: "Recent matches", payHistory: "Payment history", resultW: "W", resultD: "D", resultL: "L", editPlayer: "Edit player", notFound: "Not found.",
   moreStats: "Season table, attendance, top scorers", moreRules: "Group rules, searchable, share any rule", moreSettings: "Fields, fee, templates, backup",
+  rulesSearch: "Search the rules (e.g. late cancel, 2.3)…", goldenRule: "Golden rule", shareRule: "Share: {n}", shareGolden: "Share the 10 golden rules",
+  rulesTr: "The group rules are written in Turkish.", noRuleMatch: "No rule matches this search.", ruleN: "Rule {n}", jumpTo: "Go to section",
 };
