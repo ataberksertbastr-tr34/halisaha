@@ -11,9 +11,10 @@ import { esc, norm } from "../../domain/text";
 import { ddmm, monthKey, parseISO } from "../../domain/dates";
 import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, isFree } from "../../domain/money";
-import { accounts, cashAt, debts, monthSummary, months, type Account } from "../../domain/ledger";
+import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
+import { eventTitle, isFootball } from "../../domain/kinds";
 import { dayName, waPersonal } from "../../domain/messages";
-import { emptyState, shareButtons } from "../components";
+import { emptyState, eventOption, ruleChip, shareButtons } from "../components";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
 import { IC } from "../icons";
@@ -41,19 +42,19 @@ function personBtn(id: string, name: string): string {
 function matchPayView(): string {
   const S = store.s;
   const list = S.matches.filter((m) => m.status !== "cancelled").sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-  if (!list.length) return emptyState(t("noPayMatch"), { a: "newMatch", label: t("createMatch") });
+  if (!list.length) return emptyState(t("noPayMatch"), { a: "newEvent", label: t("createEvent") });
   let m = getMatch(S, ui.payId);
   if (!m || m.status === "cancelled") m = currentMatch(S, ui.matchId, today()) || list[0];
   const mm: Match = m;
   const { payers, share: sh } = billOf(S, mm);
   const acc = accounts(S, today());
-  const chargeOf = (id: string) => acc.get(id)?.charges.find((c) => c.mid === mm.id);
+  const chargeOf = (id: string) => acc.get(id)?.charges.find((c) => c.mid === mm.id && !c.cid);
   const collected = payers.reduce((tot, id) => tot + (chargeOf(id)?.paid || 0), 0);
   const expected = payers.length * sh;
   let h = '<section class="section"><label class="fld">' + esc(t("matchSel")) + '<select data-f="payId">' +
-    list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === mm.id ? " selected" : "") + ">" + esc(dayName(x.date)) + " " + esc(ddmm(x.date)) + " " + esc(x.time) + (x.status === "played" ? " (" + esc(t("played")) + ")" : "") + "</option>").join("") + "</select></label>";
+    list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === mm.id ? " selected" : "") + ">" + esc(eventOption(x)) + (x.status === "played" ? " (" + esc(t("played")) + ")" : "") + "</option>").join("") + "</select></label>";
   h += '<div class="money-sum"><div class="count"><b>' + esc(money(sh)) + "</b><span>" + esc(t("perPerson")) + '</span></div><div class="count"><b>' + esc(money(collected)) + "</b><span>" + esc(t("collected")) + '</span></div><div class="count"><b>' + esc(money(Math.max(0, expected - collected))) + "</b><span>" + esc(t("outstanding")) + "</span></div></div>";
-  h += '<p class="small muted tight">' + esc(t("priceLbl")) + ": " + esc(money(Number(mm.price) || 0)) + ". " + esc(t("payers")) + ": " + payers.length + "</p>";
+  h += '<p class="small muted tight">' + esc(isFootball(mm) ? t("priceLbl") : t("totalCost")) + ": " + esc(money(Number(mm.price) || 0)) + ". " + esc(t("payers")) + ": " + payers.length + (isFootball(mm) ? "" : " " + ruleChip("15.4")) + "</p>";
   if (S.settings.iban) h += '<div class="iban"><code>' + esc(S.settings.iban) + '</code><button type="button" class="btn xs" data-a="copyIban">' + esc(t("copyIban")) + "</button></div>";
   h += '<div class="row nowrap mb">' + shareButtons("pay", t("payReminder"), mm.id) + '<button type="button" class="btn side" data-a="allPaid" data-id="' + esc(mm.id) + '">' + esc(t("allPaid")) + "</button></div>";
   const { playing } = lineup(S, mm);
@@ -85,7 +86,35 @@ function matchPayView(): string {
   });
   if (late.length) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + "</p>";
   h += "</section>";
-  return h + debtsSection();
+  return h + extrasSection(mm, payers) + debtsSection();
+}
+
+/** Etkinliğe bağlı ek harcamalar ve zarar bedelleri (Kural 15.4, 10.5). */
+function extrasSection(m: Match, payers: string[]): string {
+  const S = store.s;
+  const acc = accounts(S, today());
+  const list = S.charges.filter((x) => x.mid === m.id);
+  const total = list.reduce((t0, x) => t0 + x.amount, 0);
+  let h = '<section class="section" aria-labelledby="h-extra"><details data-keep="extra-' + esc(m.id) + '"' + (list.length ? " open" : "") + '><summary><h2 id="h-extra" class="inline">' + esc(t("extrasN")) + (list.length ? " · " + esc(money(total)) : "") + "</h2></summary>" +
+    '<p class="small muted tight">' + esc(t("extraHint")) + " " + ruleChip("15.4") + "</p>";
+  if (list.length) {
+    h += '<ul class="llist">';
+    list.forEach((x) => {
+      const who = getP(S, m, x.pid)?.name || S.players.find((p) => p.id === x.pid)?.name || "?";
+      const c = extraStatus(S, x, today(), acc);
+      const paid = c?.status === "paid";
+      h += '<li class="lrow"><div class="pname"><strong>' + esc(who) + '</strong><span class="meta">' + esc(x.note || t("extraCharge")) + (x.rule ? " · " + esc(t("ruleN", { n: x.rule })) : "") + "</span></div>" +
+        '<span class="amount">' + esc(money(x.amount)) + '</span><button type="button" class="paybtn' + (paid ? " paid" : c?.status === "partial" ? " part" : "") + '" data-a="extraPaid" data-id="' + esc(x.id) + '" aria-pressed="' + paid + '">' + esc(paid ? t("paid") : t("unpaid")) + "</button>" +
+        '<button type="button" class="tx" data-a="delExtra" data-id="' + esc(x.id) + '" aria-label="' + esc(t("del")) + '">' + IC.close + "</button></li>";
+    });
+    h += "</ul>";
+  }
+  const people = [...new Set([...payers, ...lineup(S, m).playing])].map((id) => ({ id, name: getP(S, m, id)?.name || "" })).filter((x) => x.name).sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  h += '<div class="grid2 mt-s"><label class="fld">' + esc(t("extraFor")) + '<select id="xc-who"><option value="__all">' + esc(t("extraAll")) + "</option>" + people.map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>").join("") + "</select></label>" +
+    '<label class="fld">' + esc(t("extraAmount")) + '<input type="number" id="xc-amount" inputmode="decimal" min="0" step="any"></label>' +
+    '<label class="fld full">' + esc(t("extraNote")) + '<input type="text" id="xc-note" autocomplete="off" placeholder="' + esc(t("extraNoteHint")) + '"></label></div>' +
+    '<button type="button" class="btn block mt-s" data-a="addExtra" data-id="' + esc(m.id) + '">' + IC.plus + esc(t("extraAdd")) + "</button>";
+  return h + "</details></section>";
 }
 
 function debtsSection(): string {
@@ -148,7 +177,10 @@ export function openLedger(id: string): void {
   const rows: Row[] = [];
   a?.charges.forEach((c) => {
     const st = c.status === "paid" ? '<span class="tag ok">' + esc(t("paid")) + "</span>" : c.status === "partial" ? '<span class="tag wait">' + esc(t("partialPaid", { p: money(c.paid) })) + "</span>" : c.due ? '<span class="tag debt">' + esc(t("unpaid")) + "</span>" : "";
-    rows.push({ at: c.date + "1", html: '<li class="lrow"><div class="pname"><strong>' + esc(t("chargeRow", { d: dayName(c.date).slice(0, 3) + " " + ddmm(c.date) })) + "</strong>" + st + '</div><span class="amount neg">−' + esc(money(c.amount)) + "</span></li>" });
+    const cm = c.mid ? getMatch(S, c.mid) : null;
+    const d = dayName(c.date).slice(0, 3) + " " + ddmm(c.date);
+    const title = c.cid ? (c.note || t("extraCharge")) + " · " + d : cm && !isFootball(cm) ? t("eventShareRow", { d, e: eventTitle(cm) }) : t("chargeRow", { d });
+    rows.push({ at: c.date + "1", html: '<li class="lrow"><div class="pname"><strong>' + esc(title) + "</strong>" + st + '</div><span class="amount neg">−' + esc(money(c.amount)) + "</span></li>" });
   });
   a?.payments.forEach((p) => {
     const m = p.mid ? getMatch(S, p.mid) : null;
@@ -183,7 +215,7 @@ function cashView(): string {
     list.map((x) => '<option value="' + x + '"' + (x === mk ? " selected" : "") + ">" + esc(monthName(x)) + "</option>").join("") + "</select></label>" +
     '<dl class="kv">' +
     kv(t("mPlayed"), String(sum.played) + (sum.cancelled ? " (+" + sum.cancelled + " " + t("mCancelled").toLocaleLowerCase(S.settings.lang) + ")" : "")) +
-    kv(t("mField"), money(sum.fieldCost)) + kv(t("mBilled"), money(sum.billed)) + kv(t("mCollected"), money(sum.collected)) + kv(t("mExpenses"), money(sum.expenses)) +
+    kv(t("mField"), money(sum.fieldCost)) + kv(t("mBilled"), money(sum.billed)) + (sum.extras ? kv(t("mExtras"), money(sum.extras)) : "") + kv(t("mCollected"), money(sum.collected)) + kv(t("mExpenses"), money(sum.expenses)) +
     kv(t("mCash"), money(sum.cash), sum.cash < 0 ? "neg" : "pos") + "</dl></section>";
   h += '<section class="section" aria-labelledby="h-exp"><h2 id="h-exp">' + esc(t("expenses")) + "</h2>" +
     '<div class="grid2"><label class="fld">' + esc(t("amount")) + '<input type="number" id="ex-amount" inputmode="decimal" min="0" step="any"></label>' +

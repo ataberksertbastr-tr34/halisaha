@@ -8,6 +8,9 @@ import { isIOS, isStandalone, pwa } from "../../pwa/register";
 import { IC } from "../icons";
 import { backupSection } from "./backup";
 import { templatesSection } from "./templates";
+import { BIB_COLORS, teamColor, teamName } from "../../domain/teamstyle";
+import { L } from "../../domain/kinds";
+import type { Side } from "../../domain/types";
 
 export function viewSettings(): string {
   const S = store.s;
@@ -42,14 +45,29 @@ export function viewSettings(): string {
       '<label class="fld">' + esc(t("time")) + '<input type="time" data-f="slot.' + i + '.t" value="' + esc(sl.t) + '"></label></div>';
   });
   const tgl = (k: "gkFree" | "round" | "autoSchedule", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
-  h += '<div class="toggles mt">' + tgl("autoSchedule", t("autoSchedule")) + tgl("gkFree", t("gkFree")) + tgl("round", t("round")) + "</div>";
+  const tgr = (k: "debtBlock" | "noShowPenalty", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
+  h += '<div class="toggles mt">' + tgl("autoSchedule", t("autoSchedule")) + tgl("gkFree", t("gkFree")) + tgl("round", t("round")) + tgr("noShowPenalty", t("noShowPenalty")) + tgr("debtBlock", t("debtBlock")) + "</div>";
   h += '<label class="fld mt">' + esc(t("reserveDays")) + '<select data-f="reserveDays">' + [0, 1, 2, 3, 4, 5, 7].map((n) => '<option value="' + n + '"' + (s.reserveDays === n ? " selected" : "") + ">" + esc(n ? t("reserveDaysN", { n }) : t("reserveOff")) + "</option>").join("") + "</select></label></section>";
   const tg = (k: "avoidRepeat" | "perf", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
   h += '<section class="section" aria-labelledby="h-tb"><h2 id="h-tb">' + esc(t("teamOptions")) + '</h2><div class="toggles">' + tg("avoidRepeat", t("avoidRepeat")) + tg("perf", t("perfOn")) + "</div></section>";
+  h += teamLooksSection();
   h += templatesSection();
   h += backupSection();
   h += appSection();
   return h;
+}
+
+/** Takım adları ve yelek renkleri (Kural 3.3). */
+function teamLooksSection(): string {
+  const S = store.s;
+  const row = (side: Side) => {
+    const ts = side === "a" ? S.settings.teamA : S.settings.teamB;
+    const col = teamColor(S, side);
+    return '<div class="teamlook"><span class="bibdot" style="background:' + esc(col) + '" aria-hidden="true"></span><div class="grid2 grow">' +
+      '<label class="fld">' + esc(t(side === "a" ? "teamNameA" : "teamNameB")) + '<input type="text" maxlength="24" data-f="team.' + side + '.name" value="' + esc(ts.name) + '" placeholder="' + esc(teamName({ ...S, settings: { ...S.settings, teamA: { ...S.settings.teamA, name: "" }, teamB: { ...S.settings.teamB, name: "" } } }, side)) + '" autocomplete="off"></label>' +
+      '<label class="fld">' + esc(t("teamColor")) + '<select data-f="team.' + side + '.color">' + BIB_COLORS.map((b) => '<option value="' + b.hex + '"' + (b.hex === col ? " selected" : "") + ">" + b.emoji + " " + esc(L(b)) + "</option>").join("") + "</select></label></div></div>";
+  };
+  return '<section class="section" aria-labelledby="h-looks"><h2 id="h-looks">' + esc(t("teamLooks")) + '</h2><p class="small muted tight">' + esc(t("teamNameHint")) + "</p>" + row("a") + row("b") + "</section>";
 }
 
 function appSection(): string {
