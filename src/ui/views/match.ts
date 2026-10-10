@@ -9,7 +9,7 @@ import { currentMatch, isGuest, lineup } from "../../domain/lineup";
 import { estShare } from "../../domain/money";
 import { debtMap } from "../../domain/ledger";
 import { dayName } from "../../domain/messages";
-import { isLocked, lastWeekSource, noShowLastTime, reliability } from "../../domain/roster";
+import { copyCandidates, isLocked, noShowLastTime, reliability } from "../../domain/roster";
 import { emptyState, fieldOptions, filterBar, matchChips, posBadge, posOptions, shareButtons } from "../components";
 import { IC } from "../icons";
 
@@ -83,7 +83,8 @@ function attendanceBlock(m: Match): string {
       '<div class="row nowrap">' + shareButtons("squad", t("squadMsg")) + "</div></div>";
   }
   h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(t("buildTeams")) + "</button></div>";
-  if (lastWeekSource(S, m)) h += '<button type="button" class="btn block ghost mt-s" data-a="copyLastWeek">' + IC.copy + esc(t("copyLastWeek")) + "</button>";
+  const cands = copyCandidates(S, m).length;
+  if (cands) h += '<button type="button" class="btn block ghost mt-s" data-a="copyLastWeek">' + IC.copy + esc(t("copyLastWeek")) + " (" + cands + ")</button>";
   h += filterBar("att", true);
   h += '<ul class="plist" id="list-att">';
   people.forEach((p) => {

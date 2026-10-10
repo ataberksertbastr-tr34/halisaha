@@ -7,6 +7,7 @@ import { ddmm } from "../domain/dates";
 import { fieldOf } from "../domain/fields";
 import { capOf, currentMatch, lineup } from "../domain/lineup";
 import { dayName } from "../domain/messages";
+import { isLocked } from "../domain/roster";
 import { applyFilter } from "./components";
 import { renderBanners } from "./banner";
 import { pwa } from "../pwa/register";
@@ -75,6 +76,10 @@ function renderHero(): void {
       '<div class="hero-day">' + esc(dayName(m.date)) + " " + esc(m.time) + "</div>" +
       '<div class="hero-sub">' + esc(ddmm(m.date)) + (f ? ", " + esc(f.name) : "") + "</div></div>" +
       '<div class="hero-count"><b>' + playing.length + "/" + c + "</b><span>" + esc(left > 0 ? t("spotsLeft", { n: left }) : t("fullSquad")) + "</span></div></div>";
+    const chips: string[] = [];
+    if (isLocked(m, new Date())) chips.push('<span class="hero-chip locked">' + IC.lock + esc(t("locked")) + "</span>");
+    chips.push('<span class="hero-chip' + (m.reserved ? "" : " warn") + '">' + (m.reserved ? IC.check : IC.alert) + esc(m.reserved ? t("reserved") : t("notReserved")) + "</span>");
+    h += '<div class="hero-chips">' + chips.join("") + "</div>";
   } else h += '<div class="hero-empty">' + esc(t("noMatch")) + "</div>";
   document.getElementById("hero")!.innerHTML = h + "</div>";
 }

@@ -16,18 +16,19 @@ export function lastWeekSource(s: State, m: Match): Match | null {
   return prev.find((x) => weekday(x.date) === weekday(m.date) && x.time === m.time) || prev[0] || null;
 }
 
+/** Geçen haftadan kopyalanabilecekler: kaynağın oynayan kadrosundaki aktif ve henüz yanıt vermemiş oyuncular. */
+export function copyCandidates(s: State, m: Match): string[] {
+  const src = lastWeekSource(s, m);
+  if (!src) return [];
+  const active = new Set(s.players.filter((p) => p.active !== false).map((p) => p.id));
+  return lineup(s, src).playing.filter((id) => active.has(id) && !m.att[id]);
+}
+
 /** Kaynağın oynayan kadrosunu (misafirler hariç, aktif oyuncular) yanıt vermemiş olanlara "Var" olarak yazar. */
 export function copyLastWeek(s: State, m: Match): number {
-  const src = lastWeekSource(s, m);
-  if (!src) return 0;
-  const active = new Set(s.players.filter((p) => p.active !== false).map((p) => p.id));
-  let n = 0;
-  for (const id of lineup(s, src).playing) {
-    if (!active.has(id) || m.att[id]) continue;
-    setAtt(m, id, "in", true);
-    n++;
-  }
-  return n;
+  const ids = copyCandidates(s, m);
+  ids.forEach((id) => setAtt(m, id, "in", true));
+  return ids.length;
 }
 
 /** Sabit oyuncuları (aktif ve yanıtsız) "Var" yazar. */

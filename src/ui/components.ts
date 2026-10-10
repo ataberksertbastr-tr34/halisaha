@@ -70,7 +70,7 @@ export function matchLabel(m: Match): string {
 
 export function matchChips(selId: string): string {
   const list = openMatches(store.s);
-  return '<div class="chips" role="tablist">' + list.map((m) => '<button type="button" role="tab" aria-selected="' + (m.id === selId) + '" class="chip' + (m.id === selId ? " on" : "") + '" data-a="selMatch" data-id="' + esc(m.id) + '">' + esc(matchLabel(m)) + "</button>").join("") +
+  return '<div class="chips" role="group" aria-label="' + esc(t("matchSel")) + '">' + list.map((m) => '<button type="button" aria-pressed="' + (m.id === selId) + '" class="chip' + (m.id === selId ? " on" : "") + '" data-a="selMatch" data-id="' + esc(m.id) + '">' + esc(matchLabel(m)) + "</button>").join("") +
     '<button type="button" class="chip add" data-a="newMatch">+ ' + esc(t("newMatch")) + "</button></div>";
 }
 
