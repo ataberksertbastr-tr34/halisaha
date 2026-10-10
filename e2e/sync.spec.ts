@@ -159,27 +159,48 @@ test("başka hesap bu verileri görmez; çıkış yapınca veriler cihazda kalı
   await b.ctx.close();
 });
 
-test("Google ile giriş (emülatörün sahte Google penceresi)", async ({ browser }) => {
+test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyip e-postayla aynı hesaba giriş", async ({ browser }) => {
   // Firebase giriş penceresi apis.google.com'dan yüklenir; ağı kısıtlı yerel ortamlarda NO_GOOGLE_APIS=1 ile atlanır (CI'da çalışır).
   test.skip(!!process.env.NO_GOOGLE_APIS, "apis.google.com erişilemiyor");
+  const gmail = "google." + uniq();
   const d = await device(browser, "pc");
+  await importBackupText(d.page, V2);
   await d.page.goto("/#/settings");
   const popupP = d.page.waitForEvent("popup");
   await d.page.locator('#sync-sec [data-a="syncGoogle"]').click();
   const popup = await popupP;
   await popup.waitForLoadState();
   await popup.getByText(/Add new account/i).click();
-  await popup.locator("#email-input").fill("google.deneme@example.com");
+  await popup.locator("#email-input").fill(gmail);
   await popup.locator("#display-name-input").fill("Google Deneme");
   await popup.locator("#sign-in").click();
-  await expect(d.page.locator("#sync-sec")).toContainText("google.deneme@example.com", { timeout: 20_000 });
+  await expect(d.page.locator("#sync-sec")).toContainText(gmail, { timeout: 20_000 });
   await synced(d.page);
-  // Google hesabına şifre eklenebilir (iPhone uygulaması için)
+  // Google hesabına şifre eklenir (iPhone ana ekran uygulaması için)
   await d.page.locator('details[data-keep="syncPw"] summary').click();
   await d.page.locator("#sync-newpw").fill("yenisifre1");
   await d.page.locator('[data-a="syncSetPw"]').click();
-  await expect(d.page.locator("#toast")).toContainText("Şifre kaydedildi");
+  await expect(d.page.locator("#toast")).toContainText("Şifre kaydedildi", { timeout: 15_000 });
   await expect(d.page.locator('details[data-keep="syncPw"]')).toHaveCount(0);
+  const names = await rosterNames(d.page);
+
+  // Başka bir cihazda (iPhone gibi) aynı e-posta ve şifreyle: aynı hesap, aynı veriler.
+  const phone = await device(browser, "phone");
+  await page_emailIn(phone.page, gmail, "yenisifre1");
+  expect((await rosterNames(phone.page)).sort()).toEqual([...names].sort());
   expect(d.errors).toEqual([]);
+  expect(phone.errors).toEqual([]);
   await d.ctx.close();
+  await phone.ctx.close();
 });
+
+async function page_emailIn(page: Page, email: string, pw: string): Promise<void> {
+  await page.goto("/#/settings");
+  const sec = page.locator("#sync-sec");
+  await sec.locator('details[data-keep="syncEmail"] summary').click();
+  await page.locator("#sync-email").fill(email);
+  await page.locator("#sync-pw").fill(pw);
+  await sec.locator('[data-a="syncEmailIn"]').click();
+  await expect(sec).toContainText(email, { timeout: 20_000 });
+  await synced(page);
+}

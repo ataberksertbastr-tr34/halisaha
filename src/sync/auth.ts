@@ -19,6 +19,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
+  updatePassword,
   type Auth,
   type User,
 } from "firebase/auth";
@@ -83,18 +84,32 @@ export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(need(), email.trim());
 }
 
-/** Google ile girilmiş hesaba şifre ekler (iPhone'daki uygulamada e-postayla girebilmek için). */
+/**
+ * Google ile girilmiş hesaba şifre ekler (iPhone'daki uygulamada e-postayla girebilmek için).
+ * Önce e-posta kimliği hesaba bağlanır; bazı ortamlar (ör. emülatör) aynı e-postayı "kullanımda"
+ * sayarsa hesabın kendi şifresi atanır, ikisi de aynı hesaba "password" girişi ekler.
+ * Oturum eskiyse Google ile yeniden doğrulanır.
+ */
 export async function setPassword(password: string): Promise<SyncUser | null> {
   const a = need();
   const u = a.currentUser;
   if (!u || !u.email) throw Object.assign(new Error("no-email"), { code: "auth/no-email" });
-  const cred = EmailAuthProvider.credential(u.email, password);
+  const email = u.email;
+  const attempt = async () => {
+    try {
+      await linkWithCredential(u, EmailAuthProvider.credential(email, password));
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code !== "auth/email-already-in-use" && code !== "auth/credential-already-in-use") throw e;
+      await updatePassword(u, password);
+    }
+  };
   try {
-    await linkWithCredential(u, cred);
+    await attempt();
   } catch (e) {
     if ((e as { code?: string }).code !== "auth/requires-recent-login") throw e;
     await reauthenticateWithPopup(u, new GoogleAuthProvider());
-    await linkWithCredential(u, cred);
+    await attempt();
   }
   await u.reload();
   return toUser(a.currentUser);
