@@ -1,6 +1,7 @@
 # Test, derleme ve yayın. Telefonda hiçbir şey kurulmaz; her şey burada çalışır.
 #  - Her push ve pull request: tip kontrolü, birim testleri (Vitest),
-#    derleme ve uçtan uca testler (Playwright, Chromium, 360 px).
+#    derleme ve uçtan uca testler (Playwright, Chromium, 360 px),
+#    cihazlar arası eşitleme testleri (Firebase emülatörleri, iki tarayıcı).
 #  - main'e merge edilince: aynı derleme GitHub Pages'e yayınlanır.
 name: Test ve yayın
 
@@ -21,7 +22,7 @@ jobs:
   test:
     name: Test ve derleme
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +49,22 @@ jobs:
       - name: Uçtan uca testler
         run: npm run e2e
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Firebase emülatör önbelleği
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.30.2
+
+      - name: Eşitleme testleri (Firebase emülatörü)
+        run: |
+          npm run build:emu
+          npx -y firebase-tools@15.30.2 emulators:exec --only auth,firestore --project demo-halisaha "npm run test:emu && npm run e2e:sync"
+
       - name: Test raporu (hata olursa)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -55,6 +72,7 @@ jobs:
           name: playwright-report
           path: |
             playwright-report/
+            playwright-report-sync/
             test-results/
           retention-days: 7
 
