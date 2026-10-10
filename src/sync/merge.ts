@@ -9,21 +9,32 @@
  *  - Silme ↔ düzenleme çatışmasında düzenleme kalır (hiçbir düzenleme kaybolmaz).
  *  - match.order ve skipped sıralı küme; diğer düz diziler bütün değerdir.
  *  - Diğer çatışmalarda updatedAt'i büyük olan taraf kazanır (eşitse uzak).
+ *  - İki cihazın ayrı ayrı oluşturduğu otomatik maç, oluşturulduğu hâline göre birleşir.
  * Birleştirmeden sonra uzlaştırma (reconcile) ve normalize() değişmezleri garanti eder.
  */
-import { SCHEMA_VERSION } from "../domain/schema";
+import { blankMatch, defaultSettings, SCHEMA_VERSION } from "../domain/schema";
 import { BackupError, normalize } from "../domain/migrate";
-import { slotId } from "../domain/schedule";
+import { autoMatch, idSlot, slotId, slotKey } from "../domain/schedule";
+import { penalized } from "../domain/lineup";
+import { freezeBill } from "../domain/money";
 import type { Match, State } from "../domain/types";
 
 type Obj = Record<string, unknown>;
 type Who = "local" | "remote";
+
+/** Birleştirmenin (değiştirilmemiş) girdileri: uzlaştırma bunlara bakarak karar verir. */
+export interface Inputs {
+  base: State | null;
+  local: State;
+  remote: State;
+}
 
 interface Ctx {
   /** Çatışmada kazanan taraf */
   win: Who;
   /** Sonuç sırasında önce gelen taraf (normalde yerel; ilk katılımda uzak) */
   first: Who;
+  io: Inputs;
 }
 
 /** Sıralı küme olarak birleşen diziler ("*" = liste elemanı). queue.order bütün değerdir. */
@@ -70,6 +81,11 @@ function isEntityList(a: unknown[]): boolean {
 
 const byId = (a: unknown[]) => new Map(a.map((x) => [(x as Obj).id as string, x]));
 const sub = (path: string, key: string) => (path ? path + "." + key : key);
+const arrStr = (x: unknown): string[] => (Array.isArray(x) ? x.map(String) : []);
+const uniq = (a: string[]) => [...new Set(a)];
+/** Kayıt listesindeki kimlikler / kimliğe göre kayıtlar (bozuk girdiye dayanıklı). */
+const idsOf = (a: unknown): Set<string> => new Set(Array.isArray(a) ? a.filter(isObj).map((x) => String(x.id)) : []);
+const mapOf = (a: unknown): Map<string, Obj> => new Map(Array.isArray(a) ? a.filter(isObj).map((x): [string, Obj] => [String(x.id), x]) : []);
 
 /** Genel 3 yönlü birleştirme. undefined = anahtar/eleman yok. */
 function merge(b: unknown, l: unknown, r: unknown, path: string, ctx: Ctx): unknown {
@@ -114,24 +130,49 @@ function mergeList(b: unknown[], l: unknown[], r: unknown[], path: string, ctx: 
     const id = (x as Obj).id as string;
     if (seen.has(id)) continue;
     seen.add(id);
-    const v = merge(bm.get(id), lm.get(id), rm.get(id), path + ".*", ctx);
+    const lx = lm.get(id), rx = rm.get(id);
+    let bx = bm.get(id);
+    // Tabanda olmayan, iki cihazın da oluşturduğu otomatik maç: oluşturulduğu hâli taban sayılır
+    if (bx === undefined && lx !== undefined && rx !== undefined && path === "matches") bx = autoBase(id, lx, rx, ctx.io);
+    const v = merge(bx, lx, rx, path + ".*", ctx);
     if (v !== undefined) out.push(v);
   }
   return out;
 }
 
 /**
+ * Sıranın base'e göre değişmemiş baş kısmından sonraki elemanlar: sona taşınanlar
+ * (çıkıp yeniden "Var" diyen, maç bitince 1.6 cezasıyla sona alınan) ve eklenenler.
+ * Uygulama sırayı yalnızca sona ekleyerek ve çıkararak değiştirir; bu yüzden
+ * dokunulmamış elemanlar her zaman base sırasıyla en başta durur.
+ */
+function tail(b: unknown[], x: unknown[]): unknown[] {
+  const at = new Map(b.map((v, i) => [v, i]));
+  let last = -1, j = 0;
+  for (; j < x.length; j++) {
+    const i = at.get(x[j]);
+    if (i === undefined || i <= last) break;
+    last = i;
+  }
+  return x.slice(j);
+}
+
+/**
  * Sıralı küme: iki tarafın eklemeleri birleşir; bir tarafın çıkardığı, diğer taraf
- * base'de olmayan bir eleman olarak yeniden eklemediyse çıkar. Birinci tarafın sırası
- * korunur, diğerinin eklemeleri sona.
+ * base'de olmayan bir eleman olarak yeniden eklemediyse çıkar. Sonuç: iki tarafın da
+ * yerini değiştirmediği elemanlar base sırasıyla, ardından birinci tarafın sona
+ * taşıdıkları ve eklemeleri, sonra diğerininkiler. Böylece yalnızca bir cihazda
+ * yapılan "sona geçme" (Kural 1.3, 1.6) diğer cihazın eklemesiyle kaybolmaz.
  */
 function mergeSet(b: unknown[], l: unknown[], r: unknown[], ctx: Ctx): unknown[] {
   const B = new Set(b), L = new Set(l), R = new Set(r);
   const keep = (x: unknown) => (L.has(x) && R.has(x)) || (!B.has(x) && (L.has(x) || R.has(x)));
-  const [p, q] = ctx.first === "local" ? [l, r] : [r, l];
+  const tl = tail(b, l), tr = tail(b, r);
+  const moved = new Set([...tl, ...tr]);
+  const [tp, tq] = ctx.first === "local" ? [tl, tr] : [tr, tl];
   const seen = new Set<unknown>();
   const out: unknown[] = [];
-  for (const x of [...p, ...q]) {
+  for (const x of [...b.filter((x) => !moved.has(x)), ...tp, ...tq]) {
     if (seen.has(x) || !keep(x)) continue;
     seen.add(x);
     out.push(x);
@@ -146,10 +187,66 @@ export function hasUserData(s: State): boolean {
   return Array.isArray(s.matches) && s.matches.some((m) => isObj(m) && isObj(m.att) && Object.keys(m.att).length > 0);
 }
 
-/* ---------- Uzlaştırma (reconcile) ---------- */
+/* ---------- Otomatik maçlar ---------- */
 
-const arrStr = (x: unknown): string[] => (Array.isArray(x) ? x.map(String) : []);
-const uniq = (a: string[]) => [...new Set(a)];
+/** autoMatch'in bozuk girdiye dayanıklı hâli (hata olursa undefined). */
+function created(s: State, date: string, time: string, id: string): Obj | undefined {
+  try {
+    return autoMatch(s, date, time, id) as unknown as Obj;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Tabanda olmayan ama iki cihazda da bulunan, zamandan türetilmiş kimlikli otomatik
+ * maç için sentetik taban: maçın otomatik planlamayla oluşturulduğu hâli (zaman
+ * kimlikten; saha, ücret ve sabit oyuncular tabandaki durumdan). Böylece maçı yalnızca
+ * oluşturan cihaz "değiştirmemiş" sayılır; diğer cihazdaki rezervasyon, not, iptal,
+ * sabit oyuncunun "Yok"u ya da taşıma, daha yeni ama dokunulmamış kopyaya kaybolmaz.
+ * İlk katılımda (taban yok) iki cihazın da aynı üreteceği alanlar taban olur.
+ */
+function autoBase(id: string, l: unknown, r: unknown, io: Inputs): Obj | undefined {
+  if (!isObj(l) || !isObj(r) || l.auto !== true || r.auto !== true) return undefined;
+  const slot = idSlot(id);
+  if (!slot) return undefined;
+  const gens = (io.base ? [io.base] : [io.local, io.remote]).map((s) => created(s, slot.date, slot.time, id));
+  const [g, h] = gens;
+  if (!g || (gens.length > 1 && !h)) return undefined;
+  if (!h) return g;
+  const out: Obj = {};
+  for (const k of Object.keys(g)) if (deepEqual(g[k], own(h, k))) out[k] = g[k];
+  const ga = isObj(g.att) ? g.att : {}, ha = isObj(h.att) ? h.att : {};
+  const att: Obj = {};
+  for (const k of Object.keys(ga)) if (own(ha, k) === ga[k]) att[k] = ga[k];
+  out.att = att;
+  out.order = arrStr(g.order).filter((x) => own(att, x) !== undefined);
+  return out;
+}
+
+/** Oluşturulurken ayara/kadroya göre dolan alanlar (dokunulmamışlık ayrıca denetlenir). */
+const CREATED = new Set(["id", "date", "time", "auto", "fieldId", "price", "format", "agree", "att", "order"]);
+
+/**
+ * Oluşturulduktan sonra el sürülmemiş otomatik maç mı: boş maçtan farkı yalnızca
+ * oluşturma alanları (saha, ücret, format, ön anlaşmalar refs'teki bir durumun
+ * üreteceği gibi) ve sabit oyuncuların "Var" yanıtları.
+ */
+function untouchedAuto(m: Match, refs: State[]): boolean {
+  const o = m as unknown as Obj;
+  const blank = blankMatch("football", m.date, m.time) as unknown as Obj;
+  for (const k of new Set([...Object.keys(blank), ...Object.keys(o)])) {
+    if (!CREATED.has(k) && !deepEqual(own(o, k), own(blank, k))) return false;
+  }
+  const gens = refs.map((s) => created(s, m.date, m.time, m.id)).filter((g): g is Obj => !!g);
+  for (const k of ["fieldId", "price", "format", "agree"]) if (!gens.some((g) => deepEqual(own(g, k), own(o, k)))) return false;
+  const fixed = new Set<string>();
+  for (const s of refs) for (const p of Array.isArray(s.players) ? s.players : []) if (isObj(p) && p.fixed && p.active !== false) fixed.add(String(p.id));
+  const att: Obj = isObj(m.att) ? m.att : {};
+  return Object.keys(att).every((id) => att[id] === "in" && fixed.has(id));
+}
+
+/* ---------- Uzlaştırma (reconcile) ---------- */
 
 /**
  * Maç içi değişmezler (setAtt ile aynı anlam):
@@ -196,8 +293,29 @@ function referencedMatches(s: State): Set<string> {
   return out;
 }
 
+/**
+ * Bir cihazın sildiği otomatik maçı diğer cihazın dokunulmamış kopyası geri
+ * getirmesin (sabit oyunculara sessizce borç yazılmasın): tabanda yok, yalnızca bir
+ * tarafta var, silen taraf zamanı "atlanan"lara yazmış, maç hiç taşınmamış, kayıt
+ * bağlı değil ve oluşturulduğu gibi duruyorsa düşer. Düzenlenmiş kopya kalır.
+ */
+function dropResurrected(s: State, io: Inputs): void {
+  const inB = idsOf(io.base?.matches), inL = idsOf(io.local.matches), inR = idsOf(io.remote.matches);
+  const skipped = new Set(arrStr(s.skipped));
+  const refd = referencedMatches(s);
+  s.matches = s.matches.filter((m) => {
+    if (!isObj(m) || m.auto !== true || m.status !== "open" || inB.has(m.id) || inL.has(m.id) === inR.has(m.id)) return true;
+    const key = slotKey(m.date, m.time);
+    const [from, other] = inL.has(m.id) ? [io.local, io.remote] : [io.remote, io.local];
+    if (m.id !== slotId(m.date, m.time) || !skipped.has(key) || !arrStr(other.skipped).includes(key) || refd.has(m.id)) return true;
+    return !untouchedAuto(m, io.base ? [io.base, from] : [from]);
+  });
+}
+
 const RECORDS = ["att", "exempt", "locks", "goals", "noshow", "removed", "checks", "agree"] as const;
 const LISTS = ["guests", "cars", "games"] as const;
+/** Tek değerli maç alanları: kalan maçta oluşturma varsayılanı duruyorsa kopyadaki düzenleme alınır. */
+const SCALARS = ["price", "fieldId", "field", "cap", "lockH", "format", "mvp", "score", "manualTeams", "draw", "queue", "clock"] as const;
 
 /** Maçtaki veri miktarı (hangi kopyanın kalacağını seçmek için). */
 function dataScore(m: Match): number {
@@ -212,19 +330,32 @@ function dataScore(m: Match): number {
   return n;
 }
 
-/** Kopyadaki bilgileri kalan maça taşır; çakışmada kalan maçın değeri korunur. */
-function absorb(keep: Match, drop: Match): void {
+/**
+ * Kopyadaki bilgileri kalan maça taşır. Çakışmada kalan maçın değeri korunur; ancak
+ * kalan maçta yalnızca oluşturma varsayılanı (def: otomatik planlamanın üreteceği
+ * maç) duruyorsa kopyadaki düzenleme alınır (saha, ücret, sabit oyuncunun "Yok"u …).
+ */
+function absorb(keep: Match, drop: Match, def: Obj): void {
   const k = keep as unknown as Obj, d = drop as unknown as Obj;
   for (const key of RECORDS) {
     if (!isObj(d[key])) continue;
     const dst: Obj = isObj(k[key]) ? (k[key] as Obj) : (k[key] = {});
-    for (const [id, v] of Object.entries(d[key] as Obj)) if (own(dst, id) === undefined && id !== "__proto__") dst[id] = v;
+    const dd: Obj = isObj(def[key]) ? (def[key] as Obj) : {};
+    for (const [id, v] of Object.entries(d[key] as Obj)) {
+      if (id === "__proto__") continue;
+      const cur = own(dst, id), dv = own(dd, id);
+      if (cur === undefined || (deepEqual(cur, dv) && !deepEqual(v, dv))) dst[id] = v;
+    }
   }
   for (const key of LISTS) {
     if (!Array.isArray(d[key])) continue;
     const dst = Array.isArray(k[key]) ? (k[key] as Obj[]) : (k[key] = []) as Obj[];
     const have = new Set(dst.map((x) => isObj(x) && x.id));
     for (const x of d[key] as Obj[]) if (isObj(x) && !have.has(x.id)) dst.push(x);
+  }
+  for (const key of SCALARS) {
+    const dv = own(d, key), base = own(def, key);
+    if (dv !== undefined && deepEqual(own(k, key), base) && !deepEqual(dv, base)) k[key] = dv;
   }
   // Sıra: kalan maçın sırası, ardından kopyada yazılanlar (fixMatch "Var" olmayanları atar)
   keep.order = uniq([...arrStr(keep.order), ...arrStr(drop.order)]);
@@ -236,12 +367,14 @@ function absorb(keep: Match, drop: Match): void {
 }
 
 /**
- * Otomatik planlamanın iki cihazda ayrı ayrı oluşturduğu aynı maçı (auto, açık, aynı
- * tür + tarih + saat) teke indirir. Kalan: ödeme/borç/disiplin kaydı bağlı olan, sonra
- * verisi çok olan, sonra zamandan türetilmiş kimlikli, sonra küçük kimlikli (her cihazda
- * aynı sonuç). Kendisine kayıt bağlı kopya silinmez (ikisi de kalır).
+ * Otomatik planlamanın iki cihazda ayrı ayrı (eski sürümde rastgele kimlikle)
+ * oluşturduğu aynı maçı (auto, açık, aynı tür + tarih + saat) teke indirir. Kalan:
+ * ödeme/borç/disiplin kaydı bağlı olan, sonra verisi çok olan, sonra zamandan türetilmiş
+ * kimlikli, sonra küçük kimlikli (her cihazda aynı sonuç). Kendisine kayıt bağlı kopya
+ * silinmez (ikisi de kalır). Aynı cihazda zaten birlikte duran kopyalara dokunulmaz:
+ * organizatör bir maçı bilerek diğerinin saatine taşımıştır (ör. ikinci saha).
  */
-function dedupeAuto(s: State): void {
+function dedupeAuto(s: State, io?: Inputs): void {
   const groups = new Map<string, Match[]>();
   for (const m of s.matches) {
     if (!isObj(m) || m.auto !== true || m.status !== "open") continue;
@@ -250,30 +383,96 @@ function dedupeAuto(s: State): void {
     if (g) g.push(m);
     else groups.set(key, [m]);
   }
+  const sides = io ? [idsOf(io.local.matches), idsOf(io.remote.matches)] : [];
   const refd = referencedMatches(s);
   const drop = new Set<Match>();
   for (const g of groups.values()) {
     if (g.length < 2) continue;
+    if (sides.some((ids) => g.filter((m) => ids.has(m.id)).length > 1)) continue;
     const rank = (m: Match) => [refd.has(m.id) ? 0 : 1, -dataScore(m), m.id === slotId(m.date, m.time) ? 0 : 1] as const;
     const ranked = [...g].sort((x, y) => {
       const a = rank(x), b = rank(y);
       return a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
     });
     const keep = ranked[0];
+    const def = created(s, keep.date, keep.time, keep.id) || {};
     for (const d of ranked.slice(1)) {
       if (refd.has(d.id)) continue;
-      absorb(keep, d);
+      absorb(keep, d, def);
       drop.add(d);
     }
   }
   if (drop.size) s.matches = s.matches.filter((m) => !drop.has(m));
 }
 
-/** Birleştirme sonrası değişmezleri sağlar (yerinde). */
-export function reconcile(s: State): State {
+/** Ödeme listesini ve payı belirleyen maç alanları. */
+const billInputs = (m: Obj) => [m.att, m.order, m.exempt, m.guests, m.price, m.format, m.cap, m.kind];
+
+/**
+ * Bir cihazda bitirilen (ödeme listesi dondurulan) maçın girdileri (katılım, sıra,
+ * muafiyet, misafir, ücret) diğer cihazda değiştiyse liste birleşik veriden yeniden
+ * dondurulur: tek cihazda "önce düzenle, sonra bitir" ile aynı sonuç (yanlış kişiye
+ * borç yazılmaz). Maç bu turda bitirildiyse Kural 1.6 sırası da yeniden kalıcı yapılır.
+ */
+function refreezeBills(s: State, io: Inputs): void {
+  const bm = mapOf(io.base?.matches), lm = mapOf(io.local.matches), rm = mapOf(io.remote.matches);
+  for (const m of s.matches) {
+    if (!isObj(m) || m.status !== "played" || !isObj(m.bill)) continue;
+    const o = m as unknown as Obj;
+    const b = bm.get(m.id);
+    const srcs = [lm.get(m.id), rm.get(m.id)].filter((x): x is Obj => !!x && deepEqual(x.bill, m.bill) && !deepEqual(x.bill, b?.bill));
+    if (!srcs.length || srcs.some((x) => deepEqual(billInputs(x), billInputs(o)))) continue;
+    if (!b || b.status !== "played") {
+      const pen = penalized(s, { ...m, status: "open" });
+      if (pen.size) m.order = [...m.order.filter((id) => !pen.has(id)), ...m.order.filter((id) => pen.has(id))];
+    }
+    freezeBill(s, m);
+  }
+}
+
+/**
+ * İki cihazda ayrı ayrı basılan "Ödedi" / "Hepsi ödedi" / "Ödendi say" aynı borcu iki kez
+ * ödenmiş göstermesin: base'den sonra biri yalnızca yerelde, diğeri yalnızca uzakta
+ * eklenen, notsuz, maça ya da ek borca bağlı ve kişi + maç + ek borç + tutarı aynı olan
+ * ödemeler teke iner (küçük kimlikli kalır). Elle girilen ödemeler (maçsız) dokunulmaz.
+ */
+function collapsePaid(s: State, io: Inputs): void {
+  if (!Array.isArray(s.payments)) return;
+  const inB = idsOf(io.base?.payments), inL = idsOf(io.local.payments), inR = idsOf(io.remote.payments);
+  const lo = new Map<string, string[]>(), ro = new Map<string, string[]>();
+  for (const p of s.payments) {
+    if (!isObj(p) || p.note || !(p.mid || p.cid)) continue;
+    const id = String(p.id);
+    if (inB.has(id) || inL.has(id) === inR.has(id)) continue;
+    const key = [p.pid, p.mid || "", p.cid || "", num(p.amount)].join("|");
+    const side = inL.has(id) ? lo : ro;
+    side.set(key, [...(side.get(key) || []), id]);
+  }
+  const drop = new Set<string>();
+  for (const [key, ls] of lo) {
+    const rs = ro.get(key);
+    if (!rs) continue;
+    ls.sort();
+    rs.sort();
+    for (let i = 0; i < Math.min(ls.length, rs.length); i++) drop.add(ls[i] < rs[i] ? rs[i] : ls[i]);
+  }
+  if (drop.size) s.payments = s.payments.filter((p) => !(isObj(p) && drop.has(String(p.id))));
+}
+
+/**
+ * Birleştirme sonrası değişmezleri sağlar (yerinde). io (birleştirmenin girdileri)
+ * verilirse silinen otomatik maçın geri gelmesi, donmuş ödeme listesi ve çift
+ * "Ödedi" de düzeltilir.
+ */
+export function reconcile(s: State, io?: Inputs): State {
   if (!Array.isArray(s.matches)) return s;
-  dedupeAuto(s);
+  if (io) dropResurrected(s, io);
+  dedupeAuto(s, io);
   for (const m of s.matches) if (isObj(m)) fixMatch(m);
+  if (io) {
+    refreezeBills(s, io);
+    collapsePaid(s, io);
+  }
   return s;
 }
 
@@ -283,20 +482,21 @@ export function reconcile(s: State): State {
  *
  * base null (cihaz ilk kez katılıyor): yerelde organizatör verisi yoksa uzak durum
  * olduğu gibi alınır; varsa iki taraf "her şeyi eklemiş" sayılır: listeler id'ye göre
- * birleşir, çatışmalar (ayarlar, aynı kimlikli kayıtlar) uzak lehine çözülür. Uzakta
- * henüz organizatör verisi yoksa (ilk cihaz boş depoya bağlanıyor) yerel taraf esas alınır.
+ * birleşir, çatışmalar (aynı kimlikli kayıtlar) uzak lehine çözülür. Ayarların tabanı
+ * varsayılan ayarlardır: yalnızca bir cihazda değiştirilen ayar (IBAN, ücret …) korunur,
+ * iki cihazda farklı değiştirilen ayarda uzak kazanır.
  */
 export function merge3(base: State | null, local: State, remote: State): State {
   if (num(local.v) > SCHEMA_VERSION || num(remote.v) > SCHEMA_VERSION) throw new BackupError("future");
   const L = clone(local), R = clone(remote);
   if (!base && !hasUserData(L)) return normalize(R);
+  const io: Inputs = { base, local, remote };
   const ctx: Ctx = base
-    ? { win: num(L.updatedAt) > num(R.updatedAt) ? "local" : "remote", first: "local" }
-    : hasUserData(R)
-      ? { win: "remote", first: "remote" }
-      : { win: "local", first: "local" };
-  const out = merge(base || undefined, L, R, "", ctx) as State;
+    ? { win: num(L.updatedAt) > num(R.updatedAt) ? "local" : "remote", first: "local", io }
+    : { win: "remote", first: "remote", io };
+  const b: unknown = base || { settings: defaultSettings() };
+  const out = merge(b, L, R, "", ctx) as State;
   out.updatedAt = Math.max(num(L.updatedAt), num(R.updatedAt));
   out.v = Math.max(num(L.v), num(R.v));
-  return normalize(reconcile(out));
+  return normalize(reconcile(out, io));
 }

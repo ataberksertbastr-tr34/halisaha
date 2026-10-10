@@ -72,6 +72,22 @@ export const slotKey = (date: string, time: string): string => date + " " + time
  */
 export const slotId = (date: string, time: string): string => "a" + (date + time).replace(/\D/g, "");
 
+/** slotId'nin tersi: kimlikten maçın oluşturulduğu tarih ve saat (zamandan türetilmemişse null). */
+export function idSlot(id: string): { date: string; time: string } | null {
+  const x = /^a(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(id);
+  return x ? { date: x[1] + "-" + x[2] + "-" + x[3], time: x[4] + ":" + x[5] } : null;
+}
+
+/**
+ * Otomatik planlamanın o zaman için oluşturduğu maç: varsayılan saha ve ücret,
+ * sabit oyuncular "Var". id verilmezse rastgele kimlik. Durumu değiştirmez.
+ */
+export function autoMatch(s: State, date: string, time: string, id?: string): Match {
+  const m = footballMatch(s, date, time, id ? { auto: true, id } : { auto: true });
+  applyFixed(s, m);
+  return m;
+}
+
 /** Bugünden itibaren haftalık günlere düşen sıradaki n maç zamanı (bugünün saati geçmişse bugün sayılmaz). */
 export function upcomingSlots(s: State, now: Date, n = UPCOMING): { date: string; time: string }[] {
   const slots = activeSlots(s);
@@ -109,9 +125,8 @@ export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
     if (have.has(key) || skipped.has(key)) continue;
     // Zamandan türetilen kimlik başka bir maçta kullanılıyorsa (ör. maç taşındı) rastgele kimlik
     const id = slotId(date, time);
-    const m = footballMatch(s, date, time, ids.has(id) ? { auto: true } : { auto: true, id });
+    const m = autoMatch(s, date, time, ids.has(id) ? undefined : id);
     ids.add(m.id);
-    applyFixed(s, m);
     s.matches.push(m);
     created.push(m);
   }

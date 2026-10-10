@@ -1,6 +1,6 @@
 /** Maç planlama, rezervasyon hatırlatması ve takvim (.ics). */
 import { describe, expect, it } from "vitest";
-import { ensureUpcoming, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, upcomingSlots } from "../src/domain/schedule";
+import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
 import { match, player, state } from "./helpers/factory";
 
@@ -71,6 +71,22 @@ describe("otomatik planlama", () => {
     expect(again.id).not.toBe("a202610152100");
     expect(new Set(s.matches.map((m) => m.id)).size).toBe(s.matches.length);
     expect(made.filter((m) => m !== again).map((m) => m.id)).toEqual(["a202610132100", "a202610202100", "a202610222100"]);
+  });
+  it("kimlikten zaman geri okunur; zamandan türetilmemiş kimlik null", () => {
+    expect(idSlot(slotId("2026-10-15", "21:00"))).toEqual({ date: "2026-10-15", time: "21:00" });
+    expect(idSlot("a202601050930")).toEqual({ date: "2026-01-05", time: "09:30" });
+    expect(idSlot("m1")).toBeNull();
+    expect(idSlot("a2026101521")).toBeNull();
+    expect(idSlot("xa202610152100")).toBeNull();
+  });
+  it("autoMatch: otomatik planlamanın oluşturacağı maçın aynısı; durumu değiştirmez", () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Pasif Polat", 3, "", { fixed: true, active: false })], [], { price: 3200 });
+    const snap = JSON.stringify(s);
+    const m = autoMatch(s, "2026-10-13", "21:00", "a202610132100");
+    expect(JSON.stringify(s)).toBe(snap);
+    expect(m).toMatchObject({ id: "a202610132100", auto: true, price: 3200, status: "open", att: { a: "in" }, order: ["a"] });
+    expect(ensureUpcoming(s, NOW)[0]).toEqual(m);
+    expect(autoMatch(s, "2026-10-13", "21:00").id).not.toBe("a202610132100");
   });
   it("ayar kapalıysa hiçbir şey oluşturmaz", () => {
     const s = state([], [], { autoSchedule: false });
