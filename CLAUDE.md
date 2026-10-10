@@ -12,7 +12,7 @@ Predators grubunda haftada iki halı saha maçı ve paintball, airsoft, voleybol
 - Veri uyumluluğu kutsal: eski uygulamanın "Yedeği kopyala" ile ürettiği JSON (şema v1 ve v2; `index.html` içindeki `migrate()` fonksiyonuna bak) her zaman eksiksiz içe aktarılabilmeli. Şema değişirse sürüm numarası artar ve migration + test yazılır.
 - Kişisel veri (oyuncu isimleri, telefon numaraları, IBAN, yedek dosyaları) asla repoya commit edilmez. Test verileri uydurma isimlerle yazılır.
 - Organizatör telefonunda hiçbir şey kurmaz. Test, derleme ve yayın GitHub Actions ile yapılır; yayın GitHub Pages'e gider.
-- Görsel kimlik: Predators arması ve renkleri — gece siyahı `#13161C`, altın `#C9A04B`, bordo `#84191F`, krem `#EEEAD9`; üst bölüm iki temada da gece siyahı. Takım yelekleri Ayarlar'dan (varsayılan Sarılar `#E6CF3A`, Turuncular `#EE7A2C`). Barlow / Barlow Condensed fontları. Açık (fildişi) ve koyu (gece) tema desteklenir.
+- Görsel kimlik: Predators arması ve renkleri — gece siyahı `#13161C`, altın `#C9A04B`, bordo `#84191F`, krem `#EEEAD9`. İki koyu çerçeve (üst bölüm ve sekme çubuğu) iki temada da gece siyahı; aradaki içerik açık temada fildişi kâğıt. Altın varak gibi kullanılır (ince çizgi, ikon, rakam), bordo kalkan çeyreği gibi (kuşak, canlı/uyarı). Tam "maç günü" başlığı yalnızca Etkinlik sekmesinde, diğer sayfalarda ince kulüp çubuğu. Açık temada birincil düğme gece siyahı, koyu temada altın. Takım yelekleri Ayarlar'dan (varsayılan Sarılar `#E6CF3A`, Turuncular `#EE7A2C`). Barlow / Barlow Condensed fontları. Açık (fildişi) ve koyu (gece) tema desteklenir.
 - Halı saha mesaj şablonlarının varsayılanları eski uygulamanın mesajlarıyla birebir aynı kalır (`tests/messages.test.ts`).
 
 ## Çalışma şekli
