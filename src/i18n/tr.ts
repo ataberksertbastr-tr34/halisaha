@@ -104,6 +104,13 @@ export const tr = {
   together: "Aynı takımda", apart: "Ayrı takımlarda", addRule: "Kural ekle", ruleAdded: "Kural eklendi", ruleDeleted: "Kural silindi", noRules: "Henüz kural yok.", ruleSame: "İki farklı oyuncu seç.",
   avoidRepeat: "Geçen maçın takımlarını tekrar etme", perfOn: "Performans puanı (maç sonuçlarından, seviyeyle harmanlanır)", teamOptions: "Takım kurma",
   perf: "Performans", perfMeta: "performans {p} ({g} maç)", strengthShort: "güç",
+  statsTitle: "İstatistikler", rulesTitle: "Kurallar", moreTitle: "Daha fazla", back: "Geri", allTime: "Tüm zamanlar", season: "Sezon",
+  seasonTable: "Sezon tablosu", mostAttended: "En çok maça gelenler", topScorers: "Gol krallığı", mvpCount: "Maçın oyuncusu",
+  colPlayed: "O", colW: "G", colD: "B", colL: "M", colGoals: "Gol", colPts: "P", colRate: "Kat.", tableHint: "O: oynadığı, G/B/M: galibiyet/beraberlik/mağlubiyet, P: puan (G=3, B=1), Kat.: katılım oranı",
+  noStats: "İstatistik için en az bir maçı bitirmen gerekiyor.", attendN: "{n} maç · %{r}", goalsShort: "{n} gol", playerCard: "Oyuncu kartı",
+  cardMatches: "Maç", cardWdl: "G / B / M", cardGoals: "Gol", cardRate: "Katılım", cardMvp: "Maçın oyuncusu", cardRel: "Güvenilirlik", cardPerf: "Performans", cardBalance: "Bakiye",
+  recentMatches: "Son maçlar", payHistory: "Ödeme geçmişi", resultW: "G", resultD: "B", resultL: "M", editPlayer: "Oyuncuyu düzenle", notFound: "Bulunamadı.",
+  moreStats: "Sezon tablosu, en çok gelenler, gol krallığı", moreRules: "Grup kuralları, aranabilir, madde madde paylaş", moreSettings: "Sahalar, ücret, şablonlar, yedekleme",
 } as const;
 
 export type MsgKey = keyof typeof tr;

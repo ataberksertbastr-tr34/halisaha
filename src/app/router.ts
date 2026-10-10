@@ -1,19 +1,36 @@
 /**
- * Hash tabanlı yönlendirme (#/mac, #/takimlar …). GitHub Pages'te sunucu
- * ayarı gerektirmez; Android geri tuşu alt sayfalardan geri döner.
+ * Hash tabanlı yönlendirme (#/match, #/stats …). GitHub Pages'te sunucu
+ * ayarı gerektirmez. Sekme geçişleri geçmişe kayıt eklemez; alt sayfalar
+ * (İstatistikler, Kurallar, Ayarlar, Oyuncu kartı) ekler, böylece Android
+ * geri tuşu alt sayfadan geri döner.
  */
-export type Tab = "match" | "teams" | "pay" | "players" | "settings";
-export const TABS: Tab[] = ["match", "teams", "pay", "players", "settings"];
+export type Tab = "match" | "teams" | "pay" | "players" | "more";
+export type RouteName = Tab | "settings" | "stats" | "rules" | "player";
+export const TABS: Tab[] = ["match", "teams", "pay", "players", "more"];
+const ALL: RouteName[] = [...TABS, "settings", "stats", "rules", "player"];
 
 export interface Route {
-  name: Tab;
+  name: RouteName;
   arg?: string;
 }
 
+/** Alt sayfanın bağlı olduğu sekme (alt çubukta seçili görünür). */
+export function tabOf(r: Route): Tab {
+  if (r.name === "player") return "players";
+  if (r.name === "settings" || r.name === "stats" || r.name === "rules") return "more";
+  return r.name;
+}
+
 export function parseHash(h: string = location.hash): Route {
-  const parts = h.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
-  const name = parts[0] as Tab;
-  if (TABS.includes(name)) return { name, arg: parts[1] };
+  const parts = h.replace(/^#\/?/, "").split("/").filter(Boolean).map((x) => {
+    try {
+      return decodeURIComponent(x);
+    } catch {
+      return x;
+    }
+  });
+  const name = parts[0] as RouteName;
+  if (ALL.includes(name)) return { name, arg: parts[1] };
   return { name: "match" };
 }
 
@@ -24,13 +41,22 @@ export function hashOf(r: Route): string {
 let current: Route = { name: "match" };
 export const route = (): Route => current;
 
-/** Sekme geçişi geçmişe yeni kayıt eklemez (geri tuşu uygulamadan çıkar), alt sayfalar ekler. */
+/** push=true: geçmişe yeni kayıt (alt sayfa); aksi halde yerine yazar (sekme). */
 export function go(r: Route, push = false): void {
   current = r;
   const h = hashOf(r);
   if (location.hash !== h) {
-    if (push) history.pushState(null, "", h);
+    if (push) history.pushState({ sub: true }, "", h);
     else history.replaceState(null, "", h);
+  }
+}
+
+/** Alt sayfadan geri: geçmişte bizim kaydımız varsa geri git, yoksa bağlı sekmeye. */
+export function back(fallback: Route, rerender: () => void): void {
+  if (history.state && (history.state as { sub?: boolean }).sub) history.back();
+  else {
+    go(fallback);
+    rerender();
   }
 }
 

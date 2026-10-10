@@ -5,7 +5,8 @@ import { resolve } from "node:path";
 import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
-const TABS = ["match", "teams", "pay", "players", "settings"];
+const TABS = ["match", "teams", "pay", "players", "more"];
+const SUBPAGES = ["settings", "stats"];
 
 test("tüm sekmeler hatasız açılır ve 360 px'e sığar (açık ve koyu tema)", async ({ page }) => {
   const errors = watchErrors(page);
@@ -16,6 +17,14 @@ test("tüm sekmeler hatasız açılır ve 360 px'e sığar (açık ve koyu tema)
       await page.locator(`#tabs [data-v="${tab}"]`).click();
       await expect(page.locator(`#tabs [data-v="${tab}"]`)).toHaveAttribute("aria-current", "page");
       await noHorizontalScroll(page);
+    }
+    for (const sub of SUBPAGES) {
+      await page.locator('#tabs [data-v="more"]').click();
+      await page.locator(`[data-a="nav"][data-v="${sub}"]`).click();
+      await expect(page.locator(".subtitle")).toBeVisible();
+      await noHorizontalScroll(page);
+      await page.goBack();
+      await expect(page.locator(".pagetitle")).toBeVisible();
     }
   }
   expect(errors).toEqual([]);
@@ -51,7 +60,7 @@ test("silinen oyuncu 'Geri al' ile geri gelir", async ({ page }) => {
   await importBackupText(page, V2);
   await page.locator('#tabs [data-v="players"]').click();
   const first = page.locator("#list-roster li").first();
-  const name = await first.locator("strong").textContent();
+  const name = await first.locator(".plink").textContent();
   await first.locator('[data-a="editP"]').click();
   await page.locator('[data-a="delPlayer"]').click();
   await expect(page.locator("#toast")).toContainText(name + " silindi");

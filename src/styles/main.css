@@ -407,3 +407,48 @@ details[open] > summary::after { transform: rotate(-135deg); }
 .seg2 button { min-height: 44px; border: none; background: var(--surface); font-weight: 700; color: var(--muted); }
 .seg2 button + button { border-left: 1px solid var(--line-2); }
 .seg2 button.on { background: var(--turf); color: var(--turf-ink); }
+
+/* ---------- alt sayfalar, Daha menüsü ---------- */
+.subhead { display: flex; align-items: center; gap: 4px; margin: -2px 0 10px -6px; }
+.subtitle, .pagetitle { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0; line-height: 1.1; }
+.pagetitle { margin: 2px 2px 12px; }
+.navlist { padding: 4px 12px; }
+.navrow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; border: none; background: none; text-align: left; padding: 8px 0; border-top: 1px solid var(--line); color: inherit; }
+.navrow:first-child { border-top: none; }
+.navrow > svg { width: 18px; height: 18px; color: var(--muted); }
+.navic { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; color: var(--turf); flex: 0 0 auto; }
+.navic svg { width: 22px; height: 22px; }
+:root[data-theme="dark"] .navic { color: var(--bibA); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .navic { color: var(--bibA); } }
+.plink.strong { font-weight: 600; font-size: 16px; text-decoration: none; }
+
+/* ---------- istatistik ---------- */
+.tablewrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px; }
+.stable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+.stable th, .stable td { padding: 8px 4px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.stable thead th { font-size: 12px; color: var(--muted); font-weight: 700; }
+.stable .tl { text-align: left; max-width: 120px; }
+.stable tbody th { font-weight: 600; }
+.stable tbody th .plink { max-width: 120px; text-decoration: none; }
+.stable .rank { color: var(--muted); font-family: var(--display); font-weight: 700; width: 20px; }
+.stable .pts { font-weight: 800; }
+.stable tbody tr:last-child th, .stable tbody tr:last-child td { border-bottom: none; }
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.barrow { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 44px; border: none; background: none; padding: 0; text-align: left; color: inherit; }
+.bname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
+.btrack { height: 12px; background: var(--surface-3); border-radius: 0 4px 4px 0; overflow: hidden; }
+.bfill { display: block; height: 100%; background: #2E8B57; border-radius: 0 4px 4px 0; }
+:root[data-theme="dark"] .bfill { background: #3AAE6E; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bfill { background: #3AAE6E; } }
+.bval { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- oyuncu kartı ---------- */
+.pc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.pc-name { font-size: 28px; margin: 0 0 2px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+@media (min-width: 480px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tile { background: var(--surface-2); border-radius: 12px; padding: 10px; min-width: 0; }
+.tile b { display: block; font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.res { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; flex: 0 0 auto; background: var(--surface-3); color: var(--ink); }
+.res-w { background: var(--ok); color: var(--on-ok); } .res-l { background: var(--bad); color: var(--on-bad); }

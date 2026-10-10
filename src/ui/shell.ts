@@ -1,7 +1,7 @@
 /** Uygulama kabuğu: üst bölüm (sıradaki maç), alt sekme çubuğu ve görünüm seçimi. */
 import { t, type MsgKey } from "../i18n";
 import { store, today, ui, type FilterKey } from "../app/store";
-import { route, type Tab } from "../app/router";
+import { route, tabOf, type RouteName, type Tab } from "../app/router";
 import { esc } from "../domain/text";
 import { ddmm } from "../domain/dates";
 import { fieldOf } from "../domain/fields";
@@ -16,11 +16,17 @@ import { viewTeams } from "./views/teams";
 import { viewPay } from "./views/pay";
 import { viewPlayers } from "./views/players";
 import { viewSettings } from "./views/settings";
+import { viewMore } from "./views/more";
+import { viewStats } from "./views/stats";
+import { viewPlayer } from "./views/player";
 
-const VIEWS: Record<Tab, () => string> = { match: viewMatch, teams: viewTeams, pay: viewPay, players: viewPlayers, settings: viewSettings };
+const VIEWS: Partial<Record<RouteName, () => string>> = {
+  match: viewMatch, teams: viewTeams, pay: viewPay, players: viewPlayers, more: viewMore,
+  settings: viewSettings, stats: viewStats, player: viewPlayer,
+};
 
 const TAB_ITEMS: [Tab, MsgKey, keyof typeof IC][] = [
-  ["match", "tabMatch", "match"], ["teams", "tabTeams", "teams"], ["pay", "tabPay", "pay"], ["players", "tabPlayers", "players"], ["settings", "tabSettings", "settings"],
+  ["match", "tabMatch", "match"], ["teams", "tabTeams", "teams"], ["pay", "tabPay", "pay"], ["players", "tabPlayers", "players"], ["more", "tabMore", "more"],
 ];
 
 export function applyTheme(): void {
@@ -45,6 +51,7 @@ export function renderApp(): void {
   const r = route();
   const view = document.getElementById("view")!;
   view.innerHTML = (VIEWS[r.name] || viewMatch)();
+  document.body.dataset.route = r.name;
   (Object.keys(ui.f) as FilterKey[]).forEach(applyFilter);
   if (ui.refocus) {
     const el = document.getElementById(ui.refocus);
@@ -83,7 +90,7 @@ export function refreshHeroStatus(): void {
 }
 
 function renderTabs(): void {
-  const cur = route().name;
+  const cur = tabOf(route());
   document.getElementById("tabs")!.innerHTML = '<div class="tabs-in">' + TAB_ITEMS.map(([k, l, ic]) =>
     '<button type="button" class="tab' + (cur === k ? " on" : "") + '" data-a="tab" data-v="' + k + '"' + (cur === k ? ' aria-current="page"' : "") + '><span class="ti">' + IC[ic] + "</span><span>" + esc(t(l)) + "</span></button>").join("") + "</div>";
 }

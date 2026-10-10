@@ -103,3 +103,8 @@ export function shareButtons(k: string, label: string, mid?: string): string {
   return '<span class="split grow"><button type="button" class="btn primary grow" data-a="msg" data-k="' + k + '"' + id + ">" + IC.share + "<span>" + esc(label) + "</span></button>" +
     '<button type="button" class="btn primary iconpart" data-a="msgPreview" data-k="' + k + '"' + id + ' aria-label="' + esc(t("previewEdit") + ": " + label) + '" title="' + esc(t("previewEdit")) + '">' + IC.edit + "</button></span>";
 }
+
+/** Alt sayfa başlığı: geri düğmesi + başlık. */
+export function subHeader(title: string, back: string): string {
+  return '<div class="subhead"><button type="button" class="iconbtn" data-a="back" data-v="' + back + '" aria-label="' + esc(t("back")) + '">' + IC.back + '</button><h1 class="subtitle">' + esc(title) + "</h1></div>";
+}

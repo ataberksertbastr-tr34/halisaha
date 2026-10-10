@@ -106,4 +106,11 @@ export const en: Record<MsgKey, string> = {
   together: "Same team", apart: "Different teams", addRule: "Add rule", ruleAdded: "Rule added", ruleDeleted: "Rule deleted", noRules: "No rules yet.", ruleSame: "Pick two different players.",
   avoidRepeat: "Don't repeat last match's teams", perfOn: "Performance rating (from results, blended with level)", teamOptions: "Team building",
   perf: "Performance", perfMeta: "performance {p} ({g} games)", strengthShort: "str",
+  statsTitle: "Statistics", rulesTitle: "Rules", moreTitle: "More", back: "Back", allTime: "All time", season: "Season",
+  seasonTable: "Season table", mostAttended: "Most matches attended", topScorers: "Top scorers", mvpCount: "Player of the match",
+  colPlayed: "P", colW: "W", colD: "D", colL: "L", colGoals: "Gls", colPts: "Pts", colRate: "Att.", tableHint: "P: played, W/D/L: won/drawn/lost, Pts: points (W=3, D=1), Att.: attendance rate",
+  noStats: "Finish at least one match to see statistics.", attendN: "{n} games · {r}%", goalsShort: "{n} goals", playerCard: "Player card",
+  cardMatches: "Matches", cardWdl: "W / D / L", cardGoals: "Goals", cardRate: "Attendance", cardMvp: "Player of the match", cardRel: "Reliability", cardPerf: "Performance", cardBalance: "Balance",
+  recentMatches: "Recent matches", payHistory: "Payment history", resultW: "W", resultD: "D", resultL: "L", editPlayer: "Edit player", notFound: "Not found.",
+  moreStats: "Season table, attendance, top scorers", moreRules: "Group rules, searchable, share any rule", moreSettings: "Fields, fee, templates, backup",
 };

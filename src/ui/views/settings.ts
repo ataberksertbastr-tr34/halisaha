@@ -3,7 +3,7 @@ import { DAYS, money, t } from "../../i18n";
 import { store } from "../../app/store";
 import { esc, trSort } from "../../domain/text";
 import { mapsUrl } from "../../domain/fields";
-import { fieldOptions } from "../components";
+import { fieldOptions, subHeader } from "../components";
 import { isIOS, isStandalone, pwa } from "../../pwa/register";
 import { IC } from "../icons";
 import { backupSection } from "./backup";
@@ -13,7 +13,7 @@ export function viewSettings(): string {
   const S = store.s;
   const s = S.settings;
   const dayOpts = (sel: number | "") => '<option value="">—</option>' + DAYS[s.lang].map((d, i) => '<option value="' + i + '"' + (String(sel) === String(i) ? " selected" : "") + ">" + esc(d) + "</option>").join("");
-  let h = '<section class="section" aria-labelledby="h-fields"><h2 id="h-fields">' + esc(t("fields")) + "</h2>";
+  let h = subHeader(t("tabSettings"), "more") + '<section class="section" aria-labelledby="h-fields"><h2 id="h-fields">' + esc(t("fields")) + "</h2>";
   if (!S.fields.length) h += '<p class="muted small">' + esc(t("noFields")) + "</p>";
   else {
     h += '<div class="flist">';

@@ -1,7 +1,7 @@
 /** Tüm kullanıcı eylemleri. Eski uygulamadaki act() / onField() ile aynı davranış. */
 import { t } from "../i18n";
 import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
-import { go, route, type Tab } from "./router";
+import { back, go, route, tabOf, type RouteName, type Tab } from "./router";
 import { dispatch, registerActions } from "./actions";
 import type { Att, ExpenseCat, Guest, Match, Pos, Side } from "../domain/types";
 import { defaults } from "../domain/schema";
@@ -134,6 +134,29 @@ function goTab(tab: Tab): void {
 registerActions({
   tab: (ds) => goTab(ds.v as Tab),
   goTeams: () => goTab("teams"),
+  nav: (ds) => {
+    go({ name: ds.v as RouteName, arg: ds.id }, true);
+    ui.editId = null;
+    const done = () => {
+      render();
+      window.scrollTo(0, 0);
+    };
+    closeModal(false, done);
+  },
+  back: (ds) => back({ name: (ds.v as RouteName) || tabOf(route()) }, () => {
+    render();
+    window.scrollTo(0, 0);
+  }),
+  season: (ds) => {
+    ui.season = ds.v!;
+    render();
+  },
+  editFromCard: (ds) => {
+    go({ name: "players" });
+    ui.editId = ds.id!;
+    render();
+    document.querySelector('[data-a="editP"][data-id="' + CSS.escape(ds.id!) + '"]')?.scrollIntoView({ block: "center" });
+  },
   selMatch: (ds) => {
     ui.matchId = ds.id!;
     ui.payId = ds.id!;
@@ -670,7 +693,10 @@ registerActions({
     pendingImport = null;
     if (!next) return;
     closeModal();
-    mutate(t("importOk"), () => replaceState(next), { lock: "before-import" });
+    mutate(t("importOk"), () => {
+      replaceState(next);
+      ensureUpcoming(store.s, new Date());
+    }, { lock: "before-import" });
   },
   shareBackup: () => {
     shareBackup(store.s, t("backupTitle")).then((r) => {
@@ -695,7 +721,10 @@ registerActions({
     readSnapshot(id).then((next) => {
       if (!next) return;
       closeModal();
-      mutate(t("restored"), () => replaceState(next), { lock: "before-restore" });
+      mutate(t("restored"), () => {
+        replaceState(next);
+        ensureUpcoming(store.s, new Date());
+      }, { lock: "before-restore" });
     });
   },
   reset: () => {

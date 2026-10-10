@@ -27,7 +27,7 @@ export function viewPlayers(): string {
     const rl = rel[p.id];
     if (rl && (rl.late || rl.noshow)) meta += ", " + t("relTag", { n: rl.score });
     const open = ui.editId === p.id;
-    h += '<li class="prow' + (p.active === false ? " passive" : "") + '" data-n="' + esc(norm(p.name)) + '" data-p="' + esc(p.pos || "") + '"><div class="pmain"><div class="pname"><strong>' + esc(p.name) + '</strong><span class="meta"><span class="pips">' + pips(p.rating) + "</span>" + posBadge(p) +
+    h += '<li class="prow' + (p.active === false ? " passive" : "") + '" data-n="' + esc(norm(p.name)) + '" data-p="' + esc(p.pos || "") + '"><div class="pmain"><div class="pname"><button type="button" class="plink strong" data-a="nav" data-v="player" data-id="' + esc(p.id) + '">' + esc(p.name) + '</button><span class="meta"><span class="pips">' + pips(p.rating) + "</span>" + posBadge(p) +
       (p.active === false ? ' <span class="tag">' + esc(t("passiveTag")) + "</span>" : "") + (p.fixed ? ' <span class="tag fix">' + esc(t("fixedTag")) + "</span>" : "") + " " + esc(meta) + "</span></div>" +
       '<button type="button" class="btn sm' + (open ? " primary" : "") + '" data-a="editP" data-id="' + esc(p.id) + '" aria-expanded="' + open + '">' + esc(open ? t("done") : t("edit")) + "</button></div>";
     if (open) {

@@ -36,7 +36,7 @@ test("eski uygulamanın yedeği yeni uygulamaya eksiksiz yüklenir", async ({ br
 
   // Oyuncular (aktif + pasif)
   await page.locator('#tabs [data-v="players"]').click();
-  const names = await page.locator("#list-roster li strong").allTextContents();
+  const names = await page.locator("#list-roster li .plink").allTextContents();
   expect(names.sort()).toEqual([...FAKE_PLAYERS].sort());
   await expect(page.locator("#list-roster li.passive")).toHaveCount(1);
 
