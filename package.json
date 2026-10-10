@@ -1,8 +1,8 @@
 {
   "name": "halisaha",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Halı saha organizatörü – çevrimdışı çalışan PWA",
+  "description": "Predators organizatörü – halı saha ve etkinlikler, çevrimdışı çalışan PWA",
   "type": "module",
   "scripts": {
     "dev": "vite",
