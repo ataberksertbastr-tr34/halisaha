@@ -92,6 +92,8 @@ export function accounts(s: State, today: string): Map<string, Account> {
   const out = new Map<string, Account>();
   for (const [id, a] of raw) {
     const who = whoIs(s, id);
+    // Silinmiş kişi: hesap listesinde gösterilmez (ödemeleri kasada sayılmaya devam eder).
+    if (!who) continue;
     a.charges.sort((x, y) => when(x).localeCompare(when(y)));
     a.payments.sort((x, y) => x.at.localeCompare(y.at));
     const byMid = new Map(a.charges.map((c) => [c.mid, c]));
@@ -124,7 +126,7 @@ export function accounts(s: State, today: string): Map<string, Account> {
     }
     const credit = Math.max(0, pool);
     out.set(id, {
-      id, name: who?.name ?? "?", phone: who?.phone ?? "", host: who?.host, guest: !!who?.guest,
+      id, name: who.name, phone: who.phone, host: who.host, guest: who.guest,
       charges: a.charges, payments: a.payments,
       paidTotal: r2(a.payments.reduce((t, p) => t + p.amount, 0)),
       owed, owedCount, credit, balance: r2(credit - owed),

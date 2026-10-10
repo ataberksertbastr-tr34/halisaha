@@ -122,6 +122,17 @@ describe("hesap defteri", () => {
   });
 });
 
+describe("silinen oyuncu", () => {
+  it("hesap listesinden çıkar, ödemesi kasada kalır", () => {
+    const { s } = setup();
+    s.payments.push(newPayment("p0", 100, "2026-10-10"));
+    s.players = s.players.filter((p) => p.id !== "p0");
+    expect(accounts(s, TODAY).has("p0")).toBe(false);
+    expect(debts(s, TODAY).some((d) => d.id === "p0")).toBe(false);
+    expect(cashAt(s)).toBe(100 - 800);
+  });
+});
+
 describe("aylık özet ve kasa", () => {
   it("tahsilat, saha ücreti, gider ve kasa", () => {
     const { s } = setup();
