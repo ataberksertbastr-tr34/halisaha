@@ -6,7 +6,7 @@ import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const TABS = ["match", "teams", "pay", "players", "more"];
-const SUBPAGES = ["settings", "stats"];
+const SUBPAGES = ["settings", "stats", "rules", "discipline", "announce"];
 
 test("tüm sekmeler hatasız açılır ve 360 px'e sığar (açık ve koyu tema)", async ({ page }) => {
   const errors = watchErrors(page);
@@ -77,7 +77,8 @@ test("katılım, misafir, takım kurma ve maçı bitirme akışı", async ({ pag
   await page.locator('[data-a="bulkAdd"]').click();
   await expect(page.locator("#list-roster li")).toHaveCount(12);
   await page.locator('#tabs [data-v="match"]').click();
-  await page.locator('[data-a="newMatch"]').first().click();
+  await page.locator('[data-a="newEvent"]').first().click();
+  await page.locator('[data-a="createEvent"][data-v="football"]').click();
   // Arama + Enter ile "Var"
   for (let i = 1; i <= 10; i++) {
     await page.locator("#q-att").fill("Oyuncu " + i);

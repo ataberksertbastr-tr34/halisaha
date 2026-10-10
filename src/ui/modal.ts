@@ -20,11 +20,11 @@ export function isModalOpen(): boolean {
   return !md().hidden;
 }
 
-export function showModal(html: string, labelledBy = "sheet-title"): void {
+export function showModal(html: string, labelledBy = "sheet-title", kind = ""): void {
   const box = md();
   const wasOpen = !box.hidden;
   if (!wasOpen) opener = document.activeElement as HTMLElement | null;
-  box.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="' + labelledBy + '" tabindex="-1"><div class="grab" aria-hidden="true"></div>' + html + "</div>";
+  box.innerHTML = '<div class="sheet' + (kind ? " sheet-" + kind : "") + '" data-sheet="' + kind + '" role="dialog" aria-modal="true" aria-labelledby="' + labelledBy + '" tabindex="-1"><div class="grab" aria-hidden="true"></div>' + html + "</div>";
   box.hidden = false;
   setInert(true);
   document.body.classList.add("noscroll");
@@ -38,6 +38,21 @@ export function showModal(html: string, labelledBy = "sheet-title"): void {
   }
   const focusable = box.querySelector<HTMLElement>("[autofocus]") || box.querySelector<HTMLElement>(".sheet");
   focusable?.focus({ preventScroll: true });
+}
+
+/** Açık sayfanın içeriğini yeniler (odak ve geçmiş kaydı korunur). */
+export function updateModal(html: string): void {
+  const sheet = md().querySelector<HTMLElement>(".sheet");
+  if (!sheet || md().hidden) return;
+  const y = sheet.scrollTop;
+  sheet.innerHTML = '<div class="grab" aria-hidden="true"></div>' + html;
+  sheet.scrollTop = y;
+}
+
+/** Açık sayfanın türü (data-sheet). */
+export function modalKind(): string {
+  const sheet = md().querySelector<HTMLElement>(".sheet");
+  return !md().hidden && sheet ? sheet.dataset.sheet || "" : "";
 }
 
 /**
