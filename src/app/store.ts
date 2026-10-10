@@ -21,13 +21,15 @@ export interface UIState {
   editId: string | null;
   refocus: string | null;
   fieldTarget: "match" | "default" | null;
+  /** Maç kartındaki düzenleme alanları açık mı */
+  detailsOpen: boolean;
   f: Record<FilterKey, Filter>;
 }
 
 export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
-  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null,
+  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false,
   f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" } },
 };
 

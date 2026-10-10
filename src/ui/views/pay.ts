@@ -60,8 +60,10 @@ export function viewPay(): string {
   h += '<section class="section" aria-labelledby="h-debts"><h2 id="h-debts">' + esc(t("debts")) + "</h2>";
   if (!dl.length) h += '<p class="muted m0">' + esc(t("noDebts")) + "</p>";
   dl.forEach((d) => {
-    const u = d.phone ? waPersonal(S, d.phone, d.name, d.total) : "";
-    h += '<div class="payrow"><div class="pname"><strong>' + esc(d.name) + '</strong><span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n })) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>" : "") +
+    const host = d.host ? S.players.find((p) => p.id === d.host) : null;
+    const phone = d.phone || host?.phone || "";
+    const u = phone ? waPersonal(S, phone, host && !d.phone ? host.name : d.name, d.total) : "";
+    h += '<div class="payrow"><div class="pname"><strong>' + esc(d.name) + '</strong><span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>" : "") +
       '</span></div><span class="amount">' + esc(money(d.total)) + '</span><button type="button" class="btn sm" data-a="settle" data-id="' + esc(d.id) + '">' + esc(t("settle")) + "</button></div>";
   });
   return h + "</section>";

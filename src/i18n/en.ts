@@ -76,4 +76,11 @@ export const en: Record<MsgKey, string> = {
   share: "Share", copiedPaste: "Copied — paste it in WhatsApp", previewEdit: "Preview and edit", templateSaved: "Template saved", templateReset: "Default template restored",
   tplInvite: "Invite", tplSquad: "Squad confirmed", tplTeams: "Teams", tplPay: "Payment reminder (group)", tplPersonalPay: "Personal payment reminder", tplPromoted: "Moved up from the waitlist",
   squadMsg: "Share the squad", sampleName: "Alex",
+  autoLate: "Less than 24 hours to kick-off: {n} counted as a late cancel", makeOut: "Mark out",
+  debtWarn: "{n} owes {a}", remindShort: "Remind", copyLastWeek: "Copy last week",
+  copiedRoster: "{n} players copied from last week", nothingToCopy: "Nobody to copy (everyone has replied or there's no previous match).",
+  promotedIn: "{n} moved up from the waitlist", sendMsg: "Send message", locked: "Squad confirmed", lockedHint: "Less than 24 hours to kick-off. Anyone who drops out now pays their share.",
+  fixed: "Regular player", fixedHint: "Marked \"In\" automatically for every new match.", fixedTag: "regular", fixedOn: "{n} is now a regular", fixedOff: "{n} is no longer a regular",
+  reliability: "Reliability", relTag: "reliability {n}%", relMeta: "reliability {s}% ({l} late cancels, {x} no-shows)", noshowLast: "no-show last match",
+  noshowTitle: "No-shows", noshowHint: "Tap the name of anyone who didn't show up (they still pay).", host: "Brought by", hostNone: "Brought by: —", guestOf: "{n}'s guest",
 };

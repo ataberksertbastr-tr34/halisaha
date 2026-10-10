@@ -74,6 +74,13 @@ export const tr = {
   share: "Paylaş", copiedPaste: "Kopyalandı — WhatsApp'a yapıştır", previewEdit: "Önizle ve düzenle", templateSaved: "Şablon kaydedildi", templateReset: "Varsayılan şablona dönüldü",
   tplInvite: "Davet", tplSquad: "Kadro kesinleşti", tplTeams: "Takımlar", tplPay: "Ödeme hatırlatması (grup)", tplPersonalPay: "Kişisel ödeme hatırlatması", tplPromoted: "Yedekten kadroya giren",
   squadMsg: "Kadroyu paylaş", sampleName: "Ahmet",
+  autoLate: "Maça 24 saatten az kaldı: {n} geç iptal sayıldı (Kural 1.5)", makeOut: "Yok yap",
+  debtWarn: "{n}: {a} borcu var (Kural 2.4)", remindShort: "Hatırlat", copyLastWeek: "Geçen haftayı kopyala",
+  copiedRoster: "{n} kişi geçen haftadan kopyalandı", nothingToCopy: "Kopyalanacak kimse yok (herkes yanıt vermiş ya da geçen maç yok).",
+  promotedIn: "{n} yedekten kadroya girdi", sendMsg: "Mesaj gönder", locked: "Kadro kesinleşti", lockedHint: "Maça 24 saatten az kaldı (Kural 1.4). Bundan sonra çekilen payını öder.",
+  fixed: "Sabit oyuncu", fixedHint: "Her yeni maça otomatik \"Var\" yazılır.", fixedTag: "sabit", fixedOn: "{n} sabit oyuncu oldu", fixedOff: "{n} artık sabit değil",
+  reliability: "Güvenilirlik", relTag: "güven %{n}", relMeta: "güvenilirlik %{s} ({l} geç iptal, {x} gelmedi)", noshowLast: "geçen maç gelmedi",
+  noshowTitle: "Habersiz gelmeyenler", noshowHint: "Gelmeyenin adına dokun (Kural 1.6: payını öder).", host: "Getiren", hostNone: "Getiren: —", guestOf: "{n} misafiri",
 } as const;
 
 export type MsgKey = keyof typeof tr;

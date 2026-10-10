@@ -312,3 +312,34 @@ details summary { cursor: pointer; font-weight: 600; min-height: 44px; display: 
 .phchips .fchip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 pre.preview { white-space: pre-wrap; word-break: break-word; background: var(--surface-2); border-radius: 12px; padding: 12px; font: 14px/1.45 var(--font); margin: 0; max-height: 280px; overflow: auto; }
 #tpl-text { min-height: 180px; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ---------- maç kartı ---------- */
+.mcard { padding-bottom: 12px; }
+.mc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.mc-title { font-size: 13px; font-family: var(--font); font-weight: 700; color: var(--muted); margin: 0 0 2px; letter-spacing: .02em; text-transform: uppercase; }
+.mc-sum { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 17px; min-width: 0; }
+.mc-sum span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-sum svg { width: 18px; height: 18px; color: var(--turf); }
+:root[data-theme="dark"] .mc-sum svg { color: var(--bibA); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mc-sum svg { color: var(--bibA); } }
+.mc-meta { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.mc-edit { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.qrow { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.qrow::-webkit-scrollbar { display: none; }
+.qbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 22px; background: var(--surface-2); border: 1px solid var(--line); text-decoration: none; font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; flex: 0 0 auto; }
+.qbtn svg { width: 18px; height: 18px; color: var(--turf); }
+:root[data-theme="dark"] .qbtn svg { color: var(--bibA); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qbtn svg { color: var(--bibA); } }
+button.qbtn { cursor: pointer; }
+.qbtn.done { background: var(--ok); border-color: var(--ok); color: var(--on-ok); }
+.qbtn.done svg { color: var(--on-ok) !important; }
+.qbtn.warn { border-color: var(--bibB); }
+.notice { background: color-mix(in srgb, var(--bibA) 22%, var(--surface)); border: 1px solid color-mix(in srgb, var(--bibA) 60%, var(--line)); border-radius: 12px; padding: 10px; margin-bottom: 10px; display: grid; gap: 8px; }
+.notice.warn { background: color-mix(in srgb, var(--bibB) 14%, var(--surface)); border-color: color-mix(in srgb, var(--bibB) 55%, var(--line)); }
+.notice-tx strong { display: flex; align-items: center; gap: 6px; }
+.notice-tx strong svg { width: 18px; height: 18px; }
+.notice-tx span { display: block; font-size: 13px; color: var(--muted); }
+.fchip.bad { background: var(--bad); color: var(--on-bad); border-color: var(--bad); }
+.guest-row #guestHost { flex: 1 1 100%; }
+.btn.side { flex: 0 0 auto; white-space: nowrap; padding: 0 12px; }
+.split.grow { flex: 1 1 0; }

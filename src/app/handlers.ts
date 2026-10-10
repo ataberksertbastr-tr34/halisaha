@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { go, route, type Tab } from "./router";
 import { registerActions } from "./actions";
-import type { Match, Pos } from "../domain/types";
+import type { Att, Guest, Match, Pos } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
@@ -11,7 +11,11 @@ import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, share
 import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
-import { currentMatch, getMatch, getP, setAtt } from "../domain/lineup";
+import { currentMatch, getMatch, getP, lineup, promoted, setAtt } from "../domain/lineup";
+import { applyFixed, copyLastWeek, isLocked } from "../domain/roster";
+import { debtMap } from "../domain/ledger";
+import { promotedText, waLink, waPersonal } from "../domain/messages";
+import { money } from "../i18n";
 import { billOf, freezeBill } from "../domain/money";
 import { chargeOf, markPaid, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { generateTeams } from "../domain/teams";
@@ -32,6 +36,7 @@ const cur = (): Match | null => currentMatch(store.s, ui.matchId, today());
 
 export function newMatch(): void {
   const m = makeMatch(store.s, today());
+  applyFixed(store.s, m);
   store.s.matches.push(m);
   ui.matchId = m.id;
   ui.payId = m.id;
@@ -41,6 +46,19 @@ export function newMatch(): void {
 }
 
 let pendingImport: State | null = null;
+
+function openLink(u: string): void {
+  window.open(u, "_blank", "noopener");
+}
+
+/** Yedekten kadroya giren için "Mesaj gönder" bildirimi (telefonu varsa doğrudan WhatsApp). */
+function promotedToast(m: Match, id: string): void {
+  const p = getP(store.s, m, id);
+  if (!p) return;
+  const text = promotedText(store.s, m, id);
+  const u = waLink((p as { phone?: string }).phone, text);
+  toast(t("promotedIn", { n: p.name }), { label: t("sendMsg"), run: () => (u ? openLink(u) : void shareText(text)) }, 9000);
+}
 
 function nameOf(m: Match, id: string): string {
   return getP(store.s, m, id)?.name || "";
@@ -93,6 +111,10 @@ registerActions({
     render();
   },
   newMatch: () => newMatch(),
+  toggleDetails: () => {
+    ui.detailsOpen = !ui.detailsOpen;
+    render();
+  },
   flt: (ds) => {
     const k = ds.k as FilterKey;
     (ui.f[k] as unknown as Record<string, string>)[ds.t!] = ds.v || "";
@@ -111,19 +133,74 @@ registerActions({
   att: (ds) => {
     const m = cur();
     if (!m) return;
-    setAtt(m, ds.id!, ds.s as "in", false);
+    const id = ds.id!;
+    let st = ds.s as Att;
+    const before = lineup(store.s, m).playing;
+    const wasPlaying = before.includes(id);
+    // Kural 1.4/1.5: kadro kesinleştikten sonra oynayan kadrodan "Yok" diyen geç iptal sayılır.
+    const autoLate = st === "out" && m.att[id] !== "out" && wasPlaying && isLocked(m, new Date());
+    if (autoLate) st = "late";
+    setAtt(m, id, st, autoLate);
     if (ui.f.att.q) {
       ui.f.att.q = "";
       ui.refocus = "q-att";
     }
     commit();
+    const name = getP(store.s, m, id)?.name || "";
+    const up = promoted(before, lineup(store.s, m).playing).filter((x) => x !== id);
+    if (up.length) return promotedToast(m, up[0]);
+    if (autoLate) {
+      return toast(t("autoLate", { n: name }), {
+        label: t("makeOut"),
+        run: () => {
+          setAtt(m, id, "out", true);
+          commit();
+        },
+      }, 8000);
+    }
+    if (m.att[id] === "in") {
+      const debt = debtMap(store.s, today())[id];
+      if (debt) {
+        const phone = store.s.players.find((p) => p.id === id)?.phone;
+        const u = phone ? waPersonal(store.s, phone, name, debt) : "";
+        toast(t("debtWarn", { n: name, a: money(debt) }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
+      }
+    }
+  },
+  copyLastWeek: () => {
+    const m = cur();
+    if (!m) return;
+    let n = 0;
+    mutate(() => t("copiedRoster", { n }), () => {
+      n = copyLastWeek(store.s, m);
+      if (!n) {
+        toast(t("nothingToCopy"));
+        return false;
+      }
+    });
+  },
+  noshow: (ds) => {
+    const m = cur() || getMatch(store.s, ds.mid);
+    if (!m) return;
+    if (m.noshow[ds.id!]) delete m.noshow[ds.id!];
+    else m.noshow[ds.id!] = true;
+    commit();
+  },
+  fixed: (ds) => {
+    const p = store.s.players.find((x) => x.id === ds.id);
+    if (!p) return;
+    p.fixed = !p.fixed;
+    commit();
+    toast(p.fixed ? t("fixedOn", { n: p.name }) : t("fixedOff", { n: p.name }));
   },
   addGuest: () => {
     const m = cur();
     if (!m) return;
     const n = cleanName(val("#guestName"));
     if (!n) return toast(t("needName"));
-    const g = { id: "g" + uid(), name: n, rating: Number(val("#guestRate")) || 3, pos: (val("#guestPos") || "") as Pos };
+    const g: Guest = { id: "g" + uid(), name: n, rating: Number(val("#guestRate")) || 3, pos: (val("#guestPos") || "") as Pos };
+    const host = val("#guestHost");
+    if (host) g.host = host;
     m.guests.push(g);
     setAtt(m, g.id, "in", true);
     commit();
