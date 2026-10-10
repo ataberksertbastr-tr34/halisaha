@@ -65,7 +65,7 @@ export function initPWA(): void {
   sw.addEventListener("controllerchange", () => {
     if (applying) location.reload();
   });
-  window.addEventListener("load", async () => {
+  const register = async () => {
     try {
       const reg = await sw.register("./sw.js", { scope: "./" });
       const track = (w: ServiceWorker | null) => {
@@ -97,5 +97,8 @@ export function initPWA(): void {
     } catch {
       /* SW desteklenmiyorsa uygulama yine çalışır, sadece çevrimdışı olmaz */
     }
-  });
+  };
+  // Açılış asenkron olduğu için "load" olayı çoktan geçmiş olabilir.
+  if (document.readyState === "complete") register();
+  else window.addEventListener("load", register, { once: true });
 }

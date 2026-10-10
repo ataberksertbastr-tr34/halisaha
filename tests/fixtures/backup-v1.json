@@ -1,0 +1,84 @@
+{
+  "v": 1,
+  "updatedAt": 1709000000000,
+  "settings": {
+    "field": "Eski Saha Spor Kompleksi",
+    "price": 2800,
+    "iban": "TR00 1111 2222 3333 4444 5555 66",
+    "ibanName": "Örnek Organizatör",
+    "slots": [{ "d": 1, "t": "20:00" }, { "d": 3, "t": "21:30" }],
+    "format": 6,
+    "gkFree": true,
+    "round": false,
+    "lang": "tr"
+  },
+  "players": [
+    { "id": "p1", "name": "Kaleci Kadir", "rating": 4, "gk": true, "active": true },
+    { "id": "p2", "name": "Şahin Deneme", "rating": 3, "active": true },
+    { "id": "p3", "name": "Çetin Örnek", "rating": 5, "active": true },
+    { "id": "p4", "name": "Ilgaz Uydurma", "rating": 2, "active": true },
+    { "id": "p5", "name": "İsmail Hayali", "rating": 4 },
+    { "id": "p6", "name": "Ömer Faruk Test", "rating": 3, "active": true },
+    { "id": "p7", "name": "Güneş Sahte", "active": true },
+    { "id": "p8", "name": "Pasif Pınar", "rating": 3, "active": false },
+    { "id": "p9", "name": "Eldivenci Ersin", "rating": 3, "gk": true, "active": true },
+    { "id": "p10", "name": "Ufuk Örnekoğlu", "rating": 3, "active": true }
+  ],
+  "matches": [
+    {
+      "id": "m1",
+      "date": "2024-02-26",
+      "time": "20:00",
+      "field": "Eski Saha Spor Kompleksi",
+      "price": 2800,
+      "format": 3,
+      "status": "played",
+      "att": { "p1": "in", "p2": "in", "p3": "in", "p4": "in", "p5": "in", "p6": "in", "p7": "in", "gx1": "in", "p9": "in", "p10": "maybe", "p8": "out" },
+      "order": ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "gx1", "p9"],
+      "guests": [{ "id": "gx1", "name": "Misafir Murat", "rating": 3, "gk": false }],
+      "paid": { "p2": true, "p3": true },
+      "teams": { "a": ["p1", "p3", "p5", "gx1"], "b": ["p2", "p4", "p6", "p7"] },
+      "score": { "a": 4, "b": 4 }
+    },
+    {
+      "id": "m2",
+      "date": "2024-02-28",
+      "time": "21:30",
+      "field": "Komşu Saha",
+      "price": 3000,
+      "status": "played",
+      "att": { "p1": "in", "p9": "in", "p2": "in", "p3": "late", "p4": "in", "p6": "in" },
+      "order": ["p1", "p9", "p2", "p4", "p6"],
+      "guests": [],
+      "paid": { "p6": true },
+      "teams": { "a": ["p1", "p2"], "b": ["p9", "p4", "p6"] },
+      "score": { "a": 2, "b": 5 }
+    },
+    {
+      "id": "m3",
+      "date": "2024-03-04",
+      "time": "20:00",
+      "field": "Eski Saha Spor Kompleksi",
+      "price": 2800,
+      "format": 6,
+      "status": "open",
+      "att": { "p1": "in", "p2": "maybe", "p10": "in" },
+      "order": ["p1", "p10"],
+      "guests": [],
+      "paid": {}
+    },
+    {
+      "id": "m4",
+      "date": "2024-03-06",
+      "time": "21:30",
+      "field": "Eski Saha Spor Kompleksi",
+      "price": 2800,
+      "format": 6,
+      "status": "cancelled",
+      "att": { "p1": "in" },
+      "order": ["p1"],
+      "guests": [],
+      "paid": {}
+    }
+  ]
+}
