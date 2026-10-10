@@ -44,6 +44,8 @@ export function viewSettings(): string {
   const tgl = (k: "gkFree" | "round" | "autoSchedule", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
   h += '<div class="toggles mt">' + tgl("autoSchedule", t("autoSchedule")) + tgl("gkFree", t("gkFree")) + tgl("round", t("round")) + "</div>";
   h += '<label class="fld mt">' + esc(t("reserveDays")) + '<select data-f="reserveDays">' + [0, 1, 2, 3, 4, 5, 7].map((n) => '<option value="' + n + '"' + (s.reserveDays === n ? " selected" : "") + ">" + esc(n ? t("reserveDaysN", { n }) : t("reserveOff")) + "</option>").join("") + "</select></label></section>";
+  const tg = (k: "avoidRepeat" | "perf", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
+  h += '<section class="section" aria-labelledby="h-tb"><h2 id="h-tb">' + esc(t("teamOptions")) + '</h2><div class="toggles">' + tg("avoidRepeat", t("avoidRepeat")) + tg("perf", t("perfOn")) + "</div></section>";
   h += templatesSection();
   h += backupSection();
   h += appSection();

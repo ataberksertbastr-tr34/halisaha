@@ -2,8 +2,8 @@
 import { t } from "../i18n";
 import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { go, route, type Tab } from "./router";
-import { registerActions } from "./actions";
-import type { Att, ExpenseCat, Guest, Match, Pos } from "../domain/types";
+import { dispatch, registerActions } from "./actions";
+import type { Att, ExpenseCat, Guest, Match, Pos, Side } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
@@ -19,7 +19,7 @@ import { money } from "../i18n";
 import { billOf, freezeBill } from "../domain/money";
 import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
-import { generateTeams } from "../domain/teams";
+import { generateTeams, swapPlayers } from "../domain/teams";
 import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
@@ -283,7 +283,10 @@ registerActions({
   gen: () => {
     const m = cur();
     if (!m) return;
-    mutate(t("teamsDone"), () => generateTeams(store.s, m));
+    let broken = 0;
+    mutate(() => (broken ? t("rulesBroken", { n: broken }) : t("teamsDone")), () => {
+      broken = generateTeams(store.s, m).broken.length;
+    });
   },
   manual: () => {
     const m = cur();
@@ -308,6 +311,44 @@ registerActions({
         m.teams.b = m.teams.b.filter((x) => x !== id);
         m.teams.a.push(id);
       }
+    });
+  },
+  lock: (ds) => {
+    const m = cur();
+    if (!m) return;
+    const id = ds.id!, side = ds.team as Side;
+    const name = nameOf(m, id);
+    if (m.locks[id] === side) {
+      delete m.locks[id];
+      commit();
+      toast(t("unlocked1", { n: name }));
+    } else {
+      m.locks[id] = side;
+      commit();
+      toast(t("locked1", { n: name, t: side === "a" ? t("teamA") : t("teamB") }));
+    }
+  },
+  ruleMode: (ds) => {
+    // Yeniden çizmeden güncelle (seçili oyuncular kaybolmasın)
+    ui.ruleTogether = ds.v === "1";
+    document.querySelectorAll<HTMLElement>('[data-a="ruleMode"]').forEach((b) => {
+      const on = (b.dataset.v === "1") === ui.ruleTogether;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-checked", String(on));
+    });
+  },
+  addRule: () => {
+    const a = val("#rule-a"), b = val("#rule-b");
+    if (!a || !b || a === b) return toast(t("ruleSame"));
+    const together = ui.ruleTogether;
+    mutate(t("ruleAdded"), () => {
+      store.s.pairRules = store.s.pairRules.filter((r) => !((r.a === a && r.b === b) || (r.a === b && r.b === a)));
+      store.s.pairRules.push({ id: uid(), a, b, together });
+    });
+  },
+  delRule: (ds) => {
+    mutate(t("ruleDeleted"), () => {
+      store.s.pairRules = store.s.pairRules.filter((r) => r.id !== ds.id);
     });
   },
   unassign: (ds) => {
@@ -664,6 +705,39 @@ registerActions({
     mutate(t("allDeleted"), () => replaceState(next), { lock: "before-reset" });
   },
 });
+
+/** Sahada dokunma/sürükleme. */
+export const pitchHandlers = {
+  tap: (id: string) => {
+    const m = cur();
+    if (!m) return;
+    const pick = ui.swapPick;
+    if (!pick || pick === id) {
+      ui.swapPick = pick === id ? null : id;
+      return render();
+    }
+    const sameSide = m.teams.a.includes(pick) === m.teams.a.includes(id);
+    if (sameSide) {
+      ui.swapPick = id;
+      return render();
+    }
+    ui.swapPick = null;
+    pitchHandlers.swap(pick, id);
+  },
+  swap: (a: string, b: string) => {
+    const m = cur();
+    if (!m) return;
+    ui.swapPick = null;
+    mutate(t("swapped", { a: nameOf(m, a), b: nameOf(m, b) }), () => {
+      if (!swapPlayers(m, a, b)) return false;
+      m.manualTeams = true;
+    });
+  },
+  move: (id: string) => {
+    ui.swapPick = null;
+    dispatch("move", { id } as unknown as DOMStringMap, document.body);
+  },
+};
 
 /** Form alanı değişiklikleri (data-f). */
 export function onField(el: HTMLInputElement | HTMLSelectElement): void {

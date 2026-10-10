@@ -99,4 +99,11 @@ export const en: Record<MsgKey, string> = {
   goalsTitle: "Goals and player of the match", goalsHint: "Tap + for each goal, the star picks the player of the match. Leave the score empty to fill it from the goals.",
   mvp: "Player of the match", goalSum: "Goal total: Yellows {a} · Oranges {b}", goalMismatch: "Doesn't match the score (could be an own goal).", noTeam: "No team",
   goalsN: "{n} goals", scheduled: "{n} matches scheduled", addGoal: "{n}: add goal", removeGoal: "{n}: remove goal", matchPlan: "Match plan",
+  rulesBroken: "Teams built; {n} pairing rules couldn't be applied",
+  lockTo: "{n}: lock to {t}", unlock: "{n}: unlock", locked1: "{n} locked to {t}", unlocked1: "{n} unlocked",
+  swapped: "{a} ⇄ {b}", dragHint: "Drag a player on the pitch onto someone from the other team, or tap two players one after another: they swap. Tapping a name in the list moves them to the other team; a lock keeps them on their team when building automatically.",
+  pickSwap: "{n} selected: tap someone on the other team", pairRules: "Pairing rules", pairHint: "Applied when building teams. E.g. two brothers on the same team, two stand-in keepers on different teams.",
+  together: "Same team", apart: "Different teams", addRule: "Add rule", ruleAdded: "Rule added", ruleDeleted: "Rule deleted", noRules: "No rules yet.", ruleSame: "Pick two different players.",
+  avoidRepeat: "Don't repeat last match's teams", perfOn: "Performance rating (from results, blended with level)", teamOptions: "Team building",
+  perf: "Performance", perfMeta: "performance {p} ({g} games)", strengthShort: "str",
 };

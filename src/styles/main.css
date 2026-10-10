@@ -387,3 +387,23 @@ details.goals summary svg { width: 20px; height: 20px; color: var(--turf); }
 :root[data-theme="dark"] .iconbtn.plus, :root[data-theme="dark"] .iconbtn.star.on { color: var(--bibA); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .iconbtn.plus, :root:not([data-theme="light"]) .iconbtn.star.on { color: var(--bibA); } }
 .banner .btn svg { width: 16px; height: 16px; }
+
+/* ---------- takımlar: sürükle-bırak, kilit ---------- */
+.pitch { touch-action: pan-y; }
+.pitch .pp { touch-action: none; }
+.pitch .pp.dragging { cursor: grabbing; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
+.pickhint { text-align: center; font-weight: 700; margin: -4px 0 10px; color: var(--turf); }
+:root[data-theme="dark"] .pickhint { color: var(--bibA); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pickhint { color: var(--bibA); } }
+.lockbtn svg { width: 18px; height: 18px; }
+.lockbtn.on { color: var(--ink); background: var(--surface-3); }
+@media (max-width: 519px) { .teams { grid-template-columns: 1fr; } }
+details summary h2.inline { display: inline; margin: 0; }
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::after { content: ""; width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-left: auto; margin-right: 6px; transition: transform .15s; flex: 0 0 auto; }
+details[open] > summary::after { transform: rotate(-135deg); }
+.seg2 { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
+.seg2 button { min-height: 44px; border: none; background: var(--surface); font-weight: 700; color: var(--muted); }
+.seg2 button + button { border-left: 1px solid var(--line-2); }
+.seg2 button.on { background: var(--turf); color: var(--turf-ink); }

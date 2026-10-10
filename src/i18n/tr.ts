@@ -97,6 +97,13 @@ export const tr = {
   goalsTitle: "Goller ve maçın oyuncusu", goalsHint: "+ ile golü yaz, yıldızla maçın oyuncusunu seç. Skoru boş bırakırsan gollerden hesaplanır.",
   mvp: "Maçın oyuncusu", goalSum: "Gol toplamı: Sarılar {a} · Turuncular {b}", goalMismatch: "Skorla tutmuyor (kendi kalesine gol olabilir).", noTeam: "Takımsız",
   goalsN: "{n} gol", scheduled: "{n} maç planlandı", addGoal: "{n}: gol ekle", removeGoal: "{n}: gol sil", matchPlan: "Maç planı",
+  rulesBroken: "Takımlar kuruldu; {n} eşleşme kuralı uygulanamadı",
+  lockTo: "{n}: {t} takımına kilitle", unlock: "{n}: kilidi aç", locked1: "{n} {t} takımına kilitlendi", unlocked1: "{n} kilidi açıldı",
+  swapped: "{a} ⇄ {b}", dragHint: "Sahada oyuncuyu sürükleyip karşı takımdan birinin üstüne bırak ya da iki oyuncuya sırayla dokun: yer değiştirsinler. Listede isme dokununca karşı takıma geçer; kilit, otomatik kurmada oyuncuyu takımında tutar.",
+  pickSwap: "{n} seçildi: karşı takımdan birine dokun", pairRules: "Eşleşme kuralları", pairHint: "Takımlar kurulurken uygulanır. Örneğin iki kardeş aynı takımda, iki kalecilik yapan ayrı takımda.",
+  together: "Aynı takımda", apart: "Ayrı takımlarda", addRule: "Kural ekle", ruleAdded: "Kural eklendi", ruleDeleted: "Kural silindi", noRules: "Henüz kural yok.", ruleSame: "İki farklı oyuncu seç.",
+  avoidRepeat: "Geçen maçın takımlarını tekrar etme", perfOn: "Performans puanı (maç sonuçlarından, seviyeyle harmanlanır)", teamOptions: "Takım kurma",
+  perf: "Performans", perfMeta: "performans {p} ({g} maç)", strengthShort: "güç",
 } as const;
 
 export type MsgKey = keyof typeof tr;

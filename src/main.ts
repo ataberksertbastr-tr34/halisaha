@@ -8,7 +8,8 @@ import { dayName } from "./domain/messages";
 import { ddmm } from "./domain/dates";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
-import { importFromFile, onEnter, onField } from "./app/handlers";
+import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
+import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
 import { hasData, reminderDue, daysSince } from "./data/backup";
 import { renderApp } from "./ui/shell";
@@ -157,6 +158,7 @@ function bindEvents(): void {
     renderApp();
   });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderApp());
+  bindPitchDrag(pitchHandlers);
 }
 
 boot().catch((e) => {

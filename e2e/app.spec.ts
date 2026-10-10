@@ -154,3 +154,37 @@ test("hesap defteri: kısmi ödeme, avans, gider ve kasa", async ({ page }) => {
   await expect(page.locator(".cashbig")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("takımlar: sahada sürükle-bırak takas, kilit ve eşleşme kuralı", async ({ browser }) => {
+  const ctx = await browser.newContext({ isMobile: false, hasTouch: false });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator('[data-a="copyLastWeek"]').click();
+  await page.locator('#tabs [data-v="teams"]').click();
+  await page.locator('[data-a="gen"]').click();
+  await page.evaluate(() => {
+    const r = document.querySelector(".pitch")!.getBoundingClientRect();
+    window.scrollBy(0, r.top - 10);
+  });
+  const a = page.locator('.pitch .pp[data-side="a"]').first();
+  const b = page.locator('.pitch .pp[data-side="b"]').first();
+  const aId = (await a.getAttribute("data-id"))!;
+  const sa = (await a.locator("circle:not(.hit)").first().boundingBox())!;
+  const sb = (await b.locator("circle:not(.hit)").first().boundingBox())!;
+  await page.mouse.move(sa.x + sa.width / 2, sa.y + sa.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sa.x + 30, sa.y + 60, { steps: 4 });
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator("#toast")).toContainText("⇄");
+  await expect(page.locator(`.pitch .pp[data-side="b"][data-id="${aId}"]`)).toHaveCount(1);
+  // Kilit: yeniden karıştırınca kilitli oyuncu takımında kalır
+  await page.locator(".team.a .lockbtn").first().click();
+  const locked = await page.locator(".team.a .tp .nm").first().textContent();
+  for (let i = 0; i < 3; i++) await page.locator('[data-a="gen"]').click();
+  await expect(page.locator(".team.a .tp .nm", { hasText: locked! })).toHaveCount(1);
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
