@@ -16,7 +16,7 @@ export interface Slot {
 }
 
 /** Düzenlenebilir mesaj şablonları */
-export type TemplateKey = "invite" | "teams" | "pay" | "personalPay" | "promoted" | "reminder";
+export type TemplateKey = "invite" | "squad" | "teams" | "pay" | "personalPay" | "promoted";
 
 export interface Settings {
   defaultFieldId: string;

@@ -69,6 +69,11 @@ export const tr = {
   reasonBeforeDelete: "Silme/iptal öncesi",
   unmarkedPaid: "{n}: ödeme kaldırıldı", paidFromPool: "Bu pay genel bir ödemeden karşılandı; kişinin hesap defterinden düzenle.",
   partial: "Kısmi", paidPart: "{p} / {a} ödendi", credit: "Avans", balance: "Bakiye",
+  templates: "Mesaj şablonları", templatesHint: "Mesajlar tek dokunuşla paylaşılır. {…} yerine bilgiler otomatik gelir; bilgisi boş kalan satır mesajdan çıkar.",
+  placeholders: "Yer tutucular (dokun, imlecin yerine eklensin)", preview: "Önizleme", resetDefault: "Varsayılana dön", custom: "özel",
+  share: "Paylaş", copiedPaste: "Kopyalandı — WhatsApp'a yapıştır", previewEdit: "Önizle ve düzenle", templateSaved: "Şablon kaydedildi", templateReset: "Varsayılan şablona dönüldü",
+  tplInvite: "Davet", tplSquad: "Kadro kesinleşti", tplTeams: "Takımlar", tplPay: "Ödeme hatırlatması (grup)", tplPersonalPay: "Kişisel ödeme hatırlatması", tplPromoted: "Yedekten kadroya giren",
+  squadMsg: "Kadroyu paylaş", sampleName: "Ahmet",
 } as const;
 
 export type MsgKey = keyof typeof tr;

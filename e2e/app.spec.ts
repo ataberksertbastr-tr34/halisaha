@@ -91,3 +91,36 @@ test("katılım, misafir, takım kurma ve maçı bitirme akışı", async ({ pag
   await expect(page.locator(".hist").first()).toContainText("3 – 2");
   expect(errors).toEqual([]);
 });
+
+test("mesajlar tek dokunuşla paylaşılır; Web Share yoksa panoya kopyalanır", async ({ browser }) => {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    (window as unknown as { __shared: unknown[] }).__shared = [];
+    navigator.share = async (d?: ShareData) => {
+      (window as unknown as { __shared: unknown[] }).__shared.push(d);
+    };
+  });
+  const page = await ctx.newPage();
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator('[data-a="msg"][data-k="invite"]').click();
+  const shared = await page.evaluate(() => (window as unknown as { __shared: { text: string }[] }).__shared);
+  expect(shared).toHaveLength(1);
+  expect(shared[0].text).toContain("1. Kaleci Kemal 🧤");
+  expect(shared[0].text).toContain("Çamlık Spor Tesisi");
+  await ctx.close();
+
+  // Web Share yok: kopyala
+  const ctx2 = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
+  await ctx2.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
+  });
+  const page2 = await ctx2.newPage();
+  await importBackupText(page2, V2);
+  await page2.locator('#tabs [data-v="pay"]').click();
+  await page2.locator('[data-a="msg"][data-k="pay"]').click();
+  await expect(page2.locator("#toast")).toContainText("Kopyalandı");
+  const clip = await page2.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toContain("Saha ücreti");
+  await ctx2.close();
+});

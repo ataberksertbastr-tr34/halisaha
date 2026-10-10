@@ -17,7 +17,9 @@ import { chargeOf, markPaid, settleAll, unmarkPaid, whoIs } from "../domain/ledg
 import { generateTeams } from "../domain/teams";
 import { makeMatch } from "../domain/schedule";
 import { getField } from "../domain/fields";
-import { msgInvite, msgPay, msgTeams } from "../domain/messages";
+import type { TemplateKey } from "../domain/types";
+import { shareText } from "../ui/share";
+import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
 import { applyFilter } from "../ui/components";
 import { closeModal } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
@@ -189,12 +191,48 @@ registerActions({
       m.teams[side].push(ds.id!);
     });
   },
+  // Tek dokunuşla paylaş (Web Share → WhatsApp; yoksa kopyala)
   msg: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
-    const k = ds.k;
-    const text = k === "invite" ? msgInvite(store.s, mm) : k === "teams" ? msgTeams(store.s, mm) : msgPay(store.s, mm, today());
-    openText(k === "invite" ? t("inviteMsg") : k === "teams" ? t("shareTeams") : t("payReminder"), text, true);
+    shareText(buildMessage(ds.k || "invite", mm).text);
+  },
+  msgPreview: (ds) => {
+    const mm = ds.id ? getMatch(store.s, ds.id) : cur();
+    if (!mm) return;
+    const { title, text } = buildMessage(ds.k || "invite", mm);
+    openShareSheet(title, text);
+  },
+  shareSheet: () => {
+    const ta = $<HTMLTextAreaElement>("#mtext");
+    if (ta) shareText(ta.value);
+  },
+  tplEdit: (ds) => openTemplateSheet(ds.k as TemplateKey),
+  tplIns: (ds) => {
+    const ta = $<HTMLTextAreaElement>("#tpl-text");
+    if (!ta) return;
+    const ins = "{" + ds.v + "}";
+    const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
+    ta.value = ta.value.slice(0, a) + ins + ta.value.slice(b);
+    ta.focus();
+    ta.setSelectionRange(a + ins.length, a + ins.length);
+    updateTemplatePreview();
+  },
+  tplSave: (ds) => {
+    const k = ds.k as TemplateKey;
+    const text = val("#tpl-text");
+    if (isDefaultTemplate(k, text)) delete store.s.settings.templates[k];
+    else store.s.settings.templates[k] = text;
+    closeModal();
+    commit();
+    toast(t("templateSaved"));
+  },
+  tplReset: (ds) => {
+    const k = ds.k as TemplateKey;
+    delete store.s.settings.templates[k];
+    commit();
+    openTemplateSheet(k);
+    toast(t("templateReset"));
   },
   copy: (ds) => {
     const ta = $<HTMLTextAreaElement>("#mtext");

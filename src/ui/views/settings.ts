@@ -7,6 +7,7 @@ import { fieldOptions } from "../components";
 import { isIOS, isStandalone, pwa } from "../../pwa/register";
 import { IC } from "../icons";
 import { backupSection } from "./backup";
+import { templatesSection } from "./templates";
 
 export function viewSettings(): string {
   const S = store.s;
@@ -42,6 +43,7 @@ export function viewSettings(): string {
   });
   h += '<div class="row mt"><button type="button" class="toggle' + (s.gkFree ? " on" : "") + '" data-a="tglSet" data-k="gkFree" aria-pressed="' + s.gkFree + '">' + esc(t("gkFree")) + "</button>" +
     '<button type="button" class="toggle' + (s.round ? " on" : "") + '" data-a="tglSet" data-k="round" aria-pressed="' + s.round + '">' + esc(t("round")) + "</button></div></section>";
+  h += templatesSection();
   h += backupSection();
   h += appSection();
   return h;

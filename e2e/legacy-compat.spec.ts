@@ -82,6 +82,6 @@ test("v1 ve v2 yedek dosyaları 'Dosya seç' ile de yüklenir", async ({ page })
   await page.locator("#mtext").fill(readFileSync(resolve("tests/fixtures/backup-v1.json"), "utf8"));
   await page.locator('[data-a="doImport"]').click();
   await page.locator('[data-a="confirmImport"]').click();
-  await expect(page.locator(".flist")).toContainText("Eski Saha Spor Kompleksi");
+  await expect(page.locator("section", { has: page.locator("#h-fields") }).locator(".flist")).toContainText("Eski Saha Spor Kompleksi");
   expect(errors).toEqual([]);
 });

@@ -71,4 +71,9 @@ export const en: Record<MsgKey, string> = {
   reasonBeforeDelete: "Before delete/cancel",
   unmarkedPaid: "{n}: payment removed", paidFromPool: "This share was covered by a general payment; edit it in the person's ledger.",
   partial: "Partial", paidPart: "{p} of {a} paid", credit: "Credit", balance: "Balance",
+  templates: "Message templates", templatesHint: "Messages are shared with one tap. {…} placeholders are filled in automatically; a line whose info is empty is left out.",
+  placeholders: "Placeholders (tap to insert at the cursor)", preview: "Preview", resetDefault: "Reset to default", custom: "custom",
+  share: "Share", copiedPaste: "Copied — paste it in WhatsApp", previewEdit: "Preview and edit", templateSaved: "Template saved", templateReset: "Default template restored",
+  tplInvite: "Invite", tplSquad: "Squad confirmed", tplTeams: "Teams", tplPay: "Payment reminder (group)", tplPersonalPay: "Personal payment reminder", tplPromoted: "Moved up from the waitlist",
+  squadMsg: "Share the squad", sampleName: "Alex",
 };

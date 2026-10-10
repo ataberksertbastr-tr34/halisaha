@@ -96,5 +96,53 @@ export function makeLegacy(S: S, today: string) {
     });
     return st;
   }
-  return { getP, lineup, payersOf, shareOf, estShare, isDue, debts, computeStats, capOf };
+  /* --- mesajlar (Türkçe, eski uygulamadaki metinlerle) --- */
+  const DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  const parseISO = (x: string) => { const [y, mo, d] = String(x).split("-").map(Number); return new Date(y, (mo || 1) - 1, d || 1); };
+  const dayName = (x: string) => DAYS[parseISO(x).getDay()];
+  const ddmm = (x: string) => { const d = parseISO(x); return String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0"); };
+  const money = (n: number) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(Math.round(n * 100) / 100) + " ₺";
+  const safeUrl = (u: unknown) => { const x = String(u || "").trim(); return /^https?:\/\//i.test(x) ? x : ""; };
+  const getField = (id: string) => S.fields.find((f: any) => f.id === id) || null;
+  const fieldOf = (m: any) => getField(m.fieldId) || (m.field ? { name: m.field } : null);
+  function mapsUrl(f: any) {
+    if (!f) return "";
+    const l = safeUrl(f.link); if (l) return l;
+    if (f.lat != null && f.lng != null && f.lat !== "") return "https://www.google.com/maps/search/?api=1&query=" + f.lat + "," + f.lng;
+    const q = [f.name, f.address].filter(Boolean).join(", ");
+    return q ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q) : "";
+  }
+  function headerLines(m: any) {
+    const f = fieldOf(m);
+    let x = "⚽ " + dayName(m.date) + " " + ddmm(m.date) + " – " + m.time + "\n";
+    if (f) { x += "📍 " + f.name + (f.address ? ", " + f.address : "") + "\n"; const u = mapsUrl(f); if (u) x += "🗺️ " + u + "\n"; }
+    return x;
+  }
+  function msgInvite(m: any) {
+    const { playing, wait } = lineup(m);
+    const maybe = Object.keys(m.att).filter((id) => m.att[id] === "maybe" && getP(m, id));
+    const c = capOf(m);
+    let x = headerLines(m);
+    x += "👥 " + (m.format || S.settings.format) + "+1 (" + playing.length + "/" + c + ")\n";
+    x += "💰 Kişi başı ~" + money(estShare(m)) + "\n\n";
+    for (let i = 0; i < c; i++) { const id = playing[i]; x += (i + 1) + ". " + (id ? getP(m, id).name + (isGK(getP(m, id)) ? " 🧤" : "") : "") + "\n"; }
+    if (wait.length) x += "\n⏳ Yedek: " + wait.map((id: string) => getP(m, id).name).join(", ") + "\n";
+    if (maybe.length) x += "🤔 Belki: " + maybe.map((id: string) => getP(m, id).name).join(", ") + "\n";
+    return x + "\nGelecek olan ismini listeye yazsın. Kadro maçtan 24 saat önce kesinleşir; geç iptal eden kendi payını öder.";
+  }
+  function msgTeams(m: any) {
+    const line = (ids: string[]) => ids.map((id) => "• " + getP(m, id).name + (isGK(getP(m, id)) ? " 🧤" : "")).join("\n");
+    return headerLines(m) + "\n🟡 Sarılar\n" + line(m.teams.a) + "\n\n🟠 Turuncular\n" + line(m.teams.b) + "\n\nKaybeden tatlıyı alır. İyi maçlar!";
+  }
+  const ibanLine = () => (S.settings.iban ? "IBAN: " + S.settings.iban + (S.settings.ibanName ? " (" + S.settings.ibanName + ")" : "") : "");
+  function msgPay(m: any) {
+    const sh = shareOf(m);
+    const unpaid = payersOf(m).filter((id: string) => !m.paid[id]);
+    let x = "💸 Saha ücreti – " + dayName(m.date) + " " + ddmm(m.date) + "\nKişi başı: " + money(sh) + "\n";
+    if (S.settings.iban) x += "\n" + ibanLine() + "\n";
+    if (unpaid.length) x += "\nÖdemeyenler:\n" + unpaid.map((id: string) => "• " + getP(m, id).name).join("\n") + "\n\nÖdemeyi maçtan önce IBAN'a atalım lütfen.";
+    else x += "\nHerkes ödedi, teşekkürler!";
+    return x;
+  }
+  return { getP, lineup, payersOf, shareOf, estShare, isDue, debts, computeStats, capOf, msgInvite, msgTeams, msgPay };
 }

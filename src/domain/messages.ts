@@ -1,6 +1,7 @@
 /** WhatsApp mesajları: davet, takımlar, ödeme hatırlatması, kişiye özel hatırlatma. */
 import { DAYS, lang, money, t } from "../i18n";
-import type { Match, State } from "./types";
+import type { Match, State, TemplateKey } from "./types";
+import { render, templateOf } from "./templates";
 import { ddmm, weekday } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
 import { capOf, cleanTeams, getP, isGK, lineup } from "./lineup";
@@ -16,56 +17,79 @@ function nameOf(s: State, m: Match, id: string): string {
   return getP(s, m, id)?.name ?? "";
 }
 
-export function headerLines(s: State, m: Match): string {
+export function ibanLine(s: State): string {
+  return s.settings.iban ? "IBAN: " + s.settings.iban + (s.settings.ibanName ? " (" + s.settings.ibanName + ")" : "") : "";
+}
+
+/** Maçla ilgili ortak yer tutucular. */
+export function matchVars(s: State, m: Match): Record<string, string> {
   const f = fieldOf(s, m);
-  let out = "⚽ " + dayName(m.date) + " " + ddmm(m.date) + " – " + m.time + "\n";
-  if (f) {
-    out += "📍 " + f.name + (f.address ? ", " + f.address : "") + "\n";
-    const u = mapsUrl(f);
-    if (u) out += "🗺️ " + u + "\n";
-  }
-  return out;
+  const { playing, wait } = lineup(s, m);
+  const maybe = Object.keys(m.att).filter((id) => m.att[id] === "maybe" && getP(s, m, id));
+  const label = (id: string) => nameOf(s, m, id) + (isGK(getP(s, m, id)) ? " 🧤" : "");
+  return {
+    gun: dayName(m.date),
+    tarih: ddmm(m.date),
+    saat: m.time,
+    saha: f ? f.name + (f.address ? ", " + f.address : "") : "",
+    harita: mapsUrl(f),
+    format: (m.format || s.settings.format) + "+1",
+    sayi: String(playing.length),
+    kontenjan: String(capOf(s, m)),
+    pay: money(estShare(s, m)),
+    iban: ibanLine(s),
+    kadro: playing.map((id, i) => i + 1 + ". " + label(id)).join("\n"),
+    yedek: wait.map((id) => nameOf(s, m, id)).join(", "),
+    belki: maybe.map((id) => nameOf(s, m, id)).join(", "),
+  };
+}
+
+function tpl(s: State, key: TemplateKey): string {
+  return templateOf(s.settings.templates, key, lang());
 }
 
 export function msgInvite(s: State, m: Match): string {
-  const { playing, wait } = lineup(s, m);
-  const maybe = Object.keys(m.att).filter((id) => m.att[id] === "maybe" && getP(s, m, id));
+  const v = matchVars(s, m);
+  const { playing } = lineup(s, m);
   const c = capOf(s, m);
-  let out = headerLines(s, m);
-  out += "👥 " + (m.format || s.settings.format) + "+1 (" + playing.length + "/" + c + ")\n";
-  out += "💰 " + t("perPerson") + " ~" + money(estShare(s, m)) + "\n\n";
+  const lines: string[] = [];
   for (let i = 0; i < c; i++) {
     const id = playing[i];
-    out += i + 1 + ". " + (id ? nameOf(s, m, id) + (isGK(getP(s, m, id)) ? " 🧤" : "") : "") + "\n";
+    lines.push(i + 1 + ". " + (id ? nameOf(s, m, id) + (isGK(getP(s, m, id)) ? " 🧤" : "") : ""));
   }
-  if (wait.length) out += "\n⏳ " + t("waitlist") + ": " + wait.map((id) => nameOf(s, m, id)).join(", ") + "\n";
-  if (maybe.length) out += "🤔 " + t("maybe") + ": " + maybe.map((id) => nameOf(s, m, id)).join(", ") + "\n";
-  return out + "\n" + t("inviteFooter");
+  return render(tpl(s, "invite"), { ...v, liste: lines.join("\n") });
+}
+
+/** Kadro kesinleşti duyurusu (Kural 1.4). */
+export function msgSquad(s: State, m: Match): string {
+  return render(tpl(s, "squad"), matchVars(s, m));
 }
 
 export function msgTeams(s: State, m: Match): string {
   cleanTeams(s, m);
   const line = (ids: string[]) => ids.map((id) => "• " + nameOf(s, m, id) + (isGK(getP(s, m, id)) ? " 🧤" : "")).join("\n");
-  return headerLines(s, m) + "\n🟡 " + t("teamA") + "\n" + line(m.teams.a) + "\n\n🟠 " + t("teamB") + "\n" + line(m.teams.b) + "\n\n" + t("teamsFooter");
-}
-
-export function ibanLine(s: State): string {
-  return s.settings.iban ? "IBAN: " + s.settings.iban + (s.settings.ibanName ? " (" + s.settings.ibanName + ")" : "") : "";
+  return render(tpl(s, "teams"), { ...matchVars(s, m), sarilar: line(m.teams.a), turuncular: line(m.teams.b) });
 }
 
 export function msgPay(s: State, m: Match, today: string): string {
   const { payers, share: sh } = billOf(s, m);
   const acc = accounts(s, today);
   const unpaid = payers.filter((id) => acc.get(id)?.charges.find((c) => c.mid === m.id)?.status !== "paid");
-  let out = "💸 " + t("payHeader") + " – " + dayName(m.date) + " " + ddmm(m.date) + "\n" + t("perPerson") + ": " + money(sh) + "\n";
-  if (s.settings.iban) out += "\n" + ibanLine(s) + "\n";
-  if (unpaid.length) out += "\n" + t("stillUnpaid") + ":\n" + unpaid.map((id) => "• " + nameOf(s, m, id)).join("\n") + "\n\n" + t("payFooter");
-  else out += "\n" + t("everyonePaid");
-  return out;
+  return render(tpl(s, "pay"), {
+    ...matchVars(s, m),
+    pay: money(sh),
+    odemeyenler: unpaid.map((id) => "• " + nameOf(s, m, id)).join("\n"),
+    kapanis: unpaid.length ? t("payFooter") : t("everyonePaid"),
+  });
 }
 
 export function personalPayText(s: State, name: string, amt: number): string {
-  return t("personalPay", { name, amt: money(amt), iban: s.settings.iban ? " " + ibanLine(s) + "." : "" });
+  return render(tpl(s, "personalPay"), { ad: name, tutar: money(amt), iban: ibanLine(s) });
+}
+
+/** Yedekten kadroya giren oyuncuya hazır mesaj. */
+export function promotedText(s: State, m: Match, id: string): string {
+  return render(tpl(s, "promoted"), { ...matchVars(s, m), ad: nameOf(s, m, id) });
 }
 
 /** Kişiye özel WhatsApp bağlantısı; telefon yoksa boş. */

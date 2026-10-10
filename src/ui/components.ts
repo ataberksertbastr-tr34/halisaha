@@ -96,3 +96,10 @@ export function emptyState(msg: string, btn?: { a: string; label: string; v?: st
   return '<div class="section empty">' + (title ? "<h2>" + esc(title) + "</h2>" : "") + "<p>" + esc(msg) + "</p>" +
     (btn ? '<button type="button" class="btn primary" data-a="' + btn.a + '"' + (btn.v ? ' data-v="' + btn.v + '"' : "") + ">" + esc(btn.label) + "</button>" : "") + "</div>";
 }
+
+/** Tek dokunuşla paylaş düğmesi + yanında "önizle ve düzenle" ikonu. */
+export function shareButtons(k: string, label: string, mid?: string): string {
+  const id = mid ? ' data-id="' + esc(mid) + '"' : "";
+  return '<span class="split grow"><button type="button" class="btn primary grow" data-a="msg" data-k="' + k + '"' + id + ">" + IC.share + "<span>" + esc(label) + "</span></button>" +
+    '<button type="button" class="btn primary iconpart" data-a="msgPreview" data-k="' + k + '"' + id + ' aria-label="' + esc(t("previewEdit") + ": " + label) + '" title="' + esc(t("previewEdit")) + '">' + IC.edit + "</button></span>";
+}

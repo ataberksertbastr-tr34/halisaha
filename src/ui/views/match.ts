@@ -9,7 +9,7 @@ import { currentMatch, isGuest, lineup } from "../../domain/lineup";
 import { estShare } from "../../domain/money";
 import { debtMap } from "../../domain/ledger";
 import { dayName } from "../../domain/messages";
-import { emptyState, fieldCard, fieldOptions, filterBar, matchChips, posBadge, posOptions } from "../components";
+import { emptyState, fieldCard, fieldOptions, filterBar, matchChips, posBadge, posOptions, shareButtons } from "../components";
 
 const ATT_KEYS: Att[] = ["in", "maybe", "out", "late"];
 const ATT_SYM: Record<Att, string> = { in: "✓", maybe: "?", out: "✕", late: "!" };
@@ -58,7 +58,7 @@ function attendanceBlock(m: Match): string {
   const count = (n: number, k: MsgKey) => '<div class="count"><b>' + n + "</b><span>" + esc(t(k)) + "</span></div>";
   let h = '<section class="section" aria-label="' + esc(t("statusIn")) + '"><div class="counts">' +
     count(playing.length, "in") + count(nMaybe, "maybe") + count(wait.length, "waitlist") + count(nNone, "noReply") + "</div>";
-  h += '<div class="row"><button type="button" class="btn primary grow" data-a="msg" data-k="invite">' + esc(t("inviteMsg")) + '</button><button type="button" class="btn grow" data-a="goTeams">' + esc(t("buildTeams")) + "</button></div>";
+  h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn grow" data-a="goTeams">' + esc(t("buildTeams")) + "</button></div>";
   h += filterBar("att", true);
   h += '<ul class="plist" id="list-att">';
   people.forEach((p) => {

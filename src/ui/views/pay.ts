@@ -7,7 +7,7 @@ import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, isFree } from "../../domain/money";
 import { accounts, debts } from "../../domain/ledger";
 import { dayName, waPersonal } from "../../domain/messages";
-import { emptyState } from "../components";
+import { emptyState, shareButtons } from "../components";
 
 export function viewPay(): string {
   const S = store.s;
@@ -26,7 +26,7 @@ export function viewPay(): string {
   h += '<div class="money-sum"><div class="count"><b>' + esc(money(sh)) + "</b><span>" + esc(t("perPerson")) + '</span></div><div class="count"><b>' + esc(money(collected)) + "</b><span>" + esc(t("collected")) + '</span></div><div class="count"><b>' + esc(money(Math.max(0, expected - collected))) + "</b><span>" + esc(t("outstanding")) + "</span></div></div>";
   h += '<p class="small muted tight">' + esc(t("priceLbl")) + ": " + esc(money(Number(mm.price) || 0)) + ". " + esc(t("payers")) + ": " + payers.length + "</p>";
   if (S.settings.iban) h += '<div class="iban"><code>' + esc(S.settings.iban) + '</code><button type="button" class="btn xs" data-a="copyIban">' + esc(t("copyIban")) + "</button></div>";
-  h += '<div class="row mb"><button type="button" class="btn primary grow" data-a="msg" data-k="pay" data-id="' + esc(mm.id) + '">' + esc(t("payReminder")) + '</button><button type="button" class="btn grow" data-a="allPaid" data-id="' + esc(mm.id) + '">' + esc(t("allPaid")) + "</button></div>";
+  h += '<div class="row nowrap mb">' + shareButtons("pay", t("payReminder"), mm.id) + '<button type="button" class="btn grow" data-a="allPaid" data-id="' + esc(mm.id) + '">' + esc(t("allPaid")) + "</button></div>";
   const { playing } = lineup(S, mm);
   const late = Object.keys(mm.att).filter((id) => mm.att[id] === "late" && getP(S, mm, id));
   const rows = [...new Set([...playing, ...late, ...payers])];

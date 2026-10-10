@@ -6,7 +6,7 @@ import { POSITIONS } from "../../domain/types";
 import { esc, norm, pips, trSort } from "../../domain/text";
 import { cleanTeams, currentMatch, getP, lineup } from "../../domain/lineup";
 import { teamSum } from "../../domain/teams";
-import { emptyState, filterBar, matchChips, posBadge, posShort } from "../components";
+import { emptyState, filterBar, matchChips, posBadge, posShort, shareButtons } from "../components";
 import { pitchSVG } from "../pitch";
 import { IC } from "../icons";
 
@@ -29,10 +29,10 @@ export function viewTeams(): string {
   const un = cleanTeams(S, m);
   const built = m.teams.a.length || m.teams.b.length;
   const has = built || m.manualTeams;
-  h += '<section class="section"><div class="row">' +
-    '<button type="button" class="btn primary grow" data-a="gen">' + esc(built ? t("reshuffle") : t("buildTeams")) + "</button>" +
+  h += '<section class="section"><div class="row nowrap">' +
+    '<button type="button" class="btn ' + (built ? "" : "primary ") + 'grow" data-a="gen">' + esc(built ? t("reshuffle") : t("buildTeams")) + "</button>" +
     '<button type="button" class="btn grow" data-a="manual">' + esc(t("manual")) + "</button>" +
-    (built ? '<button type="button" class="btn grow" data-a="msg" data-k="teams">' + esc(t("shareTeams")) + "</button>" : "") + "</div>";
+    "</div>" + (built ? '<div class="row nowrap mt-s">' + shareButtons("teams", t("shareTeams")) + "</div>" : "");
   if (!has) return h + '<p class="muted small mt">' + esc(t("tip")) + "</p></section>";
   h += "</section>";
   if (un.length) {

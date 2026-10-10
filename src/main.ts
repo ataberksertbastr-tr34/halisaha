@@ -17,6 +17,7 @@ import { registerActions } from "./app/actions";
 import { applyUpdate, initPWA, promptInstall, pwa } from "./pwa/register";
 import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
+import { updateTemplatePreview } from "./ui/views/templates";
 import type { FilterKey } from "./app/store";
 
 async function boot(): Promise<void> {
@@ -100,6 +101,7 @@ function bindEvents(): void {
   });
   document.addEventListener("input", (e) => {
     const el = e.target as HTMLInputElement;
+    if (el.id === "tpl-text") return updateTemplatePreview();
     const k = el.dataset && (el.dataset.q as FilterKey | undefined);
     if (k) {
       ui.f[k].q = el.value;
