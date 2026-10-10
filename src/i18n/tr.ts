@@ -67,6 +67,8 @@ export const tr = {
   addedTo: "{n} → {t}", matchReopened: "Maç tekrar açıldı", fieldDeleted: "Saha silindi", allDeleted: "Tüm veriler silindi",
   settled: "{n}: borç kapatıldı", allMarkedPaid: "Herkes ödedi olarak işaretlendi", madePassive: "{n} pasif yapıldı", madeActive: "{n} aktif yapıldı",
   reasonBeforeDelete: "Silme/iptal öncesi",
+  unmarkedPaid: "{n}: ödeme kaldırıldı", paidFromPool: "Bu pay genel bir ödemeden karşılandı; kişinin hesap defterinden düzenle.",
+  partial: "Kısmi", paidPart: "{p} / {a} ödendi", credit: "Avans", balance: "Bakiye",
 } as const;
 
 export type MsgKey = keyof typeof tr;

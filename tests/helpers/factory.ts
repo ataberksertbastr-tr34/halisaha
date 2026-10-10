@@ -3,13 +3,14 @@ import { defaults } from "../../src/domain/schema";
 import type { Match, Player, Pos, State } from "../../src/domain/types";
 
 export function player(id: string, name: string, rating = 3, pos: Pos = "", extra: Partial<Player> = {}): Player {
-  return { id, name, rating, pos, phone: "", active: true, ...extra };
+  return { id, name, rating, pos, phone: "", active: true, fixed: false, ...extra };
 }
 
 export function match(id: string, extra: Partial<Match> = {}): Match {
   return {
     id, date: "2026-10-13", time: "21:00", fieldId: "", price: 3000, format: 7, status: "open",
-    att: {}, order: [], guests: [], paid: {}, exempt: {}, teams: { a: [], b: [] }, score: null, ...extra,
+    att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
+    locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false, ...extra,
   };
 }
 

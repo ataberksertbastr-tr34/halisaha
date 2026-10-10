@@ -69,4 +69,6 @@ export const en: Record<MsgKey, string> = {
   addedTo: "{n} → {t}", matchReopened: "Match reopened", fieldDeleted: "Field deleted", allDeleted: "All data deleted",
   settled: "{n}: debt settled", allMarkedPaid: "Everyone marked as paid", madePassive: "{n} made inactive", madeActive: "{n} made active",
   reasonBeforeDelete: "Before delete/cancel",
+  unmarkedPaid: "{n}: payment removed", paidFromPool: "This share was covered by a general payment; edit it in the person's ledger.",
+  partial: "Partial", paidPart: "{p} of {a} paid", credit: "Credit", balance: "Balance",
 };

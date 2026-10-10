@@ -38,33 +38,18 @@ export function isDue(m: Match, today: string): boolean {
   return m.status === "played" || (m.status === "open" && m.date <= today);
 }
 
-export interface Debt {
-  id: string;
-  name: string;
-  total: number;
-  n: number;
-  phone: string;
+/**
+ * Maçın ödeme listesi ve kişi başı payı. Oynanmış maçta, maç bitirildiği anda
+ * dondurulan değer kullanılır; böylece sonradan ayar (yuvarlama, kaleci ücretsiz)
+ * değişse de geçmiş hesaplar bozulmaz.
+ */
+export function billOf(s: State, m: Match): { payers: string[]; share: number } {
+  if (m.status === "cancelled") return { payers: [], share: 0 };
+  if (m.status === "played" && m.bill) return m.bill;
+  return { payers: payersOf(s, m), share: shareOf(s, m) };
 }
 
-export function debts(s: State, today: string): Debt[] {
-  const map: Record<string, Debt> = {};
-  s.matches.forEach((m) => {
-    if (m.status === "cancelled" || !isDue(m, today)) return;
-    const sh = shareOf(s, m);
-    payersOf(s, m).forEach((id) => {
-      if (m.paid[id]) return;
-      const p = getP(s, m, id);
-      if (!p) return;
-      map[id] = map[id] || { id, name: p.name, total: 0, n: 0, phone: (p as { phone?: string }).phone || "" };
-      map[id].total += sh;
-      map[id].n++;
-    });
-  });
-  return Object.values(map).sort((a, b) => b.total - a.total);
-}
-
-export function debtMap(s: State, today: string): Record<string, number> {
-  const d: Record<string, number> = {};
-  debts(s, today).forEach((x) => (d[x.id] = x.total));
-  return d;
+/** Maç bitince ödeme listesini dondurur. */
+export function freezeBill(s: State, m: Match): void {
+  m.bill = { payers: payersOf(s, m), share: shareOf(s, m) };
 }

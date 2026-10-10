@@ -6,7 +6,8 @@ import { esc, norm, pips, trSort } from "../../domain/text";
 import { ddmm } from "../../domain/dates";
 import { fieldOf } from "../../domain/fields";
 import { currentMatch, isGuest, lineup } from "../../domain/lineup";
-import { debtMap, estShare } from "../../domain/money";
+import { estShare } from "../../domain/money";
+import { debtMap } from "../../domain/ledger";
 import { dayName } from "../../domain/messages";
 import { emptyState, fieldCard, fieldOptions, filterBar, matchChips, posBadge, posOptions } from "../components";
 

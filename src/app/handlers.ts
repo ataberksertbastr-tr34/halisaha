@@ -12,7 +12,8 @@ import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
 import { currentMatch, getMatch, getP, setAtt } from "../domain/lineup";
-import { isDue, payersOf } from "../domain/money";
+import { billOf, freezeBill } from "../domain/money";
+import { chargeOf, markPaid, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { generateTeams } from "../domain/teams";
 import { makeMatch } from "../domain/schedule";
 import { getField } from "../domain/fields";
@@ -70,7 +71,7 @@ export function addPlayerNamed(name: string, rating: number, pos: Pos): boolean 
   const n = cleanName(name);
   if (!n) return false;
   if (store.s.players.some((p) => p.name.toLocaleLowerCase("tr") === n.toLocaleLowerCase("tr"))) return null;
-  store.s.players.push({ id: uid(), name: n, rating: rating || 3, pos: pos || "", phone: "", active: true });
+  store.s.players.push({ id: uid(), name: n, rating: rating || 3, pos: pos || "", phone: "", active: true, fixed: false });
   return true;
 }
 
@@ -133,7 +134,8 @@ registerActions({
       m.guests = m.guests.filter((x) => x.id !== ds.id);
       delete m.att[ds.id!];
       m.order = m.order.filter((x) => x !== ds.id);
-      delete m.paid[ds.id!];
+      // Misafirin bu maça yazılmış ödemeleri de kalkar (Geri al ile geri gelir).
+      store.s.payments = store.s.payments.filter((p) => p.pid !== ds.id);
     });
   },
   gen: () => {
@@ -191,7 +193,7 @@ registerActions({
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
     const k = ds.k;
-    const text = k === "invite" ? msgInvite(store.s, mm) : k === "teams" ? msgTeams(store.s, mm) : msgPay(store.s, mm);
+    const text = k === "invite" ? msgInvite(store.s, mm) : k === "teams" ? msgTeams(store.s, mm) : msgPay(store.s, mm, today());
     openText(k === "invite" ? t("inviteMsg") : k === "teams" ? t("shareTeams") : t("payReminder"), text, true);
   },
   copy: (ds) => {
@@ -211,6 +213,7 @@ registerActions({
     mutate(t("matchDone"), () => {
       m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : null;
       m.status = "played";
+      freezeBill(store.s, m);
     });
   },
   reopen: (ds) => {
@@ -220,6 +223,7 @@ registerActions({
     go({ name: "match" });
     mutate(t("matchReopened"), () => {
       x.status = "open";
+      delete x.bill;
     });
     window.scrollTo(0, 0);
   },
@@ -242,34 +246,40 @@ registerActions({
   paid: (ds) => {
     const x = getMatch(store.s, ds.mid);
     if (!x) return;
-    if (x.paid[ds.id!]) delete x.paid[ds.id!];
-    else x.paid[ds.id!] = true;
     ui.payId = x.id;
-    commit();
+    const c = chargeOf(store.s, x, ds.id!, today());
+    if (!c) return;
+    if (c.status === "paid") {
+      const name = whoIs(store.s, ds.id!)?.name || "";
+      mutate(t("unmarkedPaid", { n: name }), () => {
+        if (!unmarkPaid(store.s, x, ds.id!)) {
+          toast(t("paidFromPool"));
+          return false;
+        }
+      });
+    } else mutate(null, () => markPaid(store.s, x, ds.id!, today()));
   },
   exempt: (ds) => {
     const x = getMatch(store.s, ds.mid);
     if (!x) return;
-    if (x.exempt[ds.id!]) delete x.exempt[ds.id!];
-    else {
-      x.exempt[ds.id!] = true;
-      delete x.paid[ds.id!];
-    }
     ui.payId = x.id;
-    commit();
+    mutate(null, () => {
+      if (x.exempt[ds.id!]) delete x.exempt[ds.id!];
+      else x.exempt[ds.id!] = true;
+      // Oynanmış maçta muafiyet bilinçli bir düzeltmedir: ödeme listesi yeniden hesaplanır.
+      if (x.status === "played") freezeBill(store.s, x);
+    });
   },
   allPaid: (ds) => {
     const x = getMatch(store.s, ds.id);
     if (!x) return;
     ui.payId = x.id;
-    mutate(t("allMarkedPaid"), () => payersOf(store.s, x).forEach((id) => (x.paid[id] = true)));
+    mutate(t("allMarkedPaid"), () => billOf(store.s, x).payers.forEach((id) => markPaid(store.s, x, id, today())));
   },
   settle: (ds) => {
-    const name = getP(store.s, null, ds.id!)?.name || store.s.matches.flatMap((m) => m.guests).find((g) => g.id === ds.id)?.name || "";
+    const name = whoIs(store.s, ds.id!)?.name || "";
     mutate(t("settled", { n: name }), () => {
-      store.s.matches.forEach((x) => {
-        if (x.status !== "cancelled" && isDue(x, today()) && payersOf(store.s, x).includes(ds.id!)) x.paid[ds.id!] = true;
-      });
+      if (!settleAll(store.s, ds.id!, today())) return false;
     });
   },
   addPlayer: () => {

@@ -4,7 +4,8 @@ import type { Match, State } from "./types";
 import { ddmm, weekday } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
 import { capOf, cleanTeams, getP, isGK, lineup } from "./lineup";
-import { estShare, payersOf, shareOf } from "./money";
+import { billOf, estShare } from "./money";
+import { accounts } from "./ledger";
 import { phoneDigits } from "./text";
 
 export function dayName(date: string): string {
@@ -52,9 +53,10 @@ export function ibanLine(s: State): string {
   return s.settings.iban ? "IBAN: " + s.settings.iban + (s.settings.ibanName ? " (" + s.settings.ibanName + ")" : "") : "";
 }
 
-export function msgPay(s: State, m: Match): string {
-  const sh = shareOf(s, m);
-  const unpaid = payersOf(s, m).filter((id) => !m.paid[id]);
+export function msgPay(s: State, m: Match, today: string): string {
+  const { payers, share: sh } = billOf(s, m);
+  const acc = accounts(s, today);
+  const unpaid = payers.filter((id) => acc.get(id)?.charges.find((c) => c.mid === m.id)?.status !== "paid");
   let out = "💸 " + t("payHeader") + " – " + dayName(m.date) + " " + ddmm(m.date) + "\n" + t("perPerson") + ": " + money(sh) + "\n";
   if (s.settings.iban) out += "\n" + ibanLine(s) + "\n";
   if (unpaid.length) out += "\n" + t("stillUnpaid") + ":\n" + unpaid.map((id) => "• " + nameOf(s, m, id)).join("\n") + "\n\n" + t("payFooter");

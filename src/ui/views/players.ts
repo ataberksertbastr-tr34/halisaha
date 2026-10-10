@@ -2,7 +2,7 @@
 import { money, t } from "../../i18n";
 import { store, today, ui } from "../../app/store";
 import { esc, norm, pips, trSort } from "../../domain/text";
-import { debtMap } from "../../domain/money";
+import { debtMap } from "../../domain/ledger";
 import { computeStats } from "../../domain/stats";
 import { filterBar, posBadge, posOptions } from "../components";
 

@@ -1,6 +1,7 @@
 /** Kişi başı pay, yuvarlama ve borç hesabı (Kural 1.5, 1.9, 2.1, 2.2, 2.4). */
 import { describe, expect, it } from "vitest";
-import { debts, estShare, isDue, payersOf, roundShare, shareOf } from "../src/domain/money";
+import { estShare, isDue, payersOf, roundShare, shareOf } from "../src/domain/money";
+import { debts, newPayment } from "../src/domain/ledger";
 import { allIn, match, player, roster, state } from "./helpers/factory";
 
 describe("yuvarlama (Kural 2.2)", () => {
@@ -96,9 +97,8 @@ describe("borç hesabı", () => {
     const m2 = allIn(match("m2", { date: "2026-10-05", price: 400, format: 1, status: "open" }), ["p0", "p1", "p2", "p3"]);
     const m3 = allIn(match("m3", { date: "2026-10-20", price: 400, format: 1, status: "open" }), ["p0", "p1", "p2", "p3"]);
     const m4 = allIn(match("m4", { date: "2026-10-02", price: 400, format: 1, status: "cancelled" }), ["p0"]);
-    m1.paid = { p0: true, p1: true };
-    m2.paid = { p0: true };
     const s = state(ps, [m1, m2, m3, m4], { round: false });
+    s.payments = [newPayment("p0", 100, "2026-10-01", "m1"), newPayment("p1", 100, "2026-10-01", "m1"), newPayment("p0", 100, "2026-10-05", "m2")];
     const d = debts(s, "2026-10-09");
     expect(d.map((x) => [x.id, x.total, x.n])).toEqual([
       ["p2", 200, 2],

@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { BackupError, migrate, parseBackup } from "../src/domain/migrate";
 import { SCHEMA_VERSION } from "../src/domain/schema";
-import { debts, shareOf, estShare, payersOf } from "../src/domain/money";
+import { shareOf, estShare, payersOf, billOf } from "../src/domain/money";
+import { debts } from "../src/domain/ledger";
 import { lineup } from "../src/domain/lineup";
 import { computeStats } from "../src/domain/stats";
 import { fieldOf } from "../src/domain/fields";
@@ -80,6 +81,25 @@ describe("v2 yedeği (gerçek eski uygulama çıktısı)", () => {
     expect(computeStats(s)).toEqual(L.computeStats());
   });
 
+  it("ödeme işaretleri, maçın payı kadar o maça yazılmış ödeme kaydına dönüşür (v2→v3)", () => {
+    const flags: [string, string][] = [];
+    raw.matches.forEach((m: { id: string; paid: Record<string, boolean> }) => Object.keys(m.paid).forEach((id) => flags.push([m.id, id])));
+    expect(flags.length).toBe(3);
+    expect(s.payments.map((p) => [p.mid, p.pid]).sort()).toEqual(flags.sort());
+    s.payments.forEach((p) => {
+      const m = s.matches.find((x) => x.id === p.mid)!;
+      expect(p.amount).toBe(shareOf(s, m));
+      expect(p.at).toBe(m.date);
+    });
+    expect(s.matches.some((m) => "paid" in m)).toBe(false);
+  });
+
+  it("oynanmış maçın ödeme listesi ve payı dondurulur", () => {
+    const m1 = s.matches.find((m) => m.status === "played")!;
+    expect(m1.bill).toEqual({ payers: payersOf(s, m1), share: shareOf(s, m1) });
+    expect(s.matches.find((m) => m.status === "open")!.bill).toBeUndefined();
+  });
+
   it("yedek listesindeki misafir ödeme yapanlar arasında değildir", () => {
     const m1 = s.matches.find((m) => m.status === "played")!;
     const { wait } = lineup(s, m1);
@@ -135,7 +155,10 @@ describe("v1 yedeği (eski şema)", () => {
       const n = s.matches.find((x) => x.id === m.id)!;
       expect(n.att).toEqual(m.att);
       expect(n.order).toEqual(m.order);
-      expect(n.paid).toEqual(m.paid);
+      // Ödeme işaretleri deftere taşındı: ödeyen olanlar birebir kayıt olarak var
+      const payers = billOf(s, n).payers;
+      const expected = Object.keys(m.paid).filter((id) => payers.includes(id)).sort();
+      expect(s.payments.filter((p) => p.mid === m.id).map((p) => p.pid).sort()).toEqual(expected);
       expect(n.status).toBe(m.status);
       expect(n.score).toEqual(m.score ?? null);
     });

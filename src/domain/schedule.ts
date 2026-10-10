@@ -31,6 +31,7 @@ export function makeMatch(s: State, today: string): Match {
   return {
     id: uid(), date: ns.date, time: ns.time, fieldId: f ? f.id : "",
     price: (f && Number(f.price)) || Number(s.settings.price) || 0, format: s.settings.format,
-    status: "open", att: {}, order: [], guests: [], paid: {}, exempt: {}, teams: { a: [], b: [] }, score: null,
+    status: "open", att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
+    locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false,
   };
 }
