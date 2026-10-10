@@ -3,16 +3,18 @@ import { lang, t, type MsgKey } from "../../i18n";
 import { store, today, ui } from "../../app/store";
 import type { Match, TemplateKey } from "../../domain/types";
 import { esc } from "../../domain/text";
-import { currentMatch, lineup } from "../../domain/lineup";
+import { currentMatch, lineup, openMatches } from "../../domain/lineup";
+import { isFootball } from "../../domain/kinds";
 import { makeMatch } from "../../domain/schedule";
 import { DEFAULT_TEMPLATES, PLACEHOLDERS, render, TEMPLATE_KEYS, templateOf } from "../../domain/templates";
-import { matchVars, msgInvite, msgPay, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
+import { matchVars, msgBrief, msgCancel, msgCars, msgInvite, msgPay, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
 import { IC } from "../icons";
 
 export const TPL_NAMES: Record<TemplateKey, MsgKey> = {
-  invite: "tplInvite", squad: "tplSquad", teams: "tplTeams", pay: "tplPay", personalPay: "tplPersonalPay", promoted: "tplPromoted",
+  invite: "tplInvite", squad: "tplSquad", teams: "tplTeams", brief: "tplBrief", pay: "tplPay", personalPay: "tplPersonalPay", promoted: "tplPromoted",
+  cars: "tplCars", cancel: "tplCancel",
 };
 
 /** Mesaj başlığı + metni (paylaşım ve önizleme için). */
@@ -25,6 +27,12 @@ export function buildMessage(k: string, m: Match): { title: string; text: string
       return { title: t("payReminder"), text: msgPay(S, m, today()) };
     case "squad":
       return { title: t("tplSquad"), text: msgSquad(S, m) };
+    case "brief":
+      return { title: t("tplBrief"), text: msgBrief(S, m) };
+    case "cars":
+      return { title: t("tplCars"), text: msgCars(S, m) };
+    case "cancel":
+      return { title: t("tplCancel"), text: msgCancel(S, m) };
     default:
       return { title: t("inviteMsg"), text: msgInvite(S, m) };
   }
@@ -40,8 +48,12 @@ export function templatesSection(): string {
   return h + "</div></section>";
 }
 
+/** Önizleme için halı saha maçı: seçili maç halı sahaysa o, değilse sıradaki halı saha maçı. */
 function previewMatch(): Match {
-  return currentMatch(store.s, ui.matchId, today()) || makeMatch(store.s, today());
+  const S = store.s;
+  const c = currentMatch(S, ui.matchId, today());
+  if (c && isFootball(c)) return c;
+  return openMatches(S).find(isFootball) || makeMatch(S, today());
 }
 
 /** Şablon metnini örnek veriyle doldurur. */
