@@ -83,4 +83,12 @@ export const en: Record<MsgKey, string> = {
   fixed: "Regular player", fixedHint: "Marked \"In\" automatically for every new match.", fixedTag: "regular", fixedOn: "{n} is now a regular", fixedOff: "{n} is no longer a regular",
   reliability: "Reliability", relTag: "reliability {n}%", relMeta: "reliability {s}% ({l} late cancels, {x} no-shows)", noshowLast: "no-show last match",
   noshowTitle: "No-shows", noshowHint: "Tap the name of anyone who didn't show up (they still pay).", host: "Brought by", hostNone: "Brought by: —", guestOf: "{n}'s guest",
+  paySubMatch: "Match", paySubPeople: "People", paySubCash: "Cash", ledger: "Ledger", owesAmt: "Owes {a}", creditAmt: "Credit {a}", settledAcc: "All settled",
+  takePayment: "Record payment", amount: "Amount (₺)", note: "Note", fullAmt: "All of it", paymentAdded: "{n}: {a} payment recorded", paymentDeleted: "Payment deleted",
+  chargeRow: "{d} match share", paymentRow: "Payment", refund: "Refund credit", refundNote: "Refund", totalOwed: "Total owed", creditors: "With credit",
+  allAccounts: "All accounts", cashBox: "Cash box", cashHint: "Payments received − field fees paid − expenses", cashNeg: "The organizer has put in {a} of their own",
+  monthly: "Monthly summary", mPlayed: "Matches played", mCancelled: "Cancelled", mField: "Paid to the field", mBilled: "Charged to players", mCollected: "Collected", mExpenses: "Expenses", mCash: "Cash at month end",
+  expenses: "Expenses", addExpense: "Add expense", expBall: "Ball", expBib: "Bibs", expWater: "Water", expOther: "Other", expenseAdded: "Expense added", expenseDeleted: "Expense deleted",
+  noExpenses: "No expenses yet.", category: "Type", amountBad: "Enter a valid amount.", noAccounts: "No account activity yet.", openLedger: "Open ledger",
+  ledgerHint: "Payments not tied to a match settle the oldest debts first; anything extra stays as credit.", partialPaid: "{p} paid", searchPeople: "Search people…",
 };

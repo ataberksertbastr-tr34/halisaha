@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { go, route, type Tab } from "./router";
 import { registerActions } from "./actions";
-import type { Att, Guest, Match, Pos } from "../domain/types";
+import type { Att, ExpenseCat, Guest, Match, Pos } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
@@ -17,7 +17,8 @@ import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
 import { money } from "../i18n";
 import { billOf, freezeBill } from "../domain/money";
-import { chargeOf, markPaid, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
+import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
+import { openLedger } from "../ui/views/pay";
 import { generateTeams } from "../domain/teams";
 import { makeMatch } from "../domain/schedule";
 import { getField } from "../domain/fields";
@@ -391,6 +392,51 @@ registerActions({
     ui.payId = x.id;
     mutate(t("allMarkedPaid"), () => billOf(store.s, x).payers.forEach((id) => markPaid(store.s, x, id, today())));
   },
+  payTab: (ds) => {
+    ui.payTab = ds.v as typeof ui.payTab;
+    render();
+  },
+  ledger: (ds) => openLedger(ds.id!),
+  takePayment: (ds) => {
+    const id = ds.id!;
+    const amount = Number(String(val("#lp-amount")).replace(",", "."));
+    if (!(amount > 0)) return toast(t("amountBad"));
+    const at = val("#lp-date") || today();
+    const note = val("#lp-note").trim();
+    const name = whoIs(store.s, id)?.name || "";
+    mutate(t("paymentAdded", { n: name, a: money(amount) }), () => {
+      store.s.payments.push(newPayment(id, amount, at, undefined, note || undefined));
+    });
+    openLedger(id);
+  },
+  refund: (ds) => {
+    const id = ds.id!;
+    const a = accounts(store.s, today()).get(id);
+    if (!a || a.credit <= 0) return;
+    mutate(t("refundNote") + ": " + money(a.credit), () => {
+      store.s.payments.push(newPayment(id, -a.credit, today(), undefined, t("refundNote")));
+    });
+    openLedger(id);
+  },
+  delPayment: (ds) => {
+    mutate(t("paymentDeleted"), () => {
+      store.s.payments = store.s.payments.filter((p) => p.id !== ds.id);
+    });
+    if (ds.pid) openLedger(ds.pid);
+  },
+  addExpense: () => {
+    const amount = Number(String(val("#ex-amount")).replace(",", "."));
+    if (!(amount > 0)) return toast(t("amountBad"));
+    const cat = (val("#ex-cat") || "other") as ExpenseCat;
+    mutate(t("expenseAdded"), () => {
+      store.s.expenses.push({ id: uid(), at: val("#ex-date") || today(), amount: Math.round(amount * 100) / 100, cat, note: val("#ex-note").trim() });
+    });
+  },
+  delExpense: (ds) => {
+    mutate(t("expenseDeleted"), () => {
+      store.s.expenses = store.s.expenses.filter((e) => e.id !== ds.id);
+    });
+  },
   settle: (ds) => {
     const name = whoIs(store.s, ds.id!)?.name || "";
     mutate(t("settled", { n: name }), () => {
@@ -560,6 +606,11 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
   const S = store.s;
   if (f === "payId") {
     ui.payId = v;
+    render();
+    return;
+  }
+  if (f === "month") {
+    ui.month = v;
     render();
     return;
   }

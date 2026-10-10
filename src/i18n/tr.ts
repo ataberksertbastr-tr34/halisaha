@@ -81,6 +81,14 @@ export const tr = {
   fixed: "Sabit oyuncu", fixedHint: "Her yeni maça otomatik \"Var\" yazılır.", fixedTag: "sabit", fixedOn: "{n} sabit oyuncu oldu", fixedOff: "{n} artık sabit değil",
   reliability: "Güvenilirlik", relTag: "güven %{n}", relMeta: "güvenilirlik %{s} ({l} geç iptal, {x} gelmedi)", noshowLast: "geçen maç gelmedi",
   noshowTitle: "Habersiz gelmeyenler", noshowHint: "Gelmeyenin adına dokun (Kural 1.6: payını öder).", host: "Getiren", hostNone: "Getiren: —", guestOf: "{n} misafiri",
+  paySubMatch: "Maç", paySubPeople: "Kişiler", paySubCash: "Kasa", ledger: "Hesap defteri", owesAmt: "Borç {a}", creditAmt: "Avans {a}", settledAcc: "Hesap kapalı",
+  takePayment: "Ödeme al", amount: "Tutar (₺)", note: "Not", fullAmt: "Tamamı", paymentAdded: "{n}: {a} ödeme alındı", paymentDeleted: "Ödeme silindi",
+  chargeRow: "{d} maç payı", paymentRow: "Ödeme", refund: "Avansı iade et", refundNote: "İade", totalOwed: "Toplam alacak", creditors: "Avansı olanlar",
+  allAccounts: "Tüm hesaplar", cashBox: "Kasa", cashHint: "Alınan ödemeler − sahaya ödenen ücretler − giderler", cashNeg: "Organizatör cebinden {a} koymuş",
+  monthly: "Aylık özet", mPlayed: "Oynanan maç", mCancelled: "İptal", mField: "Sahaya ödenen", mBilled: "Oyunculara yansıyan", mCollected: "Tahsil edilen", mExpenses: "Giderler", mCash: "Ay sonu kasa",
+  expenses: "Giderler", addExpense: "Gider ekle", expBall: "Top", expBib: "Yelek", expWater: "Su", expOther: "Diğer", expenseAdded: "Gider eklendi", expenseDeleted: "Gider silindi",
+  noExpenses: "Henüz gider yok.", category: "Tür", amountBad: "Geçerli bir tutar yaz.", noAccounts: "Henüz hesap hareketi yok.", openLedger: "Hesap defterini aç",
+  ledgerHint: "Maça yazılmamış ödemeler en eski borçtan başlayarak kapatır; fazlası avans olarak kalır.", partialPaid: "{p} ödendi", searchPeople: "Kişi ara…",
 } as const;
 
 export type MsgKey = keyof typeof tr;

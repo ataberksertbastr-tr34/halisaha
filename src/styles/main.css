@@ -343,3 +343,27 @@ button.qbtn { cursor: pointer; }
 .guest-row #guestHost { flex: 1 1 100%; }
 .btn.side { flex: 0 0 auto; white-space: nowrap; padding: 0 12px; }
 .split.grow { flex: 1 1 0; }
+
+/* ---------- ödemeler: alt bölümler, defter, kasa ---------- */
+.subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--surface-3); border-radius: 14px; padding: 4px; margin-bottom: 12px; }
+.subtab { min-height: 44px; border: none; background: transparent; border-radius: 10px; font-weight: 700; color: var(--muted); font-size: 15px; }
+.subtab.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.plink { border: none; background: none; padding: 0; font-weight: 600; text-align: left; color: inherit; max-width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 28px; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.acctrow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 52px; border: none; background: none; padding: 4px 0; text-align: left; color: inherit; }
+.acctrow > svg { width: 18px; height: 18px; color: var(--muted); }
+.bal { font-weight: 700; font-size: 14px; white-space: nowrap; flex: 0 0 auto; }
+.neg { color: var(--bad); } .pos { color: var(--ok); }
+.money-sum.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ledger-bal { font-family: var(--display); font-weight: 800; font-size: 30px; margin: 0 0 10px; }
+.paybox { background: var(--surface-2); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+.paybox input { background: var(--surface); }
+.llist { list-style: none; margin: 0; padding: 0; }
+.lrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); min-height: 52px; }
+.lrow:first-child { border-top: none; }
+.lrow .pname .tag { margin-left: 0; }
+.cashbig { font-family: var(--display); font-weight: 800; font-size: clamp(40px, 13vw, 60px); text-align: center; line-height: 1; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
+.kv { margin: 12px 0 0; display: grid; gap: 0; }
+.kv div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.kv div:first-child { border-top: none; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }

@@ -8,7 +8,7 @@ import { todayISO } from "../domain/dates";
 import { setLang, t } from "../i18n";
 import { toast } from "../ui/toast";
 
-export type FilterKey = "att" | "roster" | "team";
+export type FilterKey = "att" | "roster" | "team" | "people";
 export interface Filter {
   q: string;
   pos: string;
@@ -23,14 +23,18 @@ export interface UIState {
   fieldTarget: "match" | "default" | null;
   /** Maç kartındaki düzenleme alanları açık mı */
   detailsOpen: boolean;
+  /** Ödemeler sekmesindeki alt bölüm */
+  payTab: "match" | "people" | "cash";
+  /** Kasa bölümünde seçili ay (YYYY-AA) */
+  month: string;
   f: Record<FilterKey, Filter>;
 }
 
 export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
-  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false,
-  f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" } },
+  matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "",
+  f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" }, people: { q: "", pos: "" } },
 };
 
 type Fn = () => void;

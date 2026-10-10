@@ -101,6 +101,16 @@ describe("hesap defteri", () => {
     expect(a.owed).toBe(100); // m3 ödemesi m1'i kapattı
   });
 
+  it("avans iadesi (eksi ödeme) avansı sıfırlar, borç doğurmaz", () => {
+    const { s } = setup();
+    s.payments.push(newPayment("p0", 350, "2026-10-10"));
+    s.payments.push(newPayment("p0", -50, "2026-10-11", undefined, "İade"));
+    const a = accounts(s, TODAY).get("p0")!;
+    expect(a.credit).toBe(0);
+    expect(a.owed).toBe(0);
+    expect(a.paidTotal).toBe(300);
+  });
+
   it("misafirin hesabı da tutulur, getireni bilinir", () => {
     const m = allIn(match("m", { date: "2026-10-01", price: 300, format: 1, status: "played" }), ["p0", "g1"]);
     m.guests = [{ id: "g1", name: "Misafir Mert", rating: 3, pos: "", host: "p0" }];

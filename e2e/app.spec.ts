@@ -124,3 +124,33 @@ test("mesajlar tek dokunuşla paylaşılır; Web Share yoksa panoya kopyalanır"
   expect(clip).toContain("Saha ücreti");
   await ctx2.close();
 });
+
+test("hesap defteri: kısmi ödeme, avans, gider ve kasa", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('[data-a="payTab"][data-v="people"]').click();
+  // En borçlu kişinin defterini aç, 100 TL kısmi ödeme al
+  const first = page.locator("#list-people .acctrow").first();
+  const name = (await first.locator("strong").textContent())!.trim();
+  await first.click();
+  await expect(page.locator(".ledger-bal")).toContainText("Borç 300");
+  await page.locator("#lp-amount").fill("100");
+  await page.locator('[data-a="takePayment"]').click();
+  await expect(page.locator(".ledger-bal")).toContainText("Borç 200");
+  // Fazla ödeme → avans
+  await page.locator("#lp-amount").fill("250");
+  await page.locator('[data-a="takePayment"]').click();
+  await expect(page.locator(".ledger-bal")).toContainText("Avans 50");
+  await page.locator('[data-a="closeModal"]').click();
+  await expect(page.locator("#list-people")).toContainText(name);
+  // Kasa: gider ekle
+  await page.locator('[data-a="payTab"][data-v="cash"]').click();
+  await page.locator("#ex-amount").fill("450");
+  await page.locator("#ex-cat").selectOption("ball");
+  await page.locator('[data-a="addExpense"]').click();
+  await expect(page.locator(".llist")).toContainText("Top");
+  // 350 alındı − 3600 saha − 450 gider (fikstürde önceden 3 ödeme: 300+300+1000)
+  await expect(page.locator(".cashbig")).toBeVisible();
+  expect(errors).toEqual([]);
+});

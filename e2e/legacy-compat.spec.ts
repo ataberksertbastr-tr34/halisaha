@@ -52,7 +52,7 @@ test("eski uygulamanın yedeği yeni uygulamaya eksiksiz yüklenir", async ({ br
   await page.locator('#tabs [data-v="pay"]').click();
   const debtsSection = page.locator("section", { has: page.locator("#h-debts") });
   const newDebts = await debtsSection.locator(".payrow").evaluateAll((rows) =>
-    rows.map((r) => [r.querySelector("strong")!.textContent!.trim(), r.querySelector(".amount")!.textContent!.trim()]),
+    rows.map((r) => [r.querySelector(".pname > :first-child")!.textContent!.trim(), r.querySelector(".amount")!.textContent!.trim()]),
   );
   expect(newDebts).toEqual(legacyDebts);
   expect(newDebts.length).toBeGreaterThan(0);
