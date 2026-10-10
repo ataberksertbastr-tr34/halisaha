@@ -2,6 +2,7 @@
 import type { Match, State } from "./types";
 import { lineup, setAtt } from "./lineup";
 import { matchStart, weekday } from "./dates";
+import { isFootball } from "./kinds";
 
 const when = (m: Match) => m.date + " " + m.time;
 
@@ -10,8 +11,9 @@ const when = (m: Match) => m.date + " " + m.time;
  * yoksa önceki en yakın maç. İptal edilen ve kimsenin "Var" demediği maçlar atlanır.
  */
 export function lastWeekSource(s: State, m: Match): Match | null {
+  const kind = m.kind || "football";
   const prev = s.matches
-    .filter((x) => x.id !== m.id && x.status !== "cancelled" && when(x) < when(m) && x.order.some((id) => x.att[id] === "in"))
+    .filter((x) => x.id !== m.id && (x.kind || "football") === kind && x.status !== "cancelled" && when(x) < when(m) && x.order.some((id) => x.att[id] === "in"))
     .sort((a, b) => when(b).localeCompare(when(a)));
   return prev.find((x) => weekday(x.date) === weekday(m.date) && x.time === m.time) || prev[0] || null;
 }
@@ -31,8 +33,9 @@ export function copyLastWeek(s: State, m: Match): number {
   return ids.length;
 }
 
-/** Sabit oyuncuları (aktif ve yanıtsız) "Var" yazar. */
+/** Sabit oyuncuları (aktif ve yanıtsız) "Var" yazar. Yalnızca halı saha maçlarında. */
 export function applyFixed(s: State, m: Match): number {
+  if (!isFootball(m)) return 0;
   let n = 0;
   for (const p of s.players) {
     if (!p.fixed || p.active === false || m.att[p.id]) continue;
@@ -42,10 +45,24 @@ export function applyFixed(s: State, m: Match): number {
   return n;
 }
 
-/** Kadro kesinleşti mi (Kural 1.4): maça 24 saatten az kaldıysa. */
+/** Kesinleşme süresi (saat): halı saha 24 (Kural 1.4), etkinlik duyuruda belirtilen (Kural 15.3; 0 = yok). */
+export function lockHours(m: Match): number {
+  if (isFootball(m)) return 24;
+  return m.lockH == null ? 24 : Math.max(0, m.lockH);
+}
+
+/** Kesinleşme anı (yoksa null). */
+export function lockAt(m: Match): Date | null {
+  const h = lockHours(m);
+  if (!h) return null;
+  return new Date(matchStart(m.date, m.time).getTime() - h * 60 * 60 * 1000);
+}
+
+/** Kadro kesinleşti mi (Kural 1.4, 15.3). */
 export function isLocked(m: Match, now: Date): boolean {
   if (m.status !== "open") return false;
-  return matchStart(m.date, m.time).getTime() - now.getTime() < 24 * 60 * 60 * 1000;
+  const at = lockAt(m);
+  return !!at && now.getTime() >= at.getTime();
 }
 
 export interface Reliability {
@@ -82,8 +99,9 @@ export function reliability(s: State): Record<string, Reliability> {
   return out;
 }
 
-/** Önceki oynanmış maçta habersiz gelmeyenler (Kural 1.6: bir sonraki maçta yedeğin sonuna). */
+/** Önceki oynanmış (aynı türdeki) etkinlikte habersiz gelmeyenler (Kural 1.6). */
 export function noShowLastTime(s: State, m: Match): Set<string> {
-  const prev = s.matches.filter((x) => x.status === "played" && when(x) < when(m)).sort((a, b) => when(b).localeCompare(when(a)))[0];
+  const kind = m.kind || "football";
+  const prev = s.matches.filter((x) => x.status === "played" && (x.kind || "football") === kind && when(x) < when(m)).sort((a, b) => when(b).localeCompare(when(a)))[0];
   return new Set(prev ? Object.keys(prev.noshow) : []);
 }

@@ -2,6 +2,7 @@
 import type { Match, State } from "./types";
 import { matchStart } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
+import { eventTitle, isFootball, kindOf } from "./kinds";
 
 export const MATCH_MINUTES = 60;
 
@@ -44,14 +45,18 @@ export interface EventInfo {
   url: string;
 }
 
+/** Takvim kaydı. Halı sahada 60 dk (Kural 4.1); diğer etkinliklerde türün tipik süresi. */
 export function eventOf(s: State, m: Match, title: string): EventInfo {
   const f = fieldOf(s, m);
+  const fb = isFootball(m);
+  const k = kindOf(m);
   const start = matchStart(m.date, m.time);
-  const end = new Date(start.getTime() + MATCH_MINUTES * 60 * 1000);
+  const end = new Date(start.getTime() + (fb ? MATCH_MINUTES : k.minutes) * 60 * 1000);
   const url = mapsUrl(f);
   const location = f ? [f.name, f.address].filter(Boolean).join(", ") : "";
-  const description = [(m.format || s.settings.format) + "+1", url].filter(Boolean).join("\n");
-  return { uid: m.id + "@halisaha", start, end, title: f ? title + " – " + f.name : title, location, description, url };
+  const description = [fb ? (m.format || s.settings.format) + "+1" : "", m.note || "", url].filter(Boolean).join("\n");
+  const name = fb && !m.title ? title : k.emoji + " " + eventTitle(m);
+  return { uid: m.id + "@halisaha", start, end, title: f ? name + " – " + f.name : name, location, description, url };
 }
 
 export function buildICS(events: EventInfo[], now: Date = new Date(), alarmMinutes = 120): string {

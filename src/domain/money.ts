@@ -1,13 +1,17 @@
-/** Saha ücreti paylaşımı ve borçlar (Kural 1.5, 1.9, 2.1, 2.2, 2.4). */
+/** Saha/tesis ücreti paylaşımı ve borçlar (Kural 1.5, 1.9, 2.1, 2.2, 2.4, 15.4, 15.7). */
 import type { Match, State } from "./types";
-import { getP, isGK, lineup } from "./lineup";
+import { capOf, getP, isGK, lineup } from "./lineup";
+import { isFootball } from "./kinds";
 
-/** Kaleciler ücretsizse (Kural 2.1) kaleci ödemez. */
+/** Kaleciler ücretsizse (Kural 2.1) halı saha maçında kaleci ödemez. */
 export function isFree(s: State, m: Match, id: string): boolean {
-  return !!(s.settings.gkFree && isGK(getP(s, m, id)));
+  return !!(s.settings.gkFree && isFootball(m) && isGK(getP(s, m, id)));
 }
 
-/** Ödeyenler: oynayan kadro + geç iptal edenler; kaleciler (ayara göre) ve muaflar hariç. İptal maçta kimse ödemez. */
+/**
+ * Ödeyenler: oynayan kadro (oyundan alınanlar dahil, Kural 15.7) + geç iptal
+ * edenler; kaleciler (ayara göre) ve muaflar hariç. İptal maçta kimse ödemez.
+ */
 export function payersOf(s: State, m: Match): string[] {
   if (m.status === "cancelled") return [];
   const { playing } = lineup(s, m);
@@ -25,12 +29,20 @@ export function shareOf(s: State, m: Match): number {
   return n ? roundShare(s, (Number(m.price) || 0) / n) : 0;
 }
 
-/** Henüz kimse yokken tahmini pay: kontenjana (kaleciler hariç) bölünür. */
+/**
+ * Tahmini pay. Halı saha: henüz kimse yokken kontenjana (kaleciler hariç) bölünür.
+ * Etkinlik: kontenjan doluysa kesin pay; değilse kontenjana bölünür (en iyi durum),
+ * kontenjan yoksa yazılanlara.
+ */
 export function estShare(s: State, m: Match): number {
   const n = payersOf(s, m).length;
-  if (n) return shareOf(s, m);
-  const c = (m.format || s.settings.format) * 2 + 2 - (s.settings.gkFree ? 2 : 0);
-  return roundShare(s, (Number(m.price) || 0) / Math.max(1, c));
+  if (isFootball(m)) {
+    if (n) return shareOf(s, m);
+    const c = (m.format || s.settings.format) * 2 + 2 - (s.settings.gkFree ? 2 : 0);
+    return roundShare(s, (Number(m.price) || 0) / Math.max(1, c));
+  }
+  const cap = capOf(s, m);
+  return roundShare(s, (Number(m.price) || 0) / Math.max(1, cap || n));
 }
 
 /** Ödemesi gelmiş maç: oynanmış ya da tarihi bugün/geçmiş olan açık maç. */

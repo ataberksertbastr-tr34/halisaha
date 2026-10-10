@@ -1,5 +1,6 @@
-/** Kadro, kontenjan ve yedek listesi (Kural 1.2, 1.3). */
+/** Kadro, kontenjan ve yedek listesi (Kural 1.2, 1.3, 1.6, 15.2). */
 import type { Att, Match, Person, State } from "./types";
+import { isFootball } from "./kinds";
 
 /** Oyuncu ya da o maçın misafiri. */
 export function getP(s: State, m: Match | null | undefined, id: string): Person | null {
@@ -12,16 +13,56 @@ export function isGuest(s: State, id: string): boolean {
 
 export const isGK = (p: Person | null | undefined): boolean => !!(p && p.pos === "GK");
 
-/** Kontenjan: (format + kaleci) × 2 takım. 7+1 → 16 kişi. */
+/**
+ * Kontenjan. Halı saha: (format + kaleci) × 2 takım, 7+1 → 16 kişi.
+ * Diğer etkinlikler: girilen kontenjan; 0 = sınırsız.
+ */
 export function capOf(s: State, m: Match): number {
-  return ((m.format || s.settings.format) + 1) * 2;
+  if (isFootball(m)) return ((m.format || s.settings.format) + 1) * 2;
+  return Math.max(0, Math.round(m.cap || 0));
 }
 
-/** Yazılma sırasına göre ilk "kontenjan" kadar kişi oynar, gerisi yedektir. "Belki" sayılmaz. */
+const when = (m: Pick<Match, "date" | "time">) => m.date + " " + m.time;
+
+/**
+ * Kural 1.6: bir önceki oynanmış halı saha maçında habersiz gelmeyenler.
+ * Bu maçta yedek listesinin sonuna yazılırlar.
+ */
+export function penalized(s: State, m: Match): Set<string> {
+  // Yalnızca açık maçta uygulanır; maç bitince sıra kalıcı hale getirilir (materializeOrder).
+  if (m.status !== "open" || !isFootball(m) || !s.settings.noShowPenalty) return new Set();
+  let prev: Match | null = null;
+  for (const x of s.matches) {
+    if (x.status !== "played" || !isFootball(x) || when(x) >= when(m)) continue;
+    if (!prev || when(x) > when(prev)) prev = x;
+  }
+  return new Set(prev ? Object.keys(prev.noshow || {}) : []);
+}
+
+/**
+ * Yazılma sırasına göre ilk "kontenjan" kadar kişi oynar, gerisi yedektir.
+ * "Belki" sayılmaz. Kural 1.6 cezalıları sıranın sonuna gider.
+ */
 export function lineup(s: State, m: Match): { playing: string[]; wait: string[] } {
-  const ins = m.order.filter((id) => m.att[id] === "in" && getP(s, m, id));
+  let ins = m.order.filter((id) => m.att[id] === "in" && getP(s, m, id));
+  const pen = penalized(s, m);
+  if (pen.size) ins = [...ins.filter((id) => !pen.has(id)), ...ins.filter((id) => pen.has(id))];
   const c = capOf(s, m);
+  if (!c) return { playing: ins, wait: [] };
   return { playing: ins.slice(0, c), wait: ins.slice(c) };
+}
+
+/** Maç bitince Kural 1.6 sırasını kalıcı yapar (geçmiş, sonradan değişen ayarlardan etkilenmesin). */
+export function materializeOrder(s: State, m: Match): void {
+  const pen = penalized(s, m);
+  if (!pen.size) return;
+  m.order = [...m.order.filter((id) => !pen.has(id)), ...m.order.filter((id) => pen.has(id))];
+}
+
+/** Oyuna girebilenler: oynayan kadro, oyundan alınanlar hariç (Kural 15.7, 16.2, 17.2, 9.1). */
+export function active(s: State, m: Match): string[] {
+  const removed = m.removed || {};
+  return lineup(s, m).playing.filter((id) => !removed[id]);
 }
 
 /**
@@ -44,7 +85,7 @@ export function promoted(before: string[], after: string[]): string[] {
 
 /** Takım listelerini güncel kadroyla senkronlar; takımı olmayanları döndürür. */
 export function cleanTeams(s: State, m: Match): string[] {
-  const playing = lineup(s, m).playing;
+  const playing = active(s, m);
   const set = new Set(playing);
   m.teams.a = m.teams.a.filter((id) => set.has(id));
   m.teams.b = m.teams.b.filter((id) => set.has(id));

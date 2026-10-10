@@ -1,9 +1,10 @@
-/** Maç planlama: haftalık günlere göre sıradaki maç. */
-import type { Match, State } from "./types";
+/** Maç planlama: haftalık günlere göre sıradaki maç; diğer etkinliklerin oluşturulması. */
+import type { Kind, Match, State } from "./types";
 import { addDays, iso, matchStart, parseISO } from "./dates";
 import { applyFixed } from "./roster";
 import { getField } from "./fields";
-import { uid } from "./text";
+import { blankMatch } from "./schema";
+import { inheritAgreements, isFootball, kindDef } from "./kinds";
 
 export function activeSlots(s: State) {
   return s.settings.slots.filter((x) => x && x.d !== "" && x.d != null);
@@ -22,19 +23,42 @@ export function nextSlot(s: State, afterISO: string): { date: string; time: stri
   return { date: addDays(afterISO, 1), time: "21:00" };
 }
 
+function footballMatch(s: State, date: string, time: string, extra: Partial<Match> = {}): Match {
+  const f = getField(s, s.settings.defaultFieldId);
+  return blankMatch("football", date, time, {
+    fieldId: f ? f.id : "", price: (f && Number(f.price)) || Number(s.settings.price) || 0, format: s.settings.format,
+    agree: inheritAgreements(s, "football"), ...extra,
+  });
+}
+
 /** Yeni maç kaydı: varsayılan saha ve ücretiyle, son maçtan (ya da bugünden) sonraki ilk maç gününe. */
 export function makeMatch(s: State, today: string): Match {
-  const all = s.matches.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const all = s.matches.filter(isFootball).sort((a, b) => a.date.localeCompare(b.date));
   const last = all.length ? all[all.length - 1].date : null;
   const yesterday = addDays(today, -1);
   const ns = nextSlot(s, last && last > yesterday ? last : yesterday);
-  const f = getField(s, s.settings.defaultFieldId);
-  return {
-    id: uid(), date: ns.date, time: ns.time, fieldId: f ? f.id : "",
-    price: (f && Number(f.price)) || Number(s.settings.price) || 0, format: s.settings.format,
-    status: "open", att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
-    locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false,
-  };
+  return footballMatch(s, ns.date, ns.time);
+}
+
+/** Sıradaki cumartesi (bugün cumartesiyse bir sonraki). */
+export function nextSaturday(today: string): string {
+  const d = parseISO(today).getDay();
+  return addDays(today, ((6 - d + 7) % 7) || 7);
+}
+
+/**
+ * Yeni etkinlik (Kural 15.2): türün varsayılan kontenjanı, kesinleşme süresi ve
+ * saatiyle sıradaki cumartesiye; ön anlaşmalar aynı türdeki son etkinlikten.
+ */
+export function makeEvent(s: State, kind: Kind, today: string): Match {
+  if (kind === "football") return makeMatch(s, today);
+  const d = kindDef(kind);
+  const prev = s.matches.filter((m) => m.kind === kind).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  return blankMatch(kind, nextSaturday(today), prev?.time || d.time, {
+    cap: prev ? prev.cap : d.cap, lockH: prev ? prev.lockH : d.lockH,
+    fieldId: prev?.fieldId && getField(s, prev.fieldId) ? prev.fieldId : "", price: prev ? prev.price : 0,
+    format: s.settings.format, agree: inheritAgreements(s, kind),
+  });
 }
 
 export const UPCOMING = 4;
@@ -68,19 +92,13 @@ export function upcomingSlots(s: State, now: Date, n = UPCOMING): { date: string
  */
 export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
   if (!s.settings.autoSchedule) return [];
-  const have = new Set(s.matches.map((m) => slotKey(m.date, m.time)));
+  const have = new Set(s.matches.filter(isFootball).map((m) => slotKey(m.date, m.time)));
   const skipped = new Set(s.skipped);
   const created: Match[] = [];
-  const f = getField(s, s.settings.defaultFieldId);
   for (const { date, time } of upcomingSlots(s, now, n)) {
     const key = slotKey(date, time);
     if (have.has(key) || skipped.has(key)) continue;
-    const m: Match = {
-      id: uid(), date, time, fieldId: f ? f.id : "",
-      price: (f && Number(f.price)) || Number(s.settings.price) || 0, format: s.settings.format,
-      status: "open", att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
-      locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false, auto: true,
-    };
+    const m = footballMatch(s, date, time, { auto: true });
     applyFixed(s, m);
     s.matches.push(m);
     created.push(m);
@@ -98,7 +116,7 @@ export function rememberSkip(s: State, m: Match): void {
   s.skipped = s.skipped.filter((k) => k.slice(0, 10) >= cutoff);
 }
 
-/** Saha rezerve edilmemiş ve yaklaşan maçlar (hatırlatma için). */
+/** Saha/tesis rezerve edilmemiş ve yaklaşan etkinlikler (hatırlatma için). */
 export function needsReservation(s: State, now: Date): Match[] {
   const days = s.settings.reserveDays;
   if (!days) return [];

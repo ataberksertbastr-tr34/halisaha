@@ -1,6 +1,13 @@
 import type { Lang } from "../i18n";
 
 export type Pos = "" | "GK" | "DEF" | "MID" | "FWD";
+
+/**
+ * Etkinlik türü (Yönetmelik Kısım 1 ve 3). Halı saha maçı "football";
+ * eski verideki tüm maçlar halı sahadır.
+ */
+export type Kind = "football" | "paintball" | "airsoft" | "volleyball" | "footvolley" | "tabletennis" | "kiraathane" | "other";
+export const KINDS: Kind[] = ["football", "paintball", "airsoft", "volleyball", "footvolley", "tabletennis", "kiraathane", "other"];
 export const POSITIONS: Exclude<Pos, "">[] = ["GK", "DEF", "MID", "FWD"];
 
 /** Katılım: Var / Belki / Yok / Geç iptal. Yanıt yoksa anahtar hiç yoktur. */
@@ -16,7 +23,13 @@ export interface Slot {
 }
 
 /** Düzenlenebilir mesaj şablonları */
-export type TemplateKey = "invite" | "squad" | "teams" | "pay" | "personalPay" | "promoted";
+export type TemplateKey = "invite" | "squad" | "teams" | "pay" | "personalPay" | "promoted" | "brief" | "cars" | "cancel";
+
+/** Takım adı ve yelek rengi (Kural 3.3). */
+export interface TeamStyle {
+  name: string;
+  color: string;
+}
 
 export interface Settings {
   defaultFieldId: string;
@@ -39,6 +52,13 @@ export interface Settings {
   perf: boolean;
   /** Saha rezerve edilmediyse maçtan kaç gün önce uyarılsın */
   reserveDays: number;
+  /** Takım adları ve yelek renkleri ("" = varsayılan) */
+  teamA: TeamStyle;
+  teamB: TeamStyle;
+  /** Kural 2.4: borcu olan kadroya yazılamaz (organizatör yine de ekleyebilir) */
+  debtBlock: boolean;
+  /** Kural 1.6: habersiz gelmeyen bir sonraki maçta yedeğin sonuna yazılır */
+  noShowPenalty: boolean;
 }
 
 export interface Field {
@@ -76,8 +96,77 @@ export interface Score {
   b: number;
 }
 
+/** Araç paylaşımı (Kural 15.8): yakıt ve geçiş ücreti araçtakiler arasında eşit bölünür. */
+export interface Car {
+  id: string;
+  /** Sürücü (oyuncu/misafir id) */
+  driver: string;
+  seats: number;
+  pax: string[];
+  fuel: number;
+  toll: number;
+}
+
+/**
+ * Skor tutulan oyun: voleybol, ayak tenisi, masa tenisi (set/sayı), tavla
+ * (mars 2 sayı), raunt ya da masa sonucu. Durum sayı kayıtlarından (pts)
+ * yeniden hesaplanır; "Geri al" son kaydı siler.
+ */
+export type GameType = "sets" | "tavla" | "rounds" | "result";
+export interface GameCfg {
+  /** Set sayı hedefi */
+  to: number;
+  /** Son (karar) setin sayı hedefi */
+  last: number;
+  /** Kaç sette biter (3 → 2 set alan kazanır) */
+  bestOf: number;
+  /** En az 2 sayı fark */
+  by2: boolean;
+  /** Servis kuralı: rally (sayıyı alan servis atar), tt (masa tenisi: 2'şer, 10-10'dan sonra 1'er) */
+  serve: "" | "rally" | "tt";
+}
+export interface Game {
+  id: string;
+  type: GameType;
+  label: string;
+  a: string[];
+  b: string[];
+  cfg: GameCfg;
+  /** "a", "b" ya da ağırlıklı "a2" (tavlada mars) */
+  pts: string[];
+  /** İlk servis */
+  first: "a" | "b";
+  /** Elle bitirilen ya da sonucu doğrudan girilen oyun */
+  win?: "a" | "b" | "d";
+  done: boolean;
+  at: string;
+}
+
+/** Kura: kıraathane masaları, ayak tenisi takımları, masa tenisi çiftleri (Kural 19.1, 20.6, 21.1). */
+export interface Draw {
+  game: string;
+  size: number;
+  pairs: boolean;
+  groups: string[][];
+}
+
+/** Masa sırası: kazanan kalır, en fazla N maç üst üste (Kural 20.7). */
+export interface Queue {
+  order: string[];
+  table: string[];
+  streak: number;
+}
+
 export interface Match {
   id: string;
+  /** Etkinlik türü (eski veri: halı saha) */
+  kind: Kind;
+  /** Etkinlik adı (ör. "Şile Paintball"); boşsa türün adı */
+  title: string;
+  /** Kontenjan: halı sahada formattan, diğerlerinde bu alandan (0 = sınırsız) */
+  cap: number;
+  /** Kadronun kesinleşmesi: başlangıçtan kaç saat önce (Kural 1.4, 15.3) */
+  lockH: number;
   date: string;
   time: string;
   fieldId: string;
@@ -108,6 +197,20 @@ export interface Match {
   auto?: boolean;
   /** Maç bitince donan ödeme listesi ve pay (ayar değişse de geçmiş bozulmasın) */
   bill?: { payers: string[]; share: number };
+  /** Oyundan alınanlar → kural no (alkol 15.7, maske 16.2 …); payını öder, takıma/oyuna girmez */
+  removed: Record<string, string>;
+  /** Hazırlık listesi (tür bazında) */
+  checks: Record<string, boolean>;
+  /** Ön anlaşmalar (Kural 4.1, 6.2, 7.6, 11.1, 16.6, 17.5, 18.2, 19.1, 20.1, 21.2 …) */
+  agree: Record<string, string>;
+  /** Etkinlik notu (brifing mesajına eklenir) */
+  note: string;
+  cars: Car[];
+  games: Game[];
+  draw?: Draw;
+  queue?: Queue;
+  /** Maç saati (Kural 4.1): çalışıyorsa başlangıç anı, birikmiş süre (ms) */
+  clock?: { start: number; acc: number };
 }
 
 /** Hesap defteri: alınan her ödeme bir kayıttır. mid varsa o maçın payına sayılır, yoksa en eski borçlara. */
@@ -119,7 +222,49 @@ export interface Payment {
   /** YYYY-AA-GG */
   at: string;
   mid?: string;
+  /** Ek borca (ExtraCharge) yazılan ödeme */
+  cid?: string;
   note?: string;
+}
+
+/**
+ * Kişiye yazılan ek borç: etkinlikte kişisel harcama (ek boya/mermi, Kural 15.4),
+ * tesise verilen zarar (Kural 10.5) ya da organizatörün yazdığı başka bir kalem.
+ */
+export interface ExtraCharge {
+  id: string;
+  pid: string;
+  amount: number;
+  at: string;
+  note: string;
+  /** Etkinlik (varsa vadesi etkinlik tarihidir) */
+  mid?: string;
+  /** İlgili kural ("10.5" gibi) */
+  rule?: string;
+}
+
+/** Disiplin yaptırımı (Kural 9.3 ve Ek: Yaptırımlar Özet Tablosu). */
+export type Sanction = "warn" | "bench" | "ban" | "expel" | "kindBan" | "dropDay" | "dropGame" | "remove" | "damage";
+export interface Infraction {
+  id: string;
+  pid: string;
+  at: string;
+  /** İhlal türü (katalog anahtarı) */
+  type: string;
+  /** Kural numarası */
+  rule: string;
+  sanction: Sanction;
+  /** İhlalin olduğu etkinlik */
+  mid?: string;
+  /** "Bir maç kadroya alınmaz" cezasının uygulanacağı maç */
+  target?: string;
+  /** Tür yasağı (Kural 17.4: airsoft) */
+  kind?: Kind;
+  /** Zarar bedeli kaydı */
+  cid?: string;
+  /** Kural 9.3 kademesi: 1 uyarı, 2 bir maç kadroya alınmaz, 3 davet edilmez */
+  step?: number;
+  note: string;
 }
 
 export type ExpenseCat = "ball" | "bib" | "water" | "other";
@@ -151,4 +296,8 @@ export interface State {
   pairRules: PairRule[];
   /** Silinen otomatik maçlar ("tarih saat"), tekrar oluşturulmasın */
   skipped: string[];
+  /** Kişiye yazılan ek borçlar */
+  charges: ExtraCharge[];
+  /** Disiplin kayıtları */
+  discipline: Infraction[];
 }
