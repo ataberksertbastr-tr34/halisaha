@@ -52,7 +52,7 @@ describe("şablon motoru", () => {
   it("kişisel şablon IBAN yoksa IBAN satırını atar; özel şablon kullanılır", () => {
     setLang("tr");
     const s = state([player("a", "Deniz Örnek")]);
-    expect(personalPayText(s, "Deniz", 215)).toBe("Selam Deniz, halı saha borcun 215 ₺.\nTeşekkürler!");
+    expect(personalPayText(s, "Deniz", 215)).toBe("Selam Deniz, organizasyonlardan kalan borcun 215 ₺.\nTeşekkürler!");
     s.settings.iban = "TR11";
     expect(personalPayText(s, "Deniz", 215)).toContain("IBAN: TR11");
     s.settings.templates.personalPay = "{ad}: {tutar}";

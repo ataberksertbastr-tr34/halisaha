@@ -1,10 +1,10 @@
-# Halı Saha Organizatörü – proje notları
+# Predators · Organizatör – proje notları
 
 ## Bu proje ne?
-Haftada iki halı saha maçı organize eden tek bir kişinin (organizatör) telefonunda her gün kullandığı uygulama. Organizatör kadroyu toplar, sahayı ayarlar, takımları kurar ve saha ücretini toplar. Uygulamanın tek amacı bu işi hızlandırmak.
+Predators grubunda haftada iki halı saha maçı ve paintball, airsoft, voleybol, ayak tenisi, masa tenisi, kıraathane gibi etkinlikleri organize eden tek bir kişinin (organizatör) telefonunda her gün kullandığı uygulama. Organizatör kadroyu toplar, sahayı/mekânı ayarlar, takımları ve kurayı kurar, ücreti toplar, disiplini yürütür. Uygulamanın tek amacı bu işi hızlandırmak.
 
 - Başlangıç kodu: `index.html` (bağımlılıksız, tek dosya, vanilla JS).
-- Grup kuralları: `KURALLAR.md` (uygulamadaki iş kuralları bunlarla tutarlı olmalı: 24 saat kuralı, geç iptal payı öder, kaleciler ücretsiz, borçlu oyuncu uyarısı vb.).
+- Grup kuralları: `KURALLAR.md` ("Halı Saha ve Etkinlik Kuralları": 3 kısım, 21 bölüm, altın kurallar, yaptırımlar tablosu). Uygulamadaki iş kuralları bunlarla tutarlı olmalı: 24 saat kuralı (1.4), geç iptal payı öder (1.5, 15.3), habersiz gelmeyen sıranın sonuna (1.6), kaleciler ücretsiz (2.1), borçlu yazılamaz (2.4), kademeli yaptırım (9.3), etkinlik kuralları (Bölüm 15–21). Kod ve metinlerde madde numarasıyla atıf yapılır.
 
 ## Değişmez kurallar
 - Arayüz dili Türkçe (İngilizce seçeneği korunur). Türkçe karakter, büyük/küçük harf ve alfabetik sıralama doğru olmalı (`localeCompare(..., "tr")`).
@@ -12,7 +12,8 @@ Haftada iki halı saha maçı organize eden tek bir kişinin (organizatör) tele
 - Veri uyumluluğu kutsal: eski uygulamanın "Yedeği kopyala" ile ürettiği JSON (şema v1 ve v2; `index.html` içindeki `migrate()` fonksiyonuna bak) her zaman eksiksiz içe aktarılabilmeli. Şema değişirse sürüm numarası artar ve migration + test yazılır.
 - Kişisel veri (oyuncu isimleri, telefon numaraları, IBAN, yedek dosyaları) asla repoya commit edilmez. Test verileri uydurma isimlerle yazılır.
 - Organizatör telefonunda hiçbir şey kurmaz. Test, derleme ve yayın GitHub Actions ile yapılır; yayın GitHub Pages'e gider.
-- Görsel kimlik: halı saha yeşili, takım yelek renkleri (Sarılar `#E2F01C`, Turuncular `#FF6A1A`), Barlow / Barlow Condensed fontları. Açık ve koyu tema desteklenir.
+- Görsel kimlik: Predators arması ve renkleri — gece siyahı `#13161C`, altın `#C9A04B`, bordo `#84191F`, krem `#EEEAD9`; üst bölüm iki temada da gece siyahı. Takım yelekleri Ayarlar'dan (varsayılan Sarılar `#E6CF3A`, Turuncular `#EE7A2C`). Barlow / Barlow Condensed fontları. Açık (fildişi) ve koyu (gece) tema desteklenir.
+- Halı saha mesaj şablonlarının varsayılanları eski uygulamanın mesajlarıyla birebir aynı kalır (`tests/messages.test.ts`).
 
 ## Çalışma şekli
 - Organizatöre soru sormak için durma; makul varsayımlar yap ve PR açıklamasında listele.

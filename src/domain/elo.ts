@@ -12,6 +12,7 @@
  */
 import type { Match, State } from "./types";
 import { getP } from "./lineup";
+import { isFootball } from "./kinds";
 
 export const BASE = 1000;
 export const PER_LEVEL = 100;
@@ -39,7 +40,7 @@ export function perfRatings(s: State): Record<string, Perf> {
   const games: Record<string, number> = {};
   s.players.forEach((p) => (elo[p.id] = toElo(p.rating || 3)));
   const played = s.matches
-    .filter((m) => m.status === "played" && m.score && m.teams.a.length && m.teams.b.length)
+    .filter((m) => m.status === "played" && isFootball(m) && m.score && m.teams.a.length && m.teams.b.length)
     .sort((a, b) => when(a).localeCompare(when(b)));
   for (const m of played) {
     // Misafirler yalnızca o maç için verilen seviyeyle hesaba katılır
@@ -68,9 +69,9 @@ export function perfRatings(s: State): Record<string, Perf> {
 /** Performansın güçteki ağırlığı: maç başına %5, en fazla %50. */
 export const perfWeight = (games: number) => Math.min(0.5, games * 0.05);
 
-/** Takım kurmada kullanılan güç fonksiyonu. Performans kapalıysa sadece seviye. */
+/** Takım kurmada kullanılan güç fonksiyonu. Performans kapalıysa (ya da etkinlikte) sadece seviye. */
 export function strengthFn(s: State, m: Match): (id: string) => number {
-  const perfs = s.settings.perf ? perfRatings(s) : {};
+  const perfs = s.settings.perf && isFootball(m) ? perfRatings(s) : {};
   return (id) => {
     const r = getP(s, m, id)?.rating || 3;
     const p = perfs[id];

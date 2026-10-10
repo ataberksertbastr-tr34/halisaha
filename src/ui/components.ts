@@ -8,7 +8,19 @@ import { ddmm } from "../domain/dates";
 import { dirUrl, mapsUrl, telHref } from "../domain/fields";
 import { dayName } from "../domain/messages";
 import { openMatches } from "../domain/lineup";
-import { IC } from "./icons";
+import { eventTitle, isFootball, kindOf, L } from "../domain/kinds";
+import { IC, type IconKey } from "./icons";
+
+/** Etkinlik türünün ikonu. */
+export function kindIcon(m: Pick<Match, "kind"> | null | undefined): string {
+  return IC[(kindOf(m).icon as IconKey) || "ball"] || IC.ball;
+}
+
+/** Kural numarası rozeti: dokununca kurallarda o maddeye gider. */
+export function ruleChip(rule: string): string {
+  if (!rule) return "";
+  return '<button type="button" class="rchip" data-a="nav" data-v="rules" data-id="' + esc(rule) + '" aria-label="' + esc(t("ruleN", { n: rule })) + '">' + esc(rule) + "</button>";
+}
 
 export const posKey = (p: string) => ("pos" + p) as MsgKey;
 export const posShort = (p: string) => ("s" + p) as MsgKey;
@@ -27,7 +39,7 @@ function fchip(key: FilterKey, type: "pos" | "st", v: string, label: string): st
 }
 
 /** Arama kutusu + mevki (ve isteğe bağlı durum) filtreleri; liste kaydırılırken üstte yapışık kalır. */
-export function filterBar(key: FilterKey, withStatus: boolean): string {
+export function filterBar(key: FilterKey, withStatus: boolean, withPos = true): string {
   const f = ui.f[key];
   let h = '<div class="finder"><div class="search">' + IC.search +
     '<input type="search" id="q-' + key + '" data-q="' + key + '" placeholder="' + esc(t("search")) + '" value="' + esc(f.q) + '" autocomplete="off" enterkeyhint="search" aria-label="' + esc(t("search")) + '">' +
@@ -35,10 +47,10 @@ export function filterBar(key: FilterKey, withStatus: boolean): string {
   h += '<div class="filters">';
   if (withStatus) {
     const st: [string, MsgKey][] = [["", "all"], ["in", "statusIn"], ["maybe", "maybe"], ["none", "statusNone"], ["out", "statusOut"]];
-    h += st.map(([v, l]) => fchip(key, "st", v, t(l))).join("") + '<span class="fsep" aria-hidden="true"></span>';
+    h += st.map(([v, l]) => fchip(key, "st", v, t(l))).join("") + (withPos ? '<span class="fsep" aria-hidden="true"></span>' : "");
   }
-  h += fchip(key, "pos", "", t("allPos")) + POSITIONS.map((p) => fchip(key, "pos", p, t(posKey(p)))).join("") + "</div></div>";
-  return h;
+  if (withPos) h += fchip(key, "pos", "", t("allPos")) + POSITIONS.map((p) => fchip(key, "pos", p, t(posKey(p)))).join("");
+  return h + "</div></div>";
 }
 
 /** Filtreyi yeniden çizmeden uygular (yazarken klavye kapanmasın diye). */
@@ -68,10 +80,18 @@ export function matchLabel(m: Match): string {
   return dayName(m.date).slice(0, 3) + " " + ddmm(m.date);
 }
 
+/** Seçim listelerinde etkinlik adı: "Sal 13.10 21:00 · Paintball" */
+export function eventOption(m: Match): string {
+  return dayName(m.date) + " " + ddmm(m.date) + " " + m.time + (isFootball(m) && !m.title ? "" : " · " + eventTitle(m));
+}
+
 export function matchChips(selId: string): string {
   const list = openMatches(store.s);
-  return '<div class="chips" role="group" aria-label="' + esc(t("matchSel")) + '">' + list.map((m) => '<button type="button" aria-pressed="' + (m.id === selId) + '" class="chip' + (m.id === selId ? " on" : "") + '" data-a="selMatch" data-id="' + esc(m.id) + '">' + esc(matchLabel(m)) + "</button>").join("") +
-    '<button type="button" class="chip add" data-a="newMatch">+ ' + esc(t("newMatch")) + "</button></div>";
+  return '<div class="chips" role="group" aria-label="' + esc(t("matchSel")) + '">' + list.map((m) => {
+    const label = matchLabel(m) + (isFootball(m) ? "" : " · " + (m.title || L(kindOf(m).short)));
+    return '<button type="button" aria-pressed="' + (m.id === selId) + '" class="chip' + (m.id === selId ? " on" : "") + '" data-a="selMatch" data-id="' + esc(m.id) + '">' + (isFootball(m) ? "" : kindIcon(m)) + esc(label) + "</button>";
+  }).join("") +
+    '<button type="button" class="chip add" data-a="newEvent">+ ' + esc(t("newEvent")) + "</button></div>";
 }
 
 export function fieldCard(f: (Partial<Field> & { name: string }) | null, editable: boolean): string {

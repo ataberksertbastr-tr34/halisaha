@@ -1,8 +1,11 @@
-# Halı Saha Organizatörü
+# Predators · Organizatör
 
-Haftalık halı saha maçlarını organize etmek için telefonun ana ekranına kurulan,
-**internetsiz de çalışan** uygulama: kadro, yedek listesi, takımlar, saha,
-ödemeler, kasa, istatistikler ve grup kuralları tek yerde.
+Predators grubunun haftalık halı saha maçlarını ve diğer etkinliklerini
+(paintball, airsoft, voleybol, ayak tenisi, masa tenisi, kıraathane ve
+diğerleri) organize etmek için telefonun ana ekranına kurulan, **internetsiz de
+çalışan** uygulama: kadro, yedek listesi, takımlar ve kura, skor tabelası,
+ödemeler, kasa, disiplin, duyurular, istatistikler ve
+[Halı Saha ve Etkinlik Kuralları](KURALLAR.md) tek yerde.
 
 **Uygulama adresi:** <https://ataberksertbastr-tr34.github.io/halisaha/>
 
@@ -17,7 +20,7 @@ Haftalık halı saha maçlarını organize etmek için telefonun ana ekranına k
 
 1. Chrome'da uygulama adresini aç.
 2. Üstte **Yükle** düğmesi çıkar (ya da Chrome menüsü ⋮ → **Uygulamayı yükle**).
-3. Onayla. Ana ekranda yeşil-sarı-turuncu top ikonuyla **Halı Saha** belirir.
+3. Onayla. Ana ekranda Predators armasıyla **Predators** belirir.
 
 ### iPhone (Safari)
 
@@ -77,29 +80,56 @@ veriler gider; bu yüzden **düzenli yedek al**.
 
 ## 4. Neler yapabilirsin?
 
+- **Etkinlikler (Kısım 3):** "+ Yeni etkinlik" ile halı saha, paintball,
+  airsoft, voleybol, ayak tenisi, masa tenisi, kıraathane ya da diğer etkinlik.
+  Her türün kontenjanı, katılım kesinleşme süresi (Kural 15.3), hazırlık listesi
+  (maske, krono, brifing, ön ödeme…), yönetmeliğin "önceden anlaşılır" dediği
+  konular (Kural 3.5, 4.1, 6.2, 16.6, 17.5, 18.2, 19.1, 20.7, 21.4…), brifing
+  mesajı ve araç paylaşımı
+  (yakıt/geçiş kişi başı, Kural 15.8) var.
+- **Sonuçlar türe göre:** halı sahada maç saati (60 dk / 2×30, devre arası ve
+  kaleci değişimi hatırlatması), gol ve maçın oyuncusu; paintball/airsoft'ta
+  raunt sayacı; voleybol, ayak tenisi ve masa tenisinde servis takipli
+  skorbord (25-25-15, 2 fark, 11'lik oyunlar, 10-10 sonrası servis); kıraathanede
+  masa sonuçları ve tavla (mars 2 sayı).
+- **Kura:** ayak tenisi tekli/çiftli/üçlü dengeli takım kurası, masa tenisi
+  "kazanan kalır" sırası (üst üste sınır), kıraathane masa ve eş kurası
+  (okey, 101, batak, king, pişti, tavla).
+- **Disiplin (Bölüm 9, Ek tablo):** ihlal kaydı; yönetmeliğin öngördüğü yaptırım
+  önerilir (1. uyarı → 2. bir maç ceza → 3. davet edilmez; kavga, replika,
+  maske, alkol, zarar bedeli…). Cezalı, uzaklaştırılmış ya da borçlu kişi
+  listeye yazılırken sorulur; son söz organizatörün (Kural 12.1).
+- **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9), kural değişikliği
+  (12.2) ve grup kuralları hatırlatması için hazır, düzenlenebilir metinler.
 - **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler.
 - **Kurallarla uyum:** maça 24 saatten az kala "Yok" diyen geç iptal sayılır
-  (Kural 1.5), borçlu oyuncu "Var" yazılınca uyarı (Kural 2.4), kaleciler
-  ücretsiz (Kural 2.1), pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2).
+  (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
+  borçlu oyuncu yazılırken sorulur (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
+  pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2). İkisi de Ayarlar'dan kapatılabilir.
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans
   puanı (Elo, senin verdiğin seviyeyle harmanlanır, kapatılabilir).
 - **Ödemeler:** maç bazlı takip, muafiyet, kişi bazlı hesap defteri (kısmi
   ödeme, avans, iade), biriken borçlar, kişiye özel WhatsApp hatırlatma, aylık
-  özet, organizatör giderleri (top, yelek, su) ve kasa durumu.
-- **Paylaşım:** davet, kadro, takım ve ödeme mesajları tek dokunuşla WhatsApp'a;
-  şablonlar Ayarlar'dan düzenlenebilir.
-- **İstatistik:** oyuncu kartı, sezon tablosu, en çok maça gelenler, gol krallığı,
-  güvenilirlik puanı.
-- **Kurallar:** KURALLAR.md uygulamada aranabilir; her madde numarasıyla
-  ("Kural 2.3") tek dokunuşla paylaşılır.
+  özet, organizatör giderleri (top, yelek, su) ve kasa durumu. Etkinliklerde
+  kişiye ya da herkese eşit bölünen ek harcamalar (boya, mermi, masa; Kural 15.4).
+- **Paylaşım:** davet, kadro, takım, brifing, araç, iptal ve ödeme mesajları
+  tek dokunuşla WhatsApp'a. Halı saha şablonları Ayarlar'dan düzenlenebilir;
+  diğer etkinliklerin mesajları türüne göre hazır gelir. Takım adları ve yelek
+  renkleri Ayarlar'dan seçilir.
+- **İstatistik:** oyuncu kartı (disiplin sicili dahil), sezon tablosu, en çok
+  maça gelenler, gol krallığı, güvenilirlik puanı, etkinlik tablosu.
+- **Kurallar:** KURALLAR.md uygulamada kapak, kısımlar, altın kurallar,
+  "Sıfır tolerans / Güvenlik" vurguları ve yaptırımlar tablosuyla; aranabilir,
+  maddeler arası bağlantılı, her madde numarasıyla ("Kural 2.3") paylaşılır.
 - **Geri al:** silme, iptal, takım değişikliği gibi her işlemden sonra.
-- Türkçe / İngilizce, açık / koyu tema.
+- Türkçe / İngilizce, açık (fildişi) / koyu (gece) tema; Predators renkleri
+  (gece siyahı, altın, bordo, krem).
 
 ---
 
@@ -126,7 +156,7 @@ npm run e2e       # uçtan uca testler (Playwright, derlenmiş uygulama üzerind
 
 | Yol | İçerik |
 |---|---|
-| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration |
+| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`) |
 | `src/data/` | IndexedDB, otomatik yerel sürümler, yedek dosyası |
 | `src/ui/` | Görünümler, alt sayfalar, saha çizimi ve sürükle-bırak |
 | `src/app/` | Durum (Geri al dahil), eylemler, yönlendirme |
@@ -146,6 +176,9 @@ uygulamanın Kurallar sayfası bir sonraki yayında güncellenir.
 **Yayın:** `main`'e her merge'de `.github/workflows/ci.yml` testleri çalıştırır
 ve geçerse GitHub Pages'e yayınlar. İlk seferde depo ayarlarında
 **Settings → Pages → Source: GitHub Actions** seçilmelidir.
+
+**Arma ve ikonlar:** `brand/predators-crest.png` kaynak; ikonlar
+`scripts/make-icons.ts` ile üretilir, üst bölümdeki arma `public/brand/crest.webp`.
 
 **Fontlar:** Barlow ve Barlow Condensed (SIL Open Font License 1.1,
 `src/assets/fonts/OFL.txt`) uygulamaya gömülüdür.

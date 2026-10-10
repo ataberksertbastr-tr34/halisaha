@@ -37,6 +37,14 @@ export interface UIState {
   ruleTogether: boolean;
   /** Kullanıcının açıp kapattığı <details> bölümleri (yeniden çizimde korunur) */
   open: Record<string, boolean>;
+  /** Kıraathane kurası: oyun ve eşli mi */
+  drawGame: string;
+  drawPairs: boolean;
+  /** Disiplin sayfasında arama */
+  discQ: string;
+  /** Yeni oyun için seçilen taraflar (grup indeksleri) */
+  pickA: number;
+  pickB: number;
   f: Record<FilterKey, Filter>;
 }
 
@@ -44,6 +52,7 @@ export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
   matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "", open: {}, swapPick: null, ruleTogether: true, season: "", ruleQ: "",
+  drawGame: "okey", drawPairs: false, discQ: "", pickA: 0, pickB: 1,
   f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" }, people: { q: "", pos: "" } },
 };
 

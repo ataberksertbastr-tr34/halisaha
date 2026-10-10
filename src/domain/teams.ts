@@ -9,7 +9,7 @@
  * birçok kez denenir; en iyi skorlulardan biri seçilir (her basışta farklı ama dengeli).
  */
 import type { Match, PairRule, Person, Pos, Side, State } from "./types";
-import { getP, lineup } from "./lineup";
+import { active, getP } from "./lineup";
 import { strengthFn } from "./elo";
 
 export type Rng = () => number;
@@ -36,8 +36,9 @@ const when = (m: Match) => m.date + " " + m.time;
 
 /** Bu maçtan önceki, takımları kurulmuş en son oynanmış maç. */
 export function previousTeams(s: State, m: Match): { a: string[]; b: string[] } | null {
+  const kind = m.kind || "football";
   const prev = s.matches
-    .filter((x) => x.id !== m.id && x.status === "played" && x.teams.a.length && x.teams.b.length && when(x) < when(m))
+    .filter((x) => x.id !== m.id && (x.kind || "football") === kind && x.status === "played" && x.teams.a.length && x.teams.b.length && when(x) < when(m))
     .sort((a, b) => when(b).localeCompare(when(a)))[0];
   return prev ? prev.teams : null;
 }
@@ -87,7 +88,7 @@ export function brokenRules(rules: PairRule[], A: string[]): PairRule[] {
 
 /** Takımları hesaplar (durumu değiştirmez). */
 export function computeTeams(s: State, m: Match, rng: Rng = Math.random): TeamResult {
-  const ids = lineup(s, m).playing;
+  const ids = active(s, m);
   const str = strengthFn(s, m);
   const ps: Cand[] = ids.map((id) => {
     const p = getP(s, m, id);

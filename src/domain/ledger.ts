@@ -1,15 +1,16 @@
 /**
  * Kişi bazlı hesap defteri.
  *
- * Borçlar maçlardan türetilir (her ödeyen için maçın payı), ödemeler kayıttır.
+ * Borçlar maçlardan türetilir (her ödeyen için maçın payı) ve kişiye yazılan
+ * ek borçlardan (kişisel harcama 15.4, zarar bedeli 10.5) gelir; ödemeler kayıttır.
  * Dağıtım kuralı:
- *  1) Bir maça yazılmış ödeme önce o maçın payını kapatır.
+ *  1) Bir maça ya da ek borca yazılmış ödeme önce onu kapatır.
  *  2) Artan ve maça yazılmamış ödemeler havuza girer; havuz önce vadesi gelmiş
  *     en eski borçlara, sonra yaklaşan maçlara dağıtılır (FIFO).
  *  3) Havuzda kalan para avanstır (bakiye artı).
  * Böylece kısmi ödeme, toplu ödeme, avans ve iade tutarlı biçimde işlenir.
  */
-import type { Match, Payment, State } from "./types";
+import type { ExtraCharge, Match, Payment, State } from "./types";
 import { billOf, isDue } from "./money";
 import { getP } from "./lineup";
 import { monthKey } from "./dates";
@@ -21,7 +22,13 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export type ChargeStatus = "paid" | "partial" | "unpaid";
 
 export interface Charge {
+  /** Maç payında maç id; ek borçta etkinlik id'si ya da boş */
   mid: string;
+  /** Ek borç (ExtraCharge) id'si; maç payında yok */
+  cid?: string;
+  /** Ek borcun açıklaması */
+  note?: string;
+  rule?: string;
   date: string;
   time: string;
   amount: number;
@@ -87,6 +94,14 @@ export function accounts(s: State, today: string): Map<string, Account> {
       get(id).charges.push({ mid: m.id, date: m.date, time: m.time, amount: share, paid: 0, due: isDue(m, today), status: "unpaid" });
     }
   }
+  for (const x of s.charges) {
+    const m = x.mid ? s.matches.find((mm) => mm.id === x.mid) : undefined;
+    if (m && m.status === "cancelled") continue;
+    if (!x.amount) continue;
+    const c: Charge = { mid: x.mid || "", cid: x.id, note: x.note, date: m ? m.date : x.at, time: m ? m.time : "00:00", amount: x.amount, paid: 0, due: m ? isDue(m, today) : x.at <= today, status: "unpaid" };
+    if (x.rule) c.rule = x.rule;
+    get(x.pid).charges.push(c);
+  }
   for (const p of s.payments) get(p.pid).payments.push(p);
 
   const out = new Map<string, Account>();
@@ -96,10 +111,11 @@ export function accounts(s: State, today: string): Map<string, Account> {
     if (!who) continue;
     a.charges.sort((x, y) => when(x).localeCompare(when(y)));
     a.payments.sort((x, y) => x.at.localeCompare(y.at));
-    const byMid = new Map(a.charges.map((c) => [c.mid, c]));
+    const byMid = new Map(a.charges.filter((c) => !c.cid).map((c) => [c.mid, c]));
+    const byCid = new Map(a.charges.filter((c) => c.cid).map((c) => [c.cid, c]));
     let pool = 0;
     for (const p of a.payments) {
-      const c = p.mid ? byMid.get(p.mid) : undefined;
+      const c = p.cid ? byCid.get(p.cid) : p.mid ? byMid.get(p.mid) : undefined;
       if (c) {
         const take = Math.min(Math.max(0, c.amount - c.paid), p.amount);
         c.paid = r2(c.paid + take);
@@ -162,14 +178,43 @@ export function debtMap(s: State, today: string): Record<string, number> {
 /** Bir maçtaki bir kişinin pay durumu. */
 export function chargeOf(s: State, m: Match, id: string, today: string, acc?: Map<string, Account>): Charge | null {
   const a = (acc || accounts(s, today)).get(id);
-  return a?.charges.find((c) => c.mid === m.id) || null;
+  return a?.charges.find((c) => c.mid === m.id && !c.cid) || null;
 }
 
-export function newPayment(pid: string, amount: number, at: string, mid?: string, note?: string): Payment {
+/** Bir ek borcun durumu. */
+export function extraStatus(s: State, x: ExtraCharge, today: string, acc?: Map<string, Account>): Charge | null {
+  const a = (acc || accounts(s, today)).get(x.pid);
+  return a?.charges.find((c) => c.cid === x.id) || null;
+}
+
+export function newPayment(pid: string, amount: number, at: string, mid?: string, note?: string, cid?: string): Payment {
   const p: Payment = { id: uid(), pid, amount: r2(amount), at };
   if (mid) p.mid = mid;
+  if (cid) p.cid = cid;
   if (note) p.note = note;
   return p;
+}
+
+/** Kişiye ek borç yazar (kişisel harcama, zarar bedeli). */
+export function newExtra(pid: string, amount: number, at: string, note: string, mid?: string, rule?: string): ExtraCharge {
+  const x: ExtraCharge = { id: uid(), pid, amount: r2(amount), at, note };
+  if (mid) x.mid = mid;
+  if (rule) x.rule = rule;
+  return x;
+}
+
+/** Ek borcu "ödendi" yapar / geri alır. */
+export function toggleExtraPaid(s: State, x: ExtraCharge, today: string): "paid" | "unpaid" | null {
+  const c = extraStatus(s, x, today);
+  if (!c) return null;
+  if (c.status === "paid") {
+    const before = s.payments.length;
+    s.payments = s.payments.filter((p) => !(p.pid === x.pid && p.cid === x.id));
+    return s.payments.length !== before ? "unpaid" : null;
+  }
+  const rest = r2(c.amount - c.paid);
+  if (rest > EPS) s.payments.push(newPayment(x.pid, rest, today, x.mid, undefined, x.id));
+  return "paid";
 }
 
 /** "Ödedi": maçın kalan payını o maça yazılmış ödeme olarak ekler. */
@@ -186,7 +231,7 @@ export function markPaid(s: State, m: Match, id: string, today: string): void {
  */
 export function unmarkPaid(s: State, m: Match, id: string): boolean {
   const before = s.payments.length;
-  s.payments = s.payments.filter((p) => !(p.pid === id && p.mid === m.id));
+  s.payments = s.payments.filter((p) => !(p.pid === id && p.mid === m.id && !p.cid));
   return s.payments.length !== before;
 }
 
@@ -199,7 +244,7 @@ export function settleAll(s: State, id: string, today: string): number {
     if (!c.due) continue;
     const rest = r2(c.amount - c.paid);
     if (rest > EPS) {
-      s.payments.push(newPayment(id, rest, today, c.mid));
+      s.payments.push(newPayment(id, rest, today, c.mid || undefined, undefined, c.cid));
       total = r2(total + rest);
     }
   }
@@ -212,8 +257,10 @@ export interface MonthSummary {
   month: string;
   played: number;
   cancelled: number;
-  /** Sahaya ödenen (oynanan maçların saha ücreti) */
+  /** Sahaya/tesise ödenen (oynanan maç ve etkinliklerin ücreti) */
   fieldCost: number;
+  /** Kişilere yazılan ek borçlar (kişisel harcama, zarar): organizatör adına tesise ödenir */
+  extras: number;
   /** Oyunculara yansıtılan toplam pay */
   billed: number;
   /** Bu ay alınan ödemeler */
@@ -224,13 +271,28 @@ export interface MonthSummary {
   cash: number;
 }
 
-/** Kasa = alınan ödemeler − oynanan maçların saha ücreti − giderler. */
+/** Ek borcun tarihi: bağlı etkinliğin tarihi, yoksa yazıldığı gün. İptal etkinliğin eki sayılmaz (null). */
+function extraDate(s: State, x: ExtraCharge): string | null {
+  if (!x.mid) return x.at;
+  const m = s.matches.find((mm) => mm.id === x.mid);
+  if (m && m.status === "cancelled") return null;
+  return m ? m.date : x.at;
+}
+
+/**
+ * Kasa = alınan ödemeler − oynanan maç/etkinliklerin ücreti − ek borçlar
+ * (organizatör tesise öder, kişiden tahsil eder) − giderler.
+ */
 export function cashAt(s: State, untilMonth?: string): number {
   const inM = (d: string) => !untilMonth || monthKey(d) <= untilMonth;
   const inflow = s.payments.filter((p) => inM(p.at)).reduce((t, p) => t + p.amount, 0);
   const field = s.matches.filter((m) => m.status === "played" && inM(m.date)).reduce((t, m) => t + (Number(m.price) || 0), 0);
+  const extras = s.charges.reduce((t, x) => {
+    const d = extraDate(s, x);
+    return d && inM(d) ? t + x.amount : t;
+  }, 0);
   const exp = s.expenses.filter((e) => inM(e.at)).reduce((t, e) => t + e.amount, 0);
-  return r2(inflow - field - exp);
+  return r2(inflow - field - extras - exp);
 }
 
 export function monthSummary(s: State, month: string): MonthSummary {
@@ -241,6 +303,10 @@ export function monthSummary(s: State, month: string): MonthSummary {
     played: played.length,
     cancelled: ms.filter((m) => m.status === "cancelled").length,
     fieldCost: r2(played.reduce((t, m) => t + (Number(m.price) || 0), 0)),
+    extras: r2(s.charges.reduce((t, x) => {
+      const d = extraDate(s, x);
+      return d && monthKey(d) === month ? t + x.amount : t;
+    }, 0)),
     billed: r2(played.reduce((t, m) => {
       const b = billOf(s, m);
       return t + b.share * b.payers.length;
@@ -257,5 +323,6 @@ export function months(s: State, today: string): string[] {
   s.matches.forEach((m) => m.date && set.add(monthKey(m.date)));
   s.payments.forEach((p) => set.add(monthKey(p.at)));
   s.expenses.forEach((e) => set.add(monthKey(e.at)));
+  s.charges.forEach((x) => set.add(monthKey(x.at)));
   return [...set].filter((x) => /^\d{4}-\d{2}$/.test(x)).sort().reverse();
 }

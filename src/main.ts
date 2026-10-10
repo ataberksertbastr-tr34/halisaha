@@ -23,14 +23,16 @@ import { applyUpdate, initPWA, promptInstall, pwa } from "./pwa/register";
 import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import { updateTemplatePreview } from "./ui/views/templates";
+import { onEventField } from "./app/eventHandlers";
+import { elapsed, tickClock } from "./ui/clock";
 
-/** Kural araması: yazarken yeniden çiz, imleci koru. */
-function searchRules(q: string): void {
-  ui.ruleQ = q;
-  const input = document.getElementById("q-rules") as HTMLInputElement | null;
+/** Arama kutusu: yazarken yeniden çiz, imleci koru (kurallar, disiplin). */
+function liveSearch(id: string, set: (q: string) => void, q: string): void {
+  set(q);
+  const input = document.getElementById(id) as HTMLInputElement | null;
   const pos = input?.selectionStart ?? q.length;
   renderApp();
-  const again = document.getElementById("q-rules") as HTMLInputElement | null;
+  const again = document.getElementById(id) as HTMLInputElement | null;
   if (again) {
     again.focus({ preventScroll: true });
     again.setSelectionRange(pos, pos);
@@ -146,7 +148,9 @@ function bindEvents(): void {
   document.addEventListener("input", (e) => {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
-    if (el.id === "q-rules") return searchRules(el.value);
+    if (el.id === "q-rules") return liveSearch("q-rules", (q) => (ui.ruleQ = q), el.value);
+    if (el.id === "q-disc") return liveSearch("q-disc", (q) => (ui.discQ = q), el.value);
+    if (el.dataset && el.dataset.f === "ann.ruleText") return void onEventField(el);
     const k = el.dataset && (el.dataset.q as FilterKey | undefined);
     if (k) {
       ui.f[k].q = el.value;
@@ -173,6 +177,15 @@ function bindEvents(): void {
   });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => renderApp());
   bindPitchDrag(pitchHandlers);
+  // Maç saati: ekrandaki süreyi her saniye günceller; devre arasında ve sonunda durdurur (Kural 4.1).
+  setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    tickClock((m) => {
+      if (!m.clock) return;
+      m.clock = { start: 0, acc: elapsed(m) };
+      commit();
+    });
+  }, 1000);
 }
 
 boot().catch((e) => {

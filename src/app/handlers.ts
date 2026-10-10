@@ -11,7 +11,13 @@ import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, share
 import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
-import { currentMatch, getMatch, getP, lineup, promoted, setAtt } from "../domain/lineup";
+import { currentMatch, getMatch, getP, lineup, materializeOrder, promoted, setAtt } from "../domain/lineup";
+import { joinBlock } from "../domain/discipline";
+import { isFootball, kindOf } from "../domain/kinds";
+import { gamesTally } from "../domain/scoring";
+import { teamName } from "../domain/teamstyle";
+import { onEventField } from "./eventHandlers";
+import type { MsgKey } from "../i18n";
 import { applyFixed, copyLastWeek, isLocked } from "../domain/roster";
 import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
@@ -155,7 +161,7 @@ registerActions({
   },
   shareGolden: () => {
     const b = ruleBook();
-    shareText("⭐ " + b.goldenTitle + "\n\n" + b.golden.map((g) => g.id.slice(1) + ". " + stripMd(g.text)).join("\n"));
+    shareText("⭐ " + b.goldenTitle + "\n\n" + b.goldenGroups.map((g) => (g.title ? g.title + "\n" : "") + g.items.map((x) => x.id.slice(1) + ". " + stripMd(x.text)).join("\n")).join("\n\n"));
   },
   clearRuleQ: () => {
     ui.ruleQ = "";
@@ -202,6 +208,16 @@ registerActions({
     if (!m) return;
     const id = ds.id!;
     let st = ds.s as Att;
+    // Kural 2.4, 9.3, 17.4: engelli kişi yazılmadan önce sorulur; son söz organizatörün (12.1).
+    if ((st === "in" || st === "maybe") && m.att[id] !== "in" && m.att[id] !== "maybe" && !ds.force) {
+      const debt = debtMap(store.s, today())[id] || 0;
+      const block = joinBlock(store.s, m, id, debt);
+      if (block) {
+        const who = getP(store.s, m, id)?.name || "";
+        const why = t(("block_" + block.why) as MsgKey) + (block.why === "debt" ? " " + money(debt) : "") + " · " + t("ruleN", { n: block.rule });
+        return toast(t("blockedAsk", { n: who, r: why }), { label: t("blockedOverride"), run: () => dispatch("att", { id, s: st, force: "1" } as unknown as DOMStringMap, document.body) }, 9000);
+      }
+    }
     const before = lineup(store.s, m).playing;
     const wasPlaying = before.includes(id);
     // Kural 1.4/1.5: kadro kesinleştikten sonra oynayan kadrodan "Yok" diyen geç iptal sayılır.
@@ -225,7 +241,7 @@ registerActions({
         },
       }, 8000);
     }
-    if (m.att[id] === "in") {
+    if (m.att[id] === "in" && !ds.force) {
       const debt = debtMap(store.s, today())[id];
       if (debt) {
         const phone = store.s.players.find((p) => p.id === id)?.phone;
@@ -316,6 +332,11 @@ registerActions({
       m.order = m.order.filter((x) => x !== ds.id);
       // Misafirin bu maça yazılmış ödemeleri de kalkar (Geri al ile geri gelir).
       store.s.payments = store.s.payments.filter((p) => p.pid !== ds.id);
+      store.s.charges = store.s.charges.filter((c) => c.pid !== ds.id);
+      m.cars = m.cars.filter((c) => c.driver !== ds.id);
+      m.cars.forEach((c) => {
+        c.pax = c.pax.filter((x) => x !== ds.id);
+      });
     });
   },
   gen: () => {
@@ -341,7 +362,7 @@ registerActions({
     if (!m) return;
     const id = ds.id!;
     const toB = m.teams.a.includes(id);
-    mutate(t("movedTo", { n: nameOf(m, id), t: toB ? t("teamB") : t("teamA") }), () => {
+    mutate(t("movedTo", { n: nameOf(m, id), t: teamName(store.s, toB ? "b" : "a") }), () => {
       if (toB) {
         m.teams.a = m.teams.a.filter((x) => x !== id);
         m.teams.b.push(id);
@@ -363,7 +384,7 @@ registerActions({
     } else {
       m.locks[id] = side;
       commit();
-      toast(t("locked1", { n: name, t: side === "a" ? t("teamA") : t("teamB") }));
+      toast(t("locked1", { n: name, t: teamName(store.s, side) }));
     }
   },
   ruleMode: (ds) => {
@@ -406,7 +427,7 @@ registerActions({
       ui.f.team.q = "";
       ui.refocus = "q-team";
     }
-    mutate(t("addedTo", { n: nameOf(m, ds.id!), t: side === "a" ? t("teamA") : t("teamB") }), () => {
+    mutate(t("addedTo", { n: nameOf(m, ds.id!), t: teamName(store.s, side) }), () => {
       m.teams[side].push(ds.id!);
     });
   },
@@ -466,9 +487,15 @@ registerActions({
     const m = cur();
     if (!m) return;
     const a1 = val("#scA"), b1 = val("#scB");
+    const fb = isFootball(m);
+    const k = kindOf(m);
     ui.matchId = null;
-    mutate(t("matchDone"), () => {
-      m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : scoreFromGoals(m);
+    mutate(fb ? t("matchDone") : t("eventDone"), () => {
+      // Kural 1.6: sıra cezası maç bitince kalıcı hale gelir
+      materializeOrder(store.s, m);
+      if (fb) m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : scoreFromGoals(m);
+      else if (k.score === "sets") m.score = gamesTally(m) || m.score;
+      if (m.clock?.start) m.clock = { start: 0, acc: m.clock.acc + (Date.now() - m.clock.start) };
       m.status = "played";
       freezeBill(store.s, m);
     });
@@ -488,7 +515,7 @@ registerActions({
     const m = cur();
     if (!m) return;
     ui.matchId = null;
-    mutate(t("matchCancelled"), () => {
+    mutate(isFootball(m) ? t("matchCancelled") : t("eventCancelled"), () => {
       m.status = "cancelled";
     }, { lock: "before-delete" });
   },
@@ -496,7 +523,7 @@ registerActions({
     const m = cur();
     if (!m) return;
     ui.matchId = null;
-    mutate(t("matchDeleted"), () => {
+    mutate(isFootball(m) ? t("matchDeleted") : t("eventDeleted"), () => {
       rememberSkip(store.s, m);
       store.s.matches = store.s.matches.filter((x) => x.id !== m.id);
     }, { lock: "before-delete" });
@@ -630,7 +657,7 @@ registerActions({
     }, { lock: "before-delete" });
   },
   tglSet: (ds) => {
-    const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf";
+    const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf" | "debtBlock" | "noShowPenalty";
     store.s.settings[k] = !store.s.settings[k];
     let made = 0;
     if (k === "autoSchedule" && store.s.settings.autoSchedule) made = ensureUpcoming(store.s, new Date()).length;
@@ -788,6 +815,7 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
   const f = el.dataset.f || "";
   const v = el.value;
   const S = store.s;
+  if (onEventField(el)) return;
   if (f === "payId") {
     ui.payId = v;
     render();
@@ -885,10 +913,8 @@ export function onEnter(e: KeyboardEvent): void {
     const m = cur();
     if (!row || !m) return;
     if (key === "att") {
-      setAtt(m, row.dataset.id!, "in", true);
-      ui.f.att.q = "";
-      ui.refocus = "q-att";
-      commit();
+      // "Var" ile aynı yol: borç ve disiplin engeli de sorulur (Kural 2.4, 9.3)
+      dispatch("att", { id: row.dataset.id!, s: "in" } as unknown as DOMStringMap, row);
     } else {
       const side = m.teams.a.length <= m.teams.b.length ? "a" : "b";
       row.querySelector<HTMLElement>('[data-team="' + side + '"]')?.click();

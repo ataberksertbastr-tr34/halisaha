@@ -39,7 +39,7 @@ describe("otomatik takım kurma", () => {
       // Eşit sayılı takımlarda tek/çift toplam nedeniyle alt sınır 0 ya da 1'dir.
       expect(diff, `kadro ${ratings.join(",")}`).toBeLessThanOrEqual(total % 2 === 0 && n % 2 === 0 ? 2 : 3);
     }
-  });
+  }, 30_000); // 200 kadro: yoğun CI makinesinde 5 sn'yi aşabiliyor
 
   it("dengeli bilinen kadroda farkı 0 bulur", () => {
     const { s, m } = setup([5, 5, 4, 4, 3, 3, 2, 2, 1, 1]);

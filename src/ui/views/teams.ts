@@ -1,15 +1,26 @@
-/** Takımlar sekmesi: otomatik/elle kurulum, sürükle-bırak saha, kilitler, eşleşme kuralları. */
+/**
+ * Takımlar sekmesi, etkinlik türüne göre:
+ *  - Halı saha: otomatik/elle kurulum, sürükle-bırak saha, kilitler (Kural 3.1–3.4)
+ *  - Paintball, airsoft, voleybol, diğer: iki takım
+ *  - Ayak tenisi (ve masa tenisi çiftleri): tekli/çiftli/üçlü takım kurası (19.1, 20.6)
+ *  - Masa tenisi: kazanan kalır masa sırası (20.7)
+ *  - Kıraathane: masa ve eş kurası (21.1)
+ */
 import { t } from "../../i18n";
 import { isOpen, store, today, ui } from "../../app/store";
 import type { Match } from "../../domain/types";
 import { POSITIONS } from "../../domain/types";
 import { esc, norm, pips, trSort } from "../../domain/text";
-import { cleanTeams, currentMatch, getP, lineup } from "../../domain/lineup";
+import { active, cleanTeams, currentMatch, getP } from "../../domain/lineup";
 import { teamSum } from "../../domain/teams";
 import { strengthFn } from "../../domain/elo";
-import { emptyState, filterBar, matchChips, posBadge, posShort, shareButtons } from "../components";
+import { agreeValue, isFootball, kindOf, L } from "../../domain/kinds";
+import { TABLE_GAMES, partners, syncQueue, tableGame } from "../../domain/draw";
+import { teamName } from "../../domain/teamstyle";
+import { emptyState, filterBar, kindIcon, matchChips, posBadge, posShort, ruleChip, shareButtons } from "../components";
 import { pitchSVG } from "../pitch";
 import { IC } from "../icons";
+import { gameRow } from "./results";
 
 function posCounts(m: Match, ids: string[]): string {
   const c: Record<string, number> = {};
@@ -25,44 +36,56 @@ const fmt1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString(store.s.set
 export function viewTeams(): string {
   const S = store.s;
   const m = currentMatch(S, ui.matchId, today());
-  if (!m) return emptyState(t("noMatch"), { a: "newMatch", label: t("createMatch") });
+  if (!m) return matchChips("") + emptyState(t("noEvent"), { a: "newEvent", label: t("createEvent") });
   let h = matchChips(m.id);
-  const { playing } = lineup(S, m);
-  if (playing.length < 2) return h + emptyState(t("needPlayers"), { a: "tab", v: "match", label: t("tabMatch") }) + rulesSection(m);
+  const k = kindOf(m);
+  const ids = active(S, m);
+  if (ids.length < 2) return h + emptyState(t("needPlayers"), { a: "tab", v: "match", label: t("tabMatch") }) + (k.teams === "pitch" || k.teams === "two" ? rulesSection(m) : "");
+  if (k.teams === "tables") return h + tablesView(m);
+  if (k.teams === "queue" && agreeValue(m, "mode") !== "double") return h + queueView(m);
+  if (k.teams === "draw" || k.teams === "queue") return h + drawView(m);
+  return h + twoTeamsView(m);
+}
+
+/* ---------- iki takım (halı saha sahası ile) ---------- */
+function twoTeamsView(m: Match): string {
+  const S = store.s;
+  const fb = isFootball(m);
   const un = cleanTeams(S, m);
   const built = m.teams.a.length || m.teams.b.length;
   const has = built || m.manualTeams;
-  h += '<section class="section"><div class="row nowrap">' +
-    '<button type="button" class="btn ' + (built ? "" : "primary ") + 'grow" data-a="gen">' + esc(built ? t("reshuffle") : t("buildTeams")) + "</button>" +
+  const A = teamName(S, "a"), B = teamName(S, "b");
+  let h = '<section class="section"><div class="row nowrap">' +
+    '<button type="button" class="btn ' + (built ? "" : "primary ") + 'grow" data-a="gen">' + IC.shuffle + esc(built ? t("reshuffle") : t("buildTeams")) + "</button>" +
     '<button type="button" class="btn grow" data-a="manual">' + esc(t("manual")) + "</button>" +
     "</div>" + (built ? '<div class="row nowrap mt-s">' + shareButtons("teams", t("shareTeams")) + "</div>" : "");
-  if (!has) return h + '<p class="muted small mt">' + esc(t("tip")) + "</p></section>" + rulesSection(m);
+  if (m.kind === "volleyball") h += '<p class="small muted mt-s m0">' + esc(t("volleyTeamsHint", { n: agreeValue(m, "size") || "6" })) + " " + ruleChip("18.1") + "</p>";
+  if (!has) return h + '<p class="muted small mt">' + esc(fb ? t("tip") : t("tipEvent")) + " " + ruleChip("3.1") + "</p></section>" + rulesSection(m);
   h += "</section>";
   if (un.length) {
-    h += '<section class="section" aria-labelledby="h-un"><h2 id="h-un">' + esc(t("unassignedN", { n: un.length })) + "</h2>" + filterBar("team", false) + '<ul class="plist" id="list-team">';
+    h += '<section class="section" aria-labelledby="h-un"><h2 id="h-un">' + esc(t("unassignedN", { n: un.length })) + "</h2>" + filterBar("team", false, fb) + '<ul class="plist" id="list-team">';
     un.map((id) => getP(S, m, id)!).sort(trSort).forEach((p) => {
-      h += '<li class="prow" data-n="' + esc(norm(p.name)) + '" data-p="' + esc(p.pos || "") + '"><div class="pmain"><div class="pname"><strong>' + esc(p.name) + '</strong><span class="meta"><span class="pips">' + pips(p.rating) + "</span>" + posBadge(p) + "</span></div>" +
-        '<button type="button" class="btn sm bibA" data-a="addTo" data-team="a" data-id="' + esc(p.id) + '">' + esc(t("teamA")) + '</button><button type="button" class="btn sm bibB" data-a="addTo" data-team="b" data-id="' + esc(p.id) + '">' + esc(t("teamB")) + "</button></div></li>";
+      h += '<li class="prow" data-n="' + esc(norm(p.name)) + '" data-p="' + esc(p.pos || "") + '"><div class="pmain"><div class="pname"><strong>' + esc(p.name) + '</strong><span class="meta"><span class="pips">' + pips(p.rating) + "</span>" + (fb ? posBadge(p) : "") + "</span></div>" +
+        '<button type="button" class="btn sm bibA" data-a="addTo" data-team="a" data-id="' + esc(p.id) + '">' + esc(A) + '</button><button type="button" class="btn sm bibB" data-a="addTo" data-team="b" data-id="' + esc(p.id) + '">' + esc(B) + "</button></div></li>";
     });
     h += '</ul><p class="none-msg" id="none-team" hidden>' + esc(t("noResults")) + "</p></section>";
   }
   const str = strengthFn(S, m);
-  h += '<section class="section"><div class="pitch-wrap">' + pitchSVG(m, ui.swapPick) + "</div>" +
-    (ui.swapPick ? '<p class="pickhint" role="status">' + esc(t("pickSwap", { n: getP(S, m, ui.swapPick)?.name || "" })) + "</p>" : "");
+  h += '<section class="section">' + (fb ? '<div class="pitch-wrap">' + pitchSVG(m, ui.swapPick) + "</div>" + (ui.swapPick ? '<p class="pickhint" role="status">' + esc(t("pickSwap", { n: getP(S, m, ui.swapPick)?.name || "" })) + "</p>" : "") : "");
   const col = (ids: string[], cls: "a" | "b", name: string) => {
-    const other = cls === "a" ? t("teamB") : t("teamA");
-    let c = '<div class="team ' + cls + '"><div class="team-head"><b>' + esc(name) + "</b><span>" + esc(t("teamMeta", { n: ids.length, s: fmt1(teamSum(S, m, ids)) })) + "</span><span>" + esc(posCounts(m, ids)) + "</span></div>";
+    const other = cls === "a" ? B : A;
+    let c = '<div class="team ' + cls + '"><div class="team-head"><b>' + esc(name) + "</b><span>" + esc(t("teamMeta", { n: ids.length, s: fmt1(teamSum(S, m, ids)) })) + "</span>" + (fb ? "<span>" + esc(posCounts(m, ids)) + "</span>" : "") + "</div>";
     ids.forEach((id) => {
       const p = getP(S, m, id)!;
       const locked = m.locks[id] === cls;
-      c += '<div class="tprow"><button type="button" class="tp" data-a="move" data-id="' + esc(id) + '" aria-label="' + esc(p.name + " → " + other) + '"><span class="nm">' + esc(p.name) + '</span><span class="sw">' + (p.pos ? esc(t(posShort(p.pos))) + " " : "") + esc(fmt1(str(id))) + "</span></button>" +
+      c += '<div class="tprow"><button type="button" class="tp" data-a="move" data-id="' + esc(id) + '" aria-label="' + esc(p.name + " → " + other) + '"><span class="nm">' + esc(p.name) + '</span><span class="sw">' + (fb && p.pos ? esc(t(posShort(p.pos))) + " " : "") + esc(fmt1(str(id))) + "</span></button>" +
         '<button type="button" class="tx lockbtn' + (locked ? " on" : "") + '" data-a="lock" data-id="' + esc(id) + '" data-team="' + cls + '" aria-pressed="' + locked + '" aria-label="' + esc(locked ? t("unlock", { n: p.name }) : t("lockTo", { n: p.name, t: name })) + '">' + (locked ? IC.lock : IC.unlock) + "</button>" +
         '<button type="button" class="tx" data-a="unassign" data-id="' + esc(id) + '" aria-label="' + esc(t("remove") + " " + p.name) + '">' + IC.close + "</button></div>";
     });
     return c + "</div>";
   };
-  h += '<div class="teams">' + col(m.teams.a, "a", t("teamA")) + col(m.teams.b, "b", t("teamB")) + "</div>";
-  h += '<p class="diff">' + esc(t("strengthDiff")) + ": " + esc(fmt1(Math.abs(teamSum(S, m, m.teams.a) - teamSum(S, m, m.teams.b)))) + '</p><p class="small muted center mt-s">' + esc(t("dragHint")) + "</p></section>";
+  h += '<div class="teams">' + col(m.teams.a, "a", A) + col(m.teams.b, "b", B) + "</div>";
+  h += '<p class="diff">' + esc(t("strengthDiff")) + ": " + esc(fmt1(Math.abs(teamSum(S, m, m.teams.a) - teamSum(S, m, m.teams.b)))) + '</p><p class="small muted center mt-s">' + esc(fb ? t("dragHint") : t("tapHint")) + "</p></section>";
   return h + rulesSection(m);
 }
 
@@ -89,4 +112,83 @@ function rulesSection(m: Match): string {
     '<button type="button" role="radio" class="' + (!ui.ruleTogether ? "on" : "") + '" aria-checked="' + !ui.ruleTogether + '" data-a="ruleMode" data-v="0">' + esc(t("apart")) + "</button></div>" +
     '<button type="button" class="btn block mt-s" data-a="addRule">' + IC.plus + esc(t("addRule")) + "</button></details></section>";
   return h;
+}
+
+/* ---------- takım kurası (ayak tenisi, masa tenisi çiftleri) ---------- */
+function drawView(m: Match): string {
+  const S = store.s;
+  const name = (id: string) => getP(S, m, id)?.name || "?";
+  const size = m.kind === "tabletennis" ? 2 : Number(agreeValue(m, "fmt")) || 2;
+  const d = m.draw && m.draw.game === "teams" ? m.draw : null;
+  const fmtName = m.kind === "tabletennis" ? t("ttDoubles") : size === 1 ? t("fvSingles") : size === 2 ? t("fvDoubles") : t("fvTriples");
+  let h = '<section class="section"><div class="sec-head">' + kindIcon(m).replace("<svg", '<svg class="h2i"') + "<h2>" + esc(t("teamDraw")) + "</h2></div>" +
+    '<p class="small muted tight">' + esc(t("teamDrawHint", { f: fmtName, n: size })) + " " + ruleChip(m.kind === "tabletennis" ? "20.6" : "19.1") + "</p>" +
+    '<button type="button" class="btn ' + (d ? "" : "primary ") + 'block" data-a="drawTeams" data-n="' + size + '">' + IC.shuffle + esc(d ? t("redraw") : t("drawNow")) + "</button>";
+  if (d) {
+    const full = d.groups.filter((g) => g.length === d.size);
+    h += '<div class="dgroups mt">';
+    d.groups.forEach((g, i) => {
+      const isFull = g.length === d.size;
+      h += '<div class="dgroup' + (isFull ? "" : " rest") + '"><span class="dg-n">' + esc(isFull ? t("teamN", { n: i + 1 }) : t("waitlist")) + '</span><span class="dg-m">' + esc(g.map(name).join(" · ")) + "</span></div>";
+    });
+    h += "</div>";
+    if (full.length >= 2) h += '<button type="button" class="btn primary block mt" data-a="newGamePick">' + IC.scoreboard + esc(t("newGame")) + "</button>";
+  }
+  h += "</section>";
+  if (m.games.length) h += '<section class="section"><h2>' + esc(t("results")) + '</h2><ul class="games">' + m.games.slice().reverse().map((g) => gameRow(m, g)).join("") + "</ul></section>";
+  return h;
+}
+
+/* ---------- masa sırası: kazanan kalır (masa tenisi) ---------- */
+function queueView(m: Match): string {
+  const S = store.s;
+  const name = (id: string) => getP(S, m, id)?.name || "?";
+  const ids = active(S, m);
+  const max = Number(agreeValue(m, "queue"));
+  let h = '<section class="section"><div class="sec-head">' + IC.queue.replace("<svg", '<svg class="h2i"') + "<h2>" + esc(t("queueTitle")) + "</h2></div>" +
+    '<p class="small muted tight">' + esc(max ? t("queueHint", { n: max }) : t("queueHintFree")) + " " + ruleChip("20.7") + "</p>";
+  if (!m.queue) return h + '<button type="button" class="btn primary block" data-a="queueStart">' + IC.shuffle + esc(t("queueStart")) + "</button></section>";
+  const q = syncQueue(m.queue, ids);
+  const [x, y] = q.table;
+  if (x && y) {
+    const champ = q.streak > 0 ? x : "";
+    h += '<div class="qtable"><div class="qt-p' + (champ === x ? " champ" : "") + '"><b>' + esc(name(x)) + "</b>" + (champ === x ? '<span class="tag gold">' + esc(t("streakN", { n: q.streak })) + "</span>" : "") + "</div>" +
+      '<span class="qt-vs">' + esc(t("vs")) + '</span><div class="qt-p"><b>' + esc(name(y)) + "</b></div></div>" +
+      '<div class="row nowrap mt-s"><button type="button" class="btn grow" data-a="queueWin" data-id="' + esc(x) + '">' + esc(t("wonShort", { n: name(x).split(" ")[0] })) + '</button><button type="button" class="btn grow" data-a="queueWin" data-id="' + esc(y) + '">' + esc(t("wonShort", { n: name(y).split(" ")[0] })) + "</button></div>" +
+      '<button type="button" class="btn primary block mt-s" data-a="newGame" data-mode="queue">' + IC.scoreboard + esc(t("scoreTable")) + "</button>";
+  } else h += '<p class="muted small">' + esc(t("queueNeedTwo")) + "</p>";
+  if (q.order.length) h += "<h3>" + esc(t("queueNext")) + '</h3><ol class="qorder">' + q.order.map((id) => "<li>" + esc(name(id)) + "</li>").join("") + "</ol>";
+  h += '<button type="button" class="btn ghost block mt-s" data-a="queueStart" data-confirm="1">' + IC.shuffle + esc(t("queueReset")) + "</button></section>";
+  if (m.games.length) h += '<section class="section"><h2>' + esc(t("results")) + '</h2><ul class="games">' + m.games.slice().reverse().map((g) => gameRow(m, g)).join("") + "</ul></section>";
+  return h;
+}
+
+/* ---------- masa kurası (kıraathane) ---------- */
+function tablesView(m: Match): string {
+  const S = store.s;
+  const name = (id: string) => getP(S, m, id)?.name || "?";
+  const d = m.draw && m.draw.game !== "teams" ? m.draw : null;
+  const game = tableGame(ui.drawGame) || TABLE_GAMES[0];
+  let h = '<section class="section"><div class="sec-head">' + IC.dice.replace("<svg", '<svg class="h2i"') + "<h2>" + esc(t("tableDraw")) + "</h2></div>" +
+    '<p class="small muted tight">' + esc(t("tableDrawHint")) + " " + ruleChip("21.1") + "</p>" +
+    '<div class="phchips">' + TABLE_GAMES.map((g) => '<button type="button" class="fchip' + (g.id === game.id ? " on" : "") + '" data-a="drawGame" data-v="' + g.id + '" aria-pressed="' + (g.id === game.id) + '">' + esc(g.name) + " · " + g.size + "</button>").join("") + "</div>" +
+    (game.pairs ? '<button type="button" class="toggle mt-s' + (ui.drawPairs ? " on" : "") + '" data-a="drawPairs" aria-pressed="' + ui.drawPairs + '">' + esc(t("pairsMode")) + "</button>" : "") +
+    '<button type="button" class="btn primary block mt" data-a="drawTables">' + IC.shuffle + esc(d ? t("redraw") : t("drawNow")) + "</button>";
+  if (d) {
+    const g = tableGame(d.game);
+    h += '<div class="dgroups mt">';
+    d.groups.forEach((grp, i) => {
+      const full = grp.length === d.size;
+      let members = grp.map(name).join(" · ");
+      if (d.pairs && grp.length === 4) {
+        const [p1, p2] = partners(grp);
+        members = p1.map(name).join(" & ") + "  ⟷  " + p2.map(name).join(" & ");
+      }
+      h += '<div class="dgroup' + (full ? "" : " rest") + '"><span class="dg-n">' + esc(t("tableN", { n: i + 1 }) + " · " + (g?.name || d.game)) + (full ? "" : " · " + esc(t("incomplete"))) + '</span><span class="dg-m">' + esc(members) + "</span></div>";
+    });
+    h += '</div><p class="small muted mt-s m0">' + esc(t("tableRulesHint")) + " " + ruleChip("21.2") + "</p>";
+    h += '<button type="button" class="btn block mt" data-a="tab" data-v="match">' + IC.trophy + esc(t("tablesToResults")) + "</button>";
+  }
+  void L;
+  return h + "</section>";
 }

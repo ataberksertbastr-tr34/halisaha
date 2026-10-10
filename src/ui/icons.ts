@@ -39,4 +39,27 @@ export const IC = {
   edit: svg('<path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
   alert: svg('<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.5"/>'),
   wallet: svg('<path d="M3 7a2 2 0 012-2h13v4"/><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 13.5h2"/>'),
+  // etkinlik türleri
+  splat: svg('<path d="M12 4.5c1.2 0 1.6 2.3 2.6 2.7 1 .4 2.8-1.2 3.6-.4.8.8-.8 2.6-.4 3.6.4 1 2.7 1.4 2.7 2.6s-2.3 1.6-2.7 2.6c-.4 1 1.2 2.8.4 3.6-.8.8-2.6-.8-3.6-.4-1 .4-1.4 2.7-2.6 2.7s-1.6-2.3-2.6-2.7c-1-.4-2.8 1.2-3.6.4-.8-.8.8-2.6.4-3.6-.4-1-2.7-1.4-2.7-2.6s2.3-1.6 2.7-2.6c.4-1-1.2-2.8-.4-3.6.8-.8 2.6.8 3.6.4 1-.4 1.4-2.7 2.6-2.7z"/><circle cx="12" cy="13" r="2.2"/>', 1.6),
+  crosshair: svg('<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6"/><path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5"/>'),
+  volley: svg('<circle cx="12" cy="12" r="9"/><path d="M12 3c-1.5 4-1.2 7.5 0 9M12 12c3.8 1.4 6.7.9 8.6-.9M12 12c-2.6 3.2-5.8 4.6-8.4 4.4M6.2 5.2C9 6.6 11 9 12 12M17.6 19.1C17 15.9 15 13.4 12 12"/>', 1.7),
+  footvolley: svg('<path d="M2.5 15.5h19"/><path d="M4 15.5V21M20 15.5V21"/><path d="M4 18.2h16" stroke-dasharray="1.5 2.2"/><circle cx="12" cy="7" r="4"/><path d="M12 3.4l1.6 2.2-.6 2.4h-2l-.6-2.4z"/>', 1.7),
+  paddle: svg('<circle cx="9.5" cy="9.5" r="6.5"/><path d="M14.2 14.2l5.5 5.5"/><circle cx="19" cy="5" r="1.8"/>'),
+  dice: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
+  flag: svg('<path d="M5 21V4"/><path d="M5 4.5h11.5l-2.2 4 2.2 4H5"/>'),
+  // araçlar
+  shield: svg('<path d="M12 3l7.5 2.8v5.6c0 4.6-3.1 8.4-7.5 9.6-4.4-1.2-7.5-5-7.5-9.6V5.8z"/><path d="M9 12l2.2 2.2L15.5 10"/>'),
+  megaphone: svg('<path d="M3.5 10v4h3.2L14 18.5v-13L6.7 10z"/><path d="M17.2 9a3.6 3.6 0 010 6M19.6 6.4a7.4 7.4 0 010 11.2"/>'),
+  car: svg('<path d="M4 16.5V12l1.8-4.6A2 2 0 017.7 6h8.6a2 2 0 011.9 1.4L20 12v4.5"/><path d="M3 12h18v4.5H3z"/><circle cx="7.5" cy="16.8" r="1.7"/><circle cx="16.5" cy="16.8" r="1.7"/>'),
+  timer: svg('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 2.2M9.5 2.5h5M12 2.5V6"/>'),
+  play: svg('<path d="M7.5 5l11 7-11 7z"/>'),
+  pause: svg('<path d="M8 5v14M16 5v14"/>', 2.6),
+  list: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.4 1.4L7.3 5M3.5 12l1.4 1.4 2.4-2.4M3.5 18l1.4 1.4 2.4-2.4"/>'),
+  handshake: svg('<path d="M3 10.5l4-4 3.2 1.4L13 6.5l3.8 1.2 4.2 2.8"/><path d="M3 10.5l5.5 6.3a1.6 1.6 0 002.3.1l.4-.4.6.6a1.6 1.6 0 002.3-.1l3.9-4.6"/><path d="M8.5 12l2.4 2.4M11 10.4l2.6 2.6"/>'),
+  shuffle: svg('<path d="M3 7h3.5c4 0 6 10 10 10H21"/><path d="M3 17h3.5c1.5 0 2.7-1.4 3.7-3.2M13.8 10.2C14.8 8.4 16 7 17.5 7H21"/><path d="M18.5 4.5L21 7l-2.5 2.5M18.5 14.5L21 17l-2.5 2.5"/>'),
+  scoreboard: svg('<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M12 5v14"/><path d="M6 10.5l1.5-1.5v6M15.5 10a1.6 1.6 0 113 .8L15.5 15h3"/>'),
+  queue: svg('<circle cx="6" cy="7" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="7" r="2.2"/><path d="M3 15.5h18M15.5 12.5l3 3-3 3"/>'),
+  gavel: svg('<path d="M14 4.5l5.5 5.5M11.5 7l5.5 5.5M10 8.5l-6.5 6.5a1.4 1.4 0 002 2L12 10.5M13 21h8"/>'),
 } as const;
+
+export type IconKey = keyof typeof IC;

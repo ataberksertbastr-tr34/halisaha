@@ -9,7 +9,11 @@ import { reliability } from "../../domain/roster";
 import { perfRatings } from "../../domain/elo";
 import { accounts } from "../../domain/ledger";
 import { dayName } from "../../domain/messages";
-import { posBadge, subHeader } from "../components";
+import { kindIcon, posBadge, subHeader } from "../components";
+import { eventTitle, isFootball } from "../../domain/kinds";
+import { teamName } from "../../domain/teamstyle";
+import { eventTable } from "../../domain/stats";
+import { playerDiscipline } from "./discipline";
 import { IC } from "../icons";
 
 function tile(label: string, value: string, cls = ""): string {
@@ -41,14 +45,19 @@ export function viewPlayer(): string {
     tile(t("cardBalance"), acc ? (acc.owed > 0 ? "−" + money(acc.owed) : acc.credit > 0 ? "+" + money(acc.credit) : money(0)) : money(0), acc && acc.owed > 0 ? "neg" : acc && acc.credit > 0 ? "pos" : "") +
     "</div>";
   if (rel && (rel.late || rel.noshow)) h += '<p class="small muted m0">' + esc(t("relMeta", { s: rel.score, l: rel.late, x: rel.noshow })) + "</p>";
+  const ev = eventTable(S).find((x) => x.id === id);
+  if (ev) h += '<p class="small muted m0 mt-s">' + esc(t("eventsLine", { n: ev.events, w: ev.wins, g: ev.games })) + "</p>";
   h += "</section>";
+  h += playerDiscipline(id);
   if (card.recent.length) {
     h += '<section class="section" aria-labelledby="h-recent"><h2 id="h-recent">' + esc(t("recentMatches")) + '</h2><ul class="llist">';
     card.recent.forEach((x) => {
       const res = x.result === "w" ? t("resultW") : x.result === "d" ? t("resultD") : x.result === "l" ? t("resultL") : "";
       const extra = [x.goals ? t("goalsShort", { n: x.goals }) : "", x.mvp ? "★ " + t("mvp") : "", x.noshow ? t("noshowLast") : ""].filter(Boolean).join(" · ");
-      h += '<li class="lrow"><span class="res res-' + (x.result || "n") + '" aria-label="' + esc(res) + '">' + esc(res || "–") + '</span><div class="pname"><strong>' + esc(dayName(x.m.date) + " " + ddmm(x.m.date)) + "</strong>" +
-        '<span class="meta">' + esc((x.m.score ? x.m.score.a + " – " + x.m.score.b : "") + (x.side ? " · " + (x.side === "a" ? t("teamA") : t("teamB")) : "") + (extra ? " · " + extra : "")) + "</span></div></li>";
+      const fb = isFootball(x.m);
+      const meta = [x.m.score ? x.m.score.a + " – " + x.m.score.b : "", x.side ? teamName(S, x.side) : "", extra].filter(Boolean).join(" · ");
+      h += '<li class="lrow"><span class="res res-' + (x.result || "n") + '" aria-label="' + esc(res) + '">' + esc(res || "–") + '</span><div class="pname"><strong>' + (fb ? "" : kindIcon(x.m)) + esc(dayName(x.m.date) + " " + ddmm(x.m.date) + (fb ? "" : " · " + eventTitle(x.m))) + "</strong>" +
+        '<span class="meta">' + esc(meta) + "</span></div></li>";
     });
     h += "</ul></section>";
   }

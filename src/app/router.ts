@@ -5,9 +5,9 @@
  * geri tuşu alt sayfadan geri döner.
  */
 export type Tab = "match" | "teams" | "pay" | "players" | "more";
-export type RouteName = Tab | "settings" | "stats" | "rules" | "player";
+export type RouteName = Tab | "settings" | "stats" | "rules" | "player" | "discipline" | "announce";
 export const TABS: Tab[] = ["match", "teams", "pay", "players", "more"];
-const ALL: RouteName[] = [...TABS, "settings", "stats", "rules", "player"];
+const ALL: RouteName[] = [...TABS, "settings", "stats", "rules", "player", "discipline", "announce"];
 
 export interface Route {
   name: RouteName;
@@ -17,7 +17,7 @@ export interface Route {
 /** Alt sayfanın bağlı olduğu sekme (alt çubukta seçili görünür). */
 export function tabOf(r: Route): Tab {
   if (r.name === "player") return "players";
-  if (r.name === "settings" || r.name === "stats" || r.name === "rules") return "more";
+  if (r.name === "settings" || r.name === "stats" || r.name === "rules" || r.name === "discipline" || r.name === "announce") return "more";
   return r.name;
 }
 
