@@ -906,6 +906,12 @@ export function onEnter(e: KeyboardEvent): void {
   } else if (id === "guestName") {
     e.preventDefault();
     document.querySelector<HTMLElement>('[data-a="addGuest"]')?.click();
+  } else if (target.classList.contains("sh-in")) {
+    // Puan cetveli: Enter bir sonraki kişiye geçer, sonuncuda eli yazar
+    e.preventDefault();
+    const next = document.getElementById("sh-in-" + (Number(target.dataset.i) + 1));
+    if (next) next.focus();
+    else dispatch("sheetAdd", {} as DOMStringMap, target);
   } else if (id === "q-att" || id === "q-team") {
     e.preventDefault();
     const key = id.slice(2) as FilterKey;

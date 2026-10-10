@@ -14,7 +14,7 @@ import { makeEvent } from "../domain/schedule";
 import { applyFixed } from "../domain/roster";
 import { agreeValue, isFootball } from "../domain/kinds";
 import { newCar, seatsLeft } from "../domain/cars";
-import { addPoint, newGame, other, replay, resultGame, undoPoint, winnerOf, type Side } from "../domain/scoring";
+import { addPoint, newGame, other, replay, resultGame, scoreLine as scoreLineOf, undoPoint, winnerOf, type Side } from "../domain/scoring";
 import { drawTables, drawTeams, partners, queueResult, startQueue, syncQueue, tableGame } from "../domain/draw";
 import { addInfraction, removeInfraction, suggest } from "../domain/discipline";
 import { newExtra, toggleExtraPaid } from "../domain/ledger";
@@ -30,6 +30,13 @@ import { shareText } from "../ui/share";
 import { copyText } from "../ui/clipboard";
 import { toast } from "../ui/toast";
 import { elapsed } from "../ui/clock";
+import { makeBracket, resolveBracket, champion, setPick } from "../domain/bracket";
+import { cupSides, roundLabel } from "../ui/views/teams";
+import { leaders, newSheet, parseScore, sheetFor } from "../domain/sheet";
+import { openSheet, refreshSheet, sheetTarget } from "../ui/views/sheet";
+import { dayName } from "../domain/messages";
+import { ddmm } from "../domain/dates";
+import { eventTitle } from "../domain/kinds";
 
 const cur = (): Match | null => currentMatch(store.s, ui.matchId, today());
 const val = (sel: string) => (document.querySelector(sel) as HTMLInputElement | null)?.value ?? "";
@@ -386,6 +393,146 @@ registerActions({
   discDel: (ds) => {
     mutate(t("discRemoved"), () => removeInfraction(store.s, ds.id!));
   },
+  /* ---------- turnuva (Kural 20.1) ---------- */
+  cupStart: () => {
+    const m = cur();
+    if (!m) return;
+    const sides = cupSides(m);
+    if (sides.length < 2) return toast(t("cupNeedDraw"));
+    mutate(m.bracket ? t("drawDone") : t("cupMade"), () => {
+      m.bracket = makeBracket(sides);
+    });
+  },
+  cupPlay: (ds) => {
+    const m = cur();
+    if (!m || !m.bracket) return;
+    const rounds = resolveBracket(m.bracket, m.games);
+    const bm = rounds[Number(ds.r)]?.[Number(ds.i)];
+    if (!bm || !bm.a || !bm.b) return;
+    if (bm.gid) return openScoreboard(bm.gid);
+    const label = roundLabel(rounds.length, bm.r) + (rounds.length - bm.r > 1 ? " " + (bm.i + 1) : "");
+    const g = newGame(m, "sets", bm.a, bm.b, label, today());
+    m.games.push(g);
+    setPick(m.bracket, bm, { gid: g.id, win: null });
+    commit();
+    openScoreboard(g.id);
+  },
+  cupShare: () => {
+    const m = cur();
+    if (!m || !m.bracket) return;
+    const rounds = resolveBracket(m.bracket, m.games);
+    const nm = (ids: string[] | null) => (ids ? ids.map((id) => first(m, id)).join(" & ") : "?");
+    const champ = champion(rounds);
+    let txt = "🏆 " + t("cupShareHead", { e: eventTitle(m), d: dayName(m.date) + " " + ddmm(m.date) }) + "\n";
+    if (champ) txt += "\n👑 " + t("cupChampion") + ": " + nm(champ) + "\n";
+    for (let r = rounds.length - 1; r >= 0; r--) {
+      const lines = rounds[r].filter((bm) => !bm.bye && (bm.a || bm.b)).map((bm) => {
+        const g = bm.gid ? m.games.find((x) => x.id === bm.gid) : null;
+        const sc = g ? " " + scoreLineOf(g) : "";
+        return "• " + nm(bm.a) + " – " + nm(bm.b) + (bm.win ? sc + " ✓ " + nm(bm.win === "a" ? bm.a : bm.b) : "");
+      });
+      if (lines.length) txt += "\n" + roundLabel(rounds.length, r) + "\n" + lines.join("\n") + "\n";
+    }
+    shareText(txt.trim() + "\n\n(" + t("ruleN", { n: "20.1" }) + ")");
+  },
+  /* ---------- sakatlık (Kural 8.3, 15.6) ---------- */
+  injured: (ds) => {
+    const m = cur();
+    if (!m || !ds.id) return;
+    if (m.injured[ds.id]) delete m.injured[ds.id];
+    else m.injured[ds.id] = true;
+    commit();
+  },
+  /* ---------- üç korner bir penaltı (Kural 7.6) ---------- */
+  corner: (ds) => {
+    const m = cur();
+    if (!m) return;
+    const x: Side = ds.side === "b" ? "b" : "a";
+    const c = m.corners ? { ...m.corners } : { a: 0, b: 0 };
+    c[x]++;
+    c[other(x)] = 0;
+    if (c[x] >= 3) {
+      c[x] = 0;
+      try {
+        navigator.vibrate?.([200, 100, 200]);
+      } catch {
+        /* titreşim yok */
+      }
+      toast(t("cornerPenalty", { t: teamName(store.s, x) }), undefined, 7000);
+    }
+    m.corners = c;
+    commit();
+  },
+  cornerReset: () => {
+    const m = cur();
+    if (!m) return;
+    delete m.corners;
+    commit();
+  },
+  /* ---------- kıraathane puan cetveli (Kural 21.1–21.2) ---------- */
+  sheetOpen: (ds) => {
+    const m = cur();
+    const d = m?.draw;
+    if (!m || !d) return;
+    const i = Number(ds.t);
+    if (!sheetFor(m.sheets, d, i)) {
+      const sh = newSheet(i, d);
+      if (!sh) return;
+      m.sheets.push(sh);
+      commit(true);
+    }
+    openSheet(m.id, i);
+  },
+  sheetLow: (ds) => {
+    const x = sheetTarget();
+    if (!x || x.sh.rows.length) return;
+    x.sh.low = ds.v === "1";
+    commit();
+    refreshSheet();
+  },
+  sheetAdd: () => {
+    const x = sheetTarget();
+    if (!x || x.sh.done) return;
+    const raw = x.sh.seats.map((_, i) => val("#sh-in-" + i));
+    if (raw.every((v) => !String(v).trim())) return toast(t("sheetEmpty"));
+    x.sh.rows.push(raw.map(parseScore));
+    commit();
+    refreshSheet(true);
+  },
+  sheetDel: (ds) => {
+    const x = sheetTarget();
+    const i = Number(ds.i);
+    if (!x || x.sh.done || !(i >= 0) || i >= x.sh.rows.length) return;
+    x.sh.rows.splice(i, 1);
+    commit();
+    refreshSheet();
+  },
+  sheetFinish: () => {
+    const x = sheetTarget();
+    if (!x || x.sh.done || !x.sh.rows.length) return;
+    const { m, sh } = x;
+    const lead = leaders(sh);
+    if (lead.length !== 1) return toast(t("sheetTie"));
+    const w = lead[0];
+    const label = t("tableN", { n: sh.t + 1 }) + " · " + (tableGame(sh.game)?.name || sh.game);
+    const g = resultGame(sh.seats[w], sh.seats.filter((_, i) => i !== w).flat(), "a", label, today());
+    m.games.push(g);
+    sh.gid = g.id;
+    sh.done = true;
+    commit();
+    refreshSheet();
+    toast(t("winnerIs", { n: sh.seats[w].map((id) => first(m, id)).join(" & ") }));
+  },
+  sheetReopen: () => {
+    const x = sheetTarget();
+    if (!x) return;
+    const { m, sh } = x;
+    if (sh.gid) m.games = m.games.filter((g) => g.id !== sh.gid);
+    delete sh.gid;
+    sh.done = false;
+    commit();
+    refreshSheet();
+  },
   annMove: (ds) => {
     annToggle(ds.v || "");
     render();
@@ -459,7 +606,19 @@ export function onEventField(el: HTMLInputElement | HTMLSelectElement): boolean 
     if (v) m.agree[k] = v;
     else delete m.agree[k];
     ui.matchId = m.id;
+    // Kural 20.1: turnuvada maçlar 5 oyunda 3
+    const bo5 = k === "org" && v === "cup" && m.kind === "tabletennis" && m.agree.bo !== "5";
+    if (bo5) m.agree.bo = "5";
     commit();
+    if (bo5) toast(t("cupBo5"));
+    return true;
+  }
+  if (f === "sheet.start") {
+    const x = sheetTarget();
+    if (!x || x.sh.rows.length) return true;
+    x.sh.start = parseScore(v);
+    commit();
+    refreshSheet();
     return true;
   }
   if (f === "m.title") m.title = v.trim().slice(0, 60);

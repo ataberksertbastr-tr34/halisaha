@@ -178,6 +178,22 @@ export const tr = {
   eventsLine: "Etkinlikler: {n} katılım · {w}/{g} oyun kazandı",
   colKinds: "Türler",
   colViolation: "İhlal", colSanction: "Yaptırım", colRule: "Kural", appendixShort: "Ek", partN: "KISIM {n}",
+  squadFill: "Kadro doluluğu", noEventHint: "Etkinlik sekmesinden yeni maç ya da etkinlik oluştur.",
+  reset: "Sıfırla",
+  cornersTitle: "Korner serisi", cornersHint: "Korneri kullanan takıma dokun; üst üste 3 korner 1 penaltı sayılır, rakip korner kullanınca seri sıfırlanır.", cornerFor: "{t} korner kullandı (seri {n})", cornerPenalty: "{t}: üst üste 3 korner, penaltı! (Kural 7.6)",
+  swapHint: "Skor farkı büyük: takımlar arasında takas zamanı (Kural 3.4)",
+  injuredTitle: "Sakatlananlar", injuredHint: "Sakatlanan oyunu bırakır ve organizatöre haber verir. Dokunarak işaretle.", injuredTag: "son etkinlikte sakatlandı", injuriesN: "{n} sakatlık",
+  closingTitle: "Kapanış listesi",
+  cupTitle: "Turnuva", cupHint: "Kurayla eleme tablosu: kazanan bir sonraki tura çıkar, eşleşmeye dokununca skor tabelası açılır.", cupHintTT: "Kurayla eleme tablosu; turnuvada maçlar {bo} oyun üzerinden oynanır. Eşleşmeye dokununca skor tabelası açılır.",
+  cupStart: "Turnuva kurası çek ({n} katılımcı)", cupRedraw: "Yeniden kur", cupShare: "Tabloyu paylaş", cupMade: "Turnuva tablosu kuruldu", cupNeedDraw: "Önce takım kurasını çek; tam kurulan takımlar turnuvaya girer.",
+  cupChampion: "Şampiyon", cupMeta: "{n} katılımcı · {r} tur · {p} maç sırada", cupLeft: "Turnuvada sırada {n} maç var.", cupTable: "Turnuva tablosu", cupGo: "Turnuvayı kur",
+  cupBye: "bay", cupTbd: "belli olacak", cupByeLine: "Bay geçti", cupDecided: "Bitti", cupPlay: "Oyna", cupWaiting: "Bekliyor",
+  cupStale: "Katılımcılar tablo kurulduktan sonra değişti; gerekirse yeniden kur.", cupShareHead: "{e} turnuvası – {d}", cupBo5: "Turnuvada maçlar 5 oyunda 3 olarak ayarlandı (Kural 20.1)",
+  rFinal: "Final", rSemi: "Yarı final", rQuarter: "Çeyrek final", rLast16: "Son 16", rN: "{n}. tur",
+  sheetTitle: "Puan cetveli", sheetHint: "Her eli yaz; toplam ve önde olan anında görünür. Usul oyun başlamadan masada netleşir.", sheetMode: "Kazanan", sheetHigh: "Yüksek puan kazanır", sheetLowWins: "Düşük puan kazanır",
+  sheetStart: "Başlangıç puanı", sheetLocked: "El yazıldıktan sonra usul değişmez (Kural 21.2).", sheetHand: "El", sheetDelHand: "{n}. eli sil", sheetScoreFor: "{n} puanı", sheetTotal: "Toplam",
+  sheetLeader: "Önde", sheetWinner: "Kazanan", sheetAdd: "Eli yaz", sheetFinish: "Masayı bitir", sheetMinus: "Eksi puan için başına - koy (ör. -20). Enter bir sonraki kişiye geçer.",
+  sheetEmpty: "Önce puanları yaz", sheetTie: "Eşitlik var: bir el daha oynanmalı", sheetDone: "bitti", sheetHands: "{n} el", sheetNone: "el yok",
 } as const;
 
 export type MsgKey = keyof typeof tr;
