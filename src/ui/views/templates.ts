@@ -67,7 +67,7 @@ export function openTemplateSheet(k: TemplateKey): void {
   const text = templateOf(store.s.settings.templates, k, lang());
   showModal(sheetHead(t(TPL_NAMES[k])) +
     '<textarea id="tpl-text" data-k="' + k + '" aria-label="' + esc(t(TPL_NAMES[k])) + '" spellcheck="false">' + esc(text) + "</textarea>" +
-    '<p class="small muted mt-s">' + esc(t("placeholders")) + '</p><div class="phchips">' +
+    '<p class="small muted mt-s">' + esc(t("placeholders")) + '</p><div class="phchips mono">' +
     PLACEHOLDERS[k].map((p) => '<button type="button" class="fchip" data-a="tplIns" data-v="' + p + '">{' + p + "}</button>").join("") + "</div>" +
     "<h3>" + esc(t("preview")) + '</h3><pre class="preview" id="tpl-preview">' + esc(previewOf(k, text)) + "</pre>" +
     '<div class="row mt"><button type="button" class="btn primary grow" data-a="tplSave" data-k="' + k + '">' + esc(t("save")) + "</button>" +

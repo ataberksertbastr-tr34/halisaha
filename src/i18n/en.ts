@@ -91,4 +91,12 @@ export const en: Record<MsgKey, string> = {
   expenses: "Expenses", addExpense: "Add expense", expBall: "Ball", expBib: "Bibs", expWater: "Water", expOther: "Other", expenseAdded: "Expense added", expenseDeleted: "Expense deleted",
   noExpenses: "No expenses yet.", category: "Type", amountBad: "Enter a valid amount.", noAccounts: "No account activity yet.", openLedger: "Open ledger",
   ledgerHint: "Payments not tied to a match settle the oldest debts first; anything extra stays as credit.", partialPaid: "{p} paid", searchPeople: "Search people…",
+  addCalendar: "Add to calendar", googleCal: "Google Calendar", icsFile: "Calendar file (.ics)", icsAll: "All upcoming matches (.ics)",
+  icsHint: "On Android, Google Calendar is easiest. On iPhone, opening the calendar file offers \"Add to Calendar\". Reminds you 2 hours before.", calEventTitle: "Football",
+  reserved: "Reserved", notReserved: "Not reserved", reserveTitle: "Field not reserved", reserveText: "Call the field and book it for {d}.",
+  reservedDone: "I've booked it", reservedOk: "Field marked as reserved", reservedUndo: "Reservation mark removed",
+  autoSchedule: "Create the next 4 matches automatically", reserveDays: "Field booking reminder", reserveOff: "Off", reserveDaysN: "{n} days before",
+  goalsTitle: "Goals and player of the match", goalsHint: "Tap + for each goal, the star picks the player of the match. Leave the score empty to fill it from the goals.",
+  mvp: "Player of the match", goalSum: "Goal total: Yellows {a} · Oranges {b}", goalMismatch: "Doesn't match the score (could be an own goal).", noTeam: "No team",
+  goalsN: "{n} goals", scheduled: "{n} matches scheduled", addGoal: "{n}: add goal", removeGoal: "{n}: remove goal", matchPlan: "Match plan",
 };

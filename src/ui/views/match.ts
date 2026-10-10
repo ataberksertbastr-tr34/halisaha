@@ -1,6 +1,6 @@
 /** Maç sekmesi: maç kartı, katılım listesi, misafir, sonuç ve geçmiş. */
 import { money, t, type MsgKey } from "../../i18n";
-import { store, today, ui } from "../../app/store";
+import { isOpen, store, today, ui } from "../../app/store";
 import type { Att, Match } from "../../domain/types";
 import { esc, norm, pips, trSort } from "../../domain/text";
 import { ddmm } from "../../domain/dates";
@@ -36,10 +36,12 @@ function matchCard(m: Match): string {
     '<div class="mc-meta">' + esc(fmt + "+1 · " + money(Number(m.price) || 0) + " · " + t("perPerson") + " ~" + money(estShare(S, m))) + "</div></div>" +
     '<button type="button" class="btn sm" data-a="toggleDetails" aria-expanded="' + open + '" aria-controls="mc-edit">' + esc(open ? t("done") : t("edit")) + "</button></div>";
   const links: string[] = [];
+  links.push('<button type="button" class="qbtn' + (m.reserved ? " done" : " warn") + '" data-a="reserve" data-id="' + esc(m.id) + '" aria-pressed="' + m.reserved + '">' + (m.reserved ? IC.check : IC.alert) + "<span>" + esc(m.reserved ? t("reserved") : t("notReserved")) + "</span></button>");
+  if (ph) links.push('<a class="qbtn" href="tel:' + esc(ph) + '">' + IC.phone + "<span>" + esc(t("call")) + "</span></a>");
+  links.push('<button type="button" class="qbtn" data-a="calendar" data-id="' + esc(m.id) + '">' + IC.calendar + "<span>" + esc(t("addCalendar")) + "</span></button>");
   if (map) links.push('<a class="qbtn" href="' + esc(map) + '" target="_blank" rel="noopener">' + IC.map + "<span>" + esc(t("openMap")) + "</span></a>");
   if (dir) links.push('<a class="qbtn" href="' + esc(dir) + '" target="_blank" rel="noopener">' + IC.nav + "<span>" + esc(t("directions")) + "</span></a>");
-  if (ph) links.push('<a class="qbtn" href="tel:' + esc(ph) + '">' + IC.phone + "<span>" + esc(t("call")) + "</span></a>");
-  if (links.length) h += '<div class="qrow">' + links.join("") + "</div>";
+  h += '<div class="qrow">' + links.join("") + "</div>";
   if (open) {
     h += '<div id="mc-edit" class="mc-edit"><div class="grid2">' +
       '<label class="fld">' + esc(t("date")) + '<input type="date" data-f="m.date" value="' + esc(m.date) + '"></label>' +
@@ -126,9 +128,50 @@ function resultBlock(m: Match): string {
         return '<button type="button" class="fchip' + (on ? " bad" : "") + '" data-a="noshow" data-id="' + esc(id) + '" aria-pressed="' + on + '">' + esc(p ? p.name : id) + "</button>";
       }).join("") + "</div>";
   }
+  h += goalsBlock(m);
   h += '<button type="button" class="btn primary block mt" data-a="finish">' + esc(t("finish")) + "</button>" +
     '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch">' + esc(t("cancelMatch")) + '</button><button type="button" class="btn danger sm" data-a="delMatch">' + esc(t("deleteMatch")) + "</button></div></section>";
   return h;
+}
+
+/** Gol kaydı ve maçın oyuncusu; takımlar kurulduysa takım takım. */
+function goalsBlock(m: Match): string {
+  const S = store.s;
+  const { playing } = lineup(S, m);
+  if (!playing.length) return "";
+  const inA = new Set(m.teams.a), inB = new Set(m.teams.b);
+  const groups: [string, string, string[]][] = [];
+  if (inA.size || inB.size) {
+    groups.push(["a", t("teamA"), playing.filter((id) => inA.has(id))]);
+    groups.push(["b", t("teamB"), playing.filter((id) => inB.has(id))]);
+    const rest = playing.filter((id) => !inA.has(id) && !inB.has(id));
+    if (rest.length) groups.push(["", t("noTeam"), rest]);
+  } else groups.push(["", "", playing]);
+  const sum = (ids: string[]) => ids.reduce((x, id) => x + (m.goals[id] || 0), 0);
+  const ga = sum(m.teams.a), gb = sum(m.teams.b);
+  const anyGoals = Object.keys(m.goals).length > 0;
+  let h = '<details class="goals mt" data-keep="goals-' + esc(m.id) + '"' + (isOpen("goals-" + m.id, anyGoals || !!m.mvp || m.date <= today()) ? " open" : "") + '><summary>' + IC.ball + esc(t("goalsTitle")) + "</summary>" +
+    '<p class="small muted">' + esc(t("goalsHint")) + "</p>";
+  groups.forEach(([side, title, ids]) => {
+    if (!ids.length) return;
+    if (title) h += '<div class="ghead ' + side + '">' + esc(title) + (side ? " · " + esc(t("goalsN", { n: sum(ids) })) : "") + "</div>";
+    h += '<ul class="glist">';
+    ids.forEach((id) => {
+      const p = S.players.find((x) => x.id === id) || m.guests.find((x) => x.id === id);
+      if (!p) return;
+      const g = m.goals[id] || 0, mvp = m.mvp === id;
+      h += '<li class="grow-row"><span class="gname">' + esc(p.name) + "</span>" +
+        '<button type="button" class="iconbtn star' + (mvp ? " on" : "") + '" data-a="mvp" data-id="' + esc(id) + '" aria-pressed="' + mvp + '" aria-label="' + esc(t("mvp") + ": " + p.name) + '">' + (mvp ? IC.starFill : IC.star) + "</button>" +
+        '<button type="button" class="iconbtn" data-a="goal" data-id="' + esc(id) + '" data-d="-1" aria-label="' + esc(t("removeGoal", { n: p.name })) + '"' + (g ? "" : " disabled") + ">" + IC.minus + "</button>" +
+        '<b class="gcount" aria-live="polite">' + g + "</b>" +
+        '<button type="button" class="iconbtn plus" data-a="goal" data-id="' + esc(id) + '" data-d="1" aria-label="' + esc(t("addGoal", { n: p.name })) + '">' + IC.plus + "</button></li>";
+    });
+    h += "</ul>";
+  });
+  if (anyGoals && (m.teams.a.length || m.teams.b.length)) {
+    h += '<p class="small muted m0">' + esc(t("goalSum", { a: ga, b: gb })) + (m.score && (m.score.a !== ga || m.score.b !== gb) ? " " + esc(t("goalMismatch")) : "") + "</p>";
+  }
+  return h + "</details>";
 }
 
 export function historyBlock(): string {

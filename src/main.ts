@@ -1,7 +1,11 @@
 /** Uygulama girişi: veriyi yükler, olayları bağlar, ilk ekranı çizer. */
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
-import { replaceState, setLockHook, setPersister, setRenderer, store, ui } from "./app/store";
+import { commit, replaceState, setLockHook, setPersister, setRenderer, store, ui } from "./app/store";
+import { ensureUpcoming, needsReservation } from "./domain/schedule";
+import { fieldOf, telHref } from "./domain/fields";
+import { dayName } from "./domain/messages";
+import { ddmm } from "./domain/dates";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
 import { importFromFile, onEnter, onField } from "./app/handlers";
@@ -41,8 +45,34 @@ async function boot(): Promise<void> {
   bindEvents();
   setupPWA();
   setupBackupReminder();
+  setupReservationReminder();
+  autoSchedule();
   renderApp();
+  // Uygulama ertesi gün öne geldiğinde yeni maç günlerini planla, hatırlatmaları tazele
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      autoSchedule();
+      renderApp();
+    }
+  });
   if (hasData(store.s)) requestPersistence().then(() => undefined);
+}
+
+function autoSchedule(): void {
+  if (ensureUpcoming(store.s, new Date()).length) commit(true);
+}
+
+function setupReservationReminder(): void {
+  addBanner(() => {
+    const m = needsReservation(store.s, new Date())[0];
+    if (!m) return "";
+    const f = fieldOf(store.s, m);
+    const tel = telHref(f?.phone);
+    return bannerHTML({
+      icon: IC.alert, tone: "warn", title: esc(t("reserveTitle")), text: esc(t("reserveText", { d: dayName(m.date) + " " + ddmm(m.date) + " " + m.time + (f ? ", " + f.name : "") })),
+      actions: (tel ? '<a class="btn sm" href="tel:' + esc(tel) + '">' + IC.phone + esc(t("call")) + "</a>" : "") + '<button type="button" class="btn sm primary" data-a="reserve" data-id="' + esc(m.id) + '">' + esc(t("reservedDone")) + "</button>",
+    });
+  });
 }
 
 function setupBackupReminder(): void {
@@ -112,6 +142,15 @@ function bindEvents(): void {
     if (e.key === "Escape" && isModalOpen()) closeModal();
     if (e.key === "Enter") onEnter(e);
   });
+  // <details data-keep> açık/kapalı durumunu hatırla (toggle olayı kabarcıklanmaz → yakalama)
+  document.addEventListener(
+    "toggle",
+    (e) => {
+      const d = e.target as HTMLDetailsElement;
+      if (d.dataset && d.dataset.keep) ui.open[d.dataset.keep] = d.open;
+    },
+    true,
+  );
   window.addEventListener("popstate", () => {
     if (handlePopForModal()) return;
     syncFromLocation();

@@ -20,7 +20,10 @@ import { billOf, freezeBill } from "../domain/money";
 import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams } from "../domain/teams";
-import { makeMatch } from "../domain/schedule";
+import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
+import { buildICS, eventOf } from "../domain/calendar";
+import { openCalendarSheet } from "../ui/views/calendar";
+import { isIOS } from "../pwa/register";
 import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
 import { shareText } from "../ui/share";
@@ -47,6 +50,31 @@ export function newMatch(): void {
 }
 
 let pendingImport: State | null = null;
+
+/** Skor girilmediyse takım gollerinden hesaplar. */
+function scoreFromGoals(m: Match): Match["score"] {
+  if (!Object.keys(m.goals).length || !(m.teams.a.length || m.teams.b.length)) return null;
+  const sum = (ids: string[]) => ids.reduce((x, id) => x + (m.goals[id] || 0), 0);
+  return { a: sum(m.teams.a), b: sum(m.teams.b) };
+}
+
+/** .ics dosyasını kaydeder / açar (iPhone'da doğrudan takvim ekranı). */
+function saveICS(ms: Match[]): void {
+  if (!ms.length) return;
+  const ics = buildICS(ms.map((m) => eventOf(store.s, m, t("calEventTitle"))));
+  if (isIOS()) {
+    window.open("data:text/calendar;charset=utf-8," + encodeURIComponent(ics), "_blank");
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (ms.length === 1 ? "halisaha-" + ms[0].date : "halisaha-maclar") + ".ics";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 
 function openLink(u: string): void {
   window.open(u, "_blank", "noopener");
@@ -167,6 +195,40 @@ registerActions({
         toast(t("debtWarn", { n: name, a: money(debt) }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
       }
     }
+  },
+  reserve: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (!m) return;
+    const on = !m.reserved;
+    mutate(on ? t("reservedOk") : t("reservedUndo"), () => {
+      m.reserved = on;
+    });
+  },
+  calendar: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) openCalendarSheet(m);
+  },
+  icsOne: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) saveICS([m]);
+  },
+  icsAll: () => {
+    saveICS(store.s.matches.filter((m) => m.status === "open" && m.date >= today()));
+  },
+  goal: (ds) => {
+    const m = cur();
+    if (!m) return;
+    const id = ds.id!;
+    const n = Math.max(0, (m.goals[id] || 0) + Number(ds.d));
+    if (n) m.goals[id] = n;
+    else delete m.goals[id];
+    commit();
+  },
+  mvp: (ds) => {
+    const m = cur();
+    if (!m) return;
+    m.mvp = m.mvp === ds.id ? "" : ds.id!;
+    commit();
   },
   copyLastWeek: () => {
     const m = cur();
@@ -327,7 +389,7 @@ registerActions({
     const a1 = val("#scA"), b1 = val("#scB");
     ui.matchId = null;
     mutate(t("matchDone"), () => {
-      m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : null;
+      m.score = a1 !== "" || b1 !== "" ? { a: Number(a1) || 0, b: Number(b1) || 0 } : scoreFromGoals(m);
       m.status = "played";
       freezeBill(store.s, m);
     });
@@ -356,6 +418,7 @@ registerActions({
     if (!m) return;
     ui.matchId = null;
     mutate(t("matchDeleted"), () => {
+      rememberSkip(store.s, m);
       store.s.matches = store.s.matches.filter((x) => x.id !== m.id);
     }, { lock: "before-delete" });
   },
@@ -488,9 +551,12 @@ registerActions({
     }, { lock: "before-delete" });
   },
   tglSet: (ds) => {
-    const k = ds.k as "gkFree" | "round";
+    const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf";
     store.s.settings[k] = !store.s.settings[k];
+    let made = 0;
+    if (k === "autoSchedule" && store.s.settings.autoSchedule) made = ensureUpcoming(store.s, new Date()).length;
     commit();
+    if (made) toast(t("scheduled", { n: made }));
   },
   newField: () => openFieldEditor(null, null),
   editField: (ds) => openFieldEditor(ds.id!, null),
@@ -633,6 +699,13 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
     S.settings.slots[i] = S.settings.slots[i] || { d: "", t: "21:00" };
     if (k === "d") S.settings.slots[i].d = v === "" ? "" : Number(v);
     else S.settings.slots[i].t = v;
+    const made = ensureUpcoming(S, new Date());
+    commit();
+    toast(made.length ? t("scheduled", { n: made.length }) : t("saved"));
+    return;
+  }
+  if (f === "reserveDays") {
+    S.settings.reserveDays = Number(v) || 0;
     commit();
     toast(t("saved"));
     return;
@@ -649,8 +722,12 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
       if (v) delete m.field;
     } else if (k === "price") m.price = Number(v) || 0;
     else if (k === "format") m.format = Number(v);
-    else if (k === "date") m.date = v;
-    else if (k === "time") m.time = v;
+    else if (k === "date" || k === "time") {
+      // Otomatik planlanan maç taşınırsa eski zamanı tekrar oluşturulmasın
+      rememberSkip(S, m);
+      if (k === "date") m.date = v;
+      else m.time = v;
+    }
     ui.matchId = m.id;
     commit();
     return;

@@ -89,6 +89,14 @@ export const tr = {
   expenses: "Giderler", addExpense: "Gider ekle", expBall: "Top", expBib: "Yelek", expWater: "Su", expOther: "Diğer", expenseAdded: "Gider eklendi", expenseDeleted: "Gider silindi",
   noExpenses: "Henüz gider yok.", category: "Tür", amountBad: "Geçerli bir tutar yaz.", noAccounts: "Henüz hesap hareketi yok.", openLedger: "Hesap defterini aç",
   ledgerHint: "Maça yazılmamış ödemeler en eski borçtan başlayarak kapatır; fazlası avans olarak kalır.", partialPaid: "{p} ödendi", searchPeople: "Kişi ara…",
+  addCalendar: "Takvime ekle", googleCal: "Google Takvim", icsFile: "Takvim dosyası (.ics)", icsAll: "Yaklaşan tüm maçlar (.ics)",
+  icsHint: "Android'de en kolayı Google Takvim. iPhone'da takvim dosyasını açınca \"Takvime ekle\" çıkar. Maçtan 2 saat önce hatırlatır.", calEventTitle: "Halı saha",
+  reserved: "Rezerve edildi", notReserved: "Rezerve edilmedi", reserveTitle: "Saha rezerve edilmedi", reserveText: "{d} maçı için sahayı ara ve rezerve et.",
+  reservedDone: "Rezerve ettim", reservedOk: "Saha rezerve edildi olarak işaretlendi", reservedUndo: "Rezervasyon işareti kaldırıldı",
+  autoSchedule: "Önümüzdeki 4 maçı otomatik oluştur", reserveDays: "Saha rezervasyonu hatırlatması", reserveOff: "Kapalı", reserveDaysN: "Maçtan {n} gün önce",
+  goalsTitle: "Goller ve maçın oyuncusu", goalsHint: "+ ile golü yaz, yıldızla maçın oyuncusunu seç. Skoru boş bırakırsan gollerden hesaplanır.",
+  mvp: "Maçın oyuncusu", goalSum: "Gol toplamı: Sarılar {a} · Turuncular {b}", goalMismatch: "Skorla tutmuyor (kendi kalesine gol olabilir).", noTeam: "Takımsız",
+  goalsN: "{n} gol", scheduled: "{n} maç planlandı", addGoal: "{n}: gol ekle", removeGoal: "{n}: gol sil", matchPlan: "Maç planı",
 } as const;
 
 export type MsgKey = keyof typeof tr;

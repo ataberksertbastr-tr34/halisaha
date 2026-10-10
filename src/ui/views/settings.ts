@@ -41,8 +41,9 @@ export function viewSettings(): string {
     h += '<div class="grid2 mb"><label class="fld">' + esc(t("slot")) + " " + (i + 1) + '<select data-f="slot.' + i + '.d">' + dayOpts(sl.d) + "</select></label>" +
       '<label class="fld">' + esc(t("time")) + '<input type="time" data-f="slot.' + i + '.t" value="' + esc(sl.t) + '"></label></div>';
   });
-  h += '<div class="row mt"><button type="button" class="toggle' + (s.gkFree ? " on" : "") + '" data-a="tglSet" data-k="gkFree" aria-pressed="' + s.gkFree + '">' + esc(t("gkFree")) + "</button>" +
-    '<button type="button" class="toggle' + (s.round ? " on" : "") + '" data-a="tglSet" data-k="round" aria-pressed="' + s.round + '">' + esc(t("round")) + "</button></div></section>";
+  const tgl = (k: "gkFree" | "round" | "autoSchedule", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
+  h += '<div class="toggles mt">' + tgl("autoSchedule", t("autoSchedule")) + tgl("gkFree", t("gkFree")) + tgl("round", t("round")) + "</div>";
+  h += '<label class="fld mt">' + esc(t("reserveDays")) + '<select data-f="reserveDays">' + [0, 1, 2, 3, 4, 5, 7].map((n) => '<option value="' + n + '"' + (s.reserveDays === n ? " selected" : "") + ">" + esc(n ? t("reserveDaysN", { n }) : t("reserveOff")) + "</option>").join("") + "</select></label></section>";
   h += templatesSection();
   h += backupSection();
   h += appSection();
