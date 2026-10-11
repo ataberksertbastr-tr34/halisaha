@@ -239,13 +239,15 @@ async function guarded<T>(fn: (m: AuthMod) => Promise<T>): Promise<T> {
 }
 
 /**
- * Giriş modülünü önceden yükler (Ayarlar'daki eşitleme bölümü açılınca). Böylece
- * "Google ile giriş yap"a dokununca pencere hemen, dokunuşun içinde açılır;
- * iPhone Safari gecikmeli açılan pencereleri engeller.
+ * Giriş modülünü ve Google penceresinin altyapısını önceden hazırlar (Ayarlar'daki eşitleme
+ * bölümü girişsiz açılınca). Böylece "Google ile giriş yap"a dokununca pencere hemen, dokunuşun
+ * içinde açılır; iPhone Safari gecikmeli açılan pencereleri engeller.
  */
 export function prewarmAuth(): void {
-  if (!activeConfig() || authLoading) return;
-  loadAuth().catch(() => undefined);
+  if (!activeConfig()) return;
+  loadAuth()
+    .then((m) => m.prepareGoogle())
+    .catch(() => undefined);
 }
 
 /** Google penceresini açar. Modül yüklüyse araya hiç bekleme koymadan (dokunuşun içinde) çağrılır. */

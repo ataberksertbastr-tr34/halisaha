@@ -66,6 +66,26 @@ export function setLanguage(lang: string): void {
   if (auth) auth.languageCode = lang;
 }
 
+/**
+ * Google penceresinin altyapısını (Firebase'in sayfaya eklediği iletişim çerçevesi) önceden kurar.
+ * Firebase bunu telefonlarda ve Safari'de kendisi yapar; bilgisayarda ise çerçeveyi ancak dokunuşta
+ * kurup pencereyi neredeyse aynı anda açar. Çerçeve yüklenirken açılan pencerenin sonucu uygulamaya
+ * ulaşmayabiliyor (CI'da görüldü) ve yavaş bağlantıda gecikip engellenebiliyor. Önceden kurulunca
+ * pencere dokunuşta hemen açılır. Firebase'in iç alanını kullanır (sürüm sabit); alan yoksa hiçbir şey
+ * yapmaz, giriş yine çalışır.
+ */
+export function prepareGoogle(): void {
+  const a = need();
+  void a
+    .authStateReady()
+    .then(() => {
+      if (a.currentUser) return;
+      const resolver = (a as unknown as { _popupRedirectResolver?: { _initialize?(auth: Auth): Promise<unknown> } })._popupRedirectResolver;
+      return resolver?._initialize?.(a);
+    })
+    .catch(() => undefined);
+}
+
 export async function signInGoogle(): Promise<void> {
   const p = new GoogleAuthProvider();
   p.setCustomParameters({ prompt: "select_account" });
