@@ -225,11 +225,15 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
   await popup.locator("#email-input").fill(gmail);
   await popup.locator("#display-name-input").fill("Google Deneme");
   // Emülatörün penceresi sonucu sayfadaki Firebase iletişim çerçevesine (iframe) gönderir; çerçeve
-  // henüz yüklenmemişse "No matching frame" deyip takılır. İnsan hesap seçerken çerçeve çoktan
-  // yüklenmiş olur; test de formu göndermeden önce çerçevenin yüklenmesini bekler.
+  // henüz hazır değilse "No matching frame" deyip takılır. İnsan hesap seçerken çerçeve çoktan
+  // hazır olur; test insan hızının çok üstünde olduğu için çerçeveyi bekler ve gerekirse yeniden gönderir.
+  // Sonuç iletilemezse pencere açık kalır; kullanıcı gibi birkaç saniye arayla yeniden gönderilir
+  // (başarısız deneme emülatörde hesap oluşturmaz).
   await expect.poll(() => page.frames().some((f) => f.url().includes("/emulator/auth/iframe")), { timeout: 15_000 }).toBe(true);
-  await page.frames().find((f) => f.url().includes("/emulator/auth/iframe"))!.waitForLoadState();
-  await popup.locator("#sign-in").click();
+  for (let i = 0; i < 6 && !popup.isClosed(); i++) {
+    await popup.locator("#sign-in").click({ timeout: 5_000 }).catch(() => undefined);
+    await popup.waitForEvent("close", { timeout: 3_000 }).catch(() => undefined);
+  }
   try {
     await expect(page.locator("#sync-sec")).toContainText(gmail, { timeout: 25_000 });
   } catch (e) {
