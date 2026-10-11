@@ -188,8 +188,8 @@ export const en: Record<MsgKey, string> = {
   syncSignedIn: "Signed in as {e}", syncNowBtn: "Sync now", signOut: "Sign out",
   signOutNote: "If you sign out, your data stays on this device; only syncing stops.",
   setPw: "Set a password", newPw: "New password (at least 6 characters)", pwSet: "Password saved. You can now also sign in with this email and password.",
-  setPwHint: "If the Google window doesn't open in the iPhone home-screen app, set a password here and sign in there with email and password.",
-  syncIosHint: "If the Google window doesn't open in the iPhone app: sign in with Google on another device, choose Sync → \"Set a password\", then sign in here with email and password.",
+  setPwHint: "Google sign-in doesn't work in the iPhone home-screen app; sign in there with this email and password. After you set a password, other devices may ask you to sign in once more.",
+  syncIosHint: "Google sign-in doesn't work in the iPhone home-screen app (an iOS limitation). On a computer, sign in with Google, open Settings → Sync across devices → \"Set a password\", then sign in here with the same email and password.",
   syncSt_idle: "Synced", syncSt_syncing: "Syncing…", syncSt_offline: "Offline: will sync when you're back online", syncSt_error: "Couldn't sync",
   syncSt_needsUpdate: "Another device uses a newer version; update the app to sync.", syncSt_signedOut: "Not signed in", syncSt_off: "Not set up",
   syncLoading: "Connecting…", syncLast: "Last sync: {t}", syncJustNow: "just now", syncMinAgo: "{n} min ago", syncHourAgo: "{n} h ago", syncDayAgo: "{n} d ago",
@@ -209,4 +209,6 @@ export const en: Record<MsgKey, string> = {
   syncBannerData: "Have your data on every device", syncBannerDataText: "Sign in once; your phone and computer stay up to date automatically.",
   syncProject: "Firebase project: {p}", syncReload: "Reload",
   syncBannerUpdate: "Update needed to sync", syncBannerAuth: "Syncing stopped", syncBannerAuthText: "The cloud couldn't be reached. Sign out and sign in again; if that doesn't help, check the Firebase rules.",
+  syncBannerLost: "Sync stopped: signed out", syncBannerLostText: "Your data is still on this device. Sign in again to resume syncing.",
+  syncSt_lost: "Signed out; sign in again to sync",
 };

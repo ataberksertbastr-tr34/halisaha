@@ -63,14 +63,48 @@ test("service worker sonrası internetsiz açılır, yüklenebilir", async ({ pa
   );
 
   await context.setOffline(true);
+  // İnternet yokken Google'ın giriş betiği hiç istenmemeli (her deneme konsola hata düşürür).
+  const offlineGoogle: string[] = [];
+  page.on("request", (r) => r.url().includes("apis.google.com") && offlineGoogle.push(r.url()));
   await page.reload();
   await expect(page.locator("#hero")).toContainText("Çevrimdışı");
   await page.locator('#tabs [data-v="players"]').click();
   await expect(page.locator("#list-roster")).toContainText("Çevrimdışı Çetin");
   await page.goto("/#/teams");
   await expect(page.locator('#tabs [data-v="teams"]')).toHaveAttribute("aria-current", "page");
+  await page.goto("/#/settings");
+  await expect(page.locator("#sync-status")).toContainText("Giriş yapılmadı");
+  // Ayar değişince sayfa yeniden çizilir; her çizimde de Google betiği denenmemeli.
+  await page.locator('select[data-f="s.theme"]').selectOption("dark");
+  await page.locator('select[data-f="s.theme"]').selectOption("light");
+  await expect(page.locator("#sync-status")).toContainText("Giriş yapılmadı");
+  expect(offlineGoogle).toEqual([]);
   await context.setOffline(false);
   expect(errors).toEqual([]);
+});
+
+test("iPhone ana ekran uygulaması: Google düğmesi yerine ne yapılacağı yazar, e-posta formu açık gelir", async ({ browser }) => {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+  });
+  await ctx.addInitScript(() => Object.defineProperty(navigator, "standalone", { get: () => true }));
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  const google: string[] = [];
+  page.on("request", (r) => r.url().includes("apis.google.com") && google.push(r.url()));
+  await page.goto("/#/settings");
+  const sec = page.locator("#sync-sec");
+  await expect(sec).toContainText("Ana ekrandaki uygulamada Google ile giriş açılmıyor");
+  await expect(sec.locator('[data-a="syncGoogle"]')).toHaveCount(0);
+  await expect(sec.locator('details[data-keep="syncEmail"]')).toHaveAttribute("open", "");
+  await expect(page.locator("#sync-email")).toBeVisible();
+  await noHorizontalScroll(page);
+  expect(google).toEqual([]); // Google altyapısı burada kurulmaz
+  expect(errors).toEqual([]);
+  await ctx.close();
 });
 
 test("silinen oyuncu 'Geri al' ile geri gelir", async ({ page }) => {

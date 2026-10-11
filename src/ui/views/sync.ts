@@ -21,6 +21,7 @@ export function agoText(ts: number, now = Date.now()): string {
 
 function statusText(v: SyncView): string {
   if (v.loading && !v.user) return t("syncLoading");
+  if (v.lost) return t("syncSt_lost");
   const st = v.status;
   let s = t(("syncSt_" + st.state) as MsgKey);
   if (st.state === "error" && st.error) s += " · " + t(("syncErr_" + st.error) as MsgKey);
@@ -35,6 +36,9 @@ export function syncShapeKey(v = syncView()): string {
   return [v.configured, v.builtIn, v.user?.uid || "", v.user?.hasPassword].join("|");
 }
 
+/** iPhone'da ana ekrana eklenmiş uygulama: Google penceresinin sonucu uygulamaya dönemez (iOS kısıtı). */
+const iosApp = (): boolean => isIOS() && isStandalone();
+
 export function syncSection(): string {
   const v = syncView();
   let h = '<section class="section" id="sync-sec" data-shape="' + esc(syncShapeKey(v)) + '" aria-labelledby="h-sync"><h2 id="h-sync">' + esc(t("syncTitle")) + "</h2>";
@@ -46,12 +50,17 @@ export function syncSection(): string {
   }
   h += '<p class="small muted" id="sync-status">' + esc(statusText(v)) + "</p>";
   if (!v.user) {
-    // Giriş düğmesine dokunulduğunda Google penceresi gecikmesiz açılsın diye giriş modülü şimdiden yüklenir.
-    queueMicrotask(prewarmAuth);
-    h += '<p class="muted">' + esc(t("syncIntro")) + "</p>" +
-      '<button type="button" class="btn block gbtn" data-a="syncGoogle"' + (v.loading ? " disabled" : "") + ">" + IC.google + esc(t("syncGoogle")) + "</button>";
-    if (isIOS() && isStandalone()) h += '<p class="small muted mt">' + esc(t("syncIosHint")) + "</p>";
-    h += '<details class="mt" data-keep="syncEmail"' + (isIOS() && isStandalone() ? " open" : "") + "><summary>" + esc(t("syncEmailToggle")) + "</summary>" +
+    h += '<p class="muted">' + esc(t("syncIntro")) + "</p>";
+    if (iosApp()) {
+      // Google ile giriş burada tamamlanamaz (pencere açılır ama sonuç geri gelmez, düğmeler kilitli kalır):
+      // düğme yerine ne yapılacağı yazılır, e-posta formu açık gelir.
+      h += '<p class="small muted">' + esc(t("syncIosHint")) + "</p>";
+    } else {
+      // Giriş düğmesine dokunulduğunda Google penceresi gecikmesiz açılsın diye giriş modülü şimdiden yüklenir.
+      queueMicrotask(prewarmAuth);
+      h += '<button type="button" class="btn block gbtn" data-a="syncGoogle"' + (v.loading ? " disabled" : "") + ">" + IC.google + esc(t("syncGoogle")) + "</button>";
+    }
+    h += '<details class="mt" data-keep="syncEmail"' + (iosApp() ? " open" : "") + "><summary>" + esc(t("syncEmailToggle")) + "</summary>" +
       '<form class="syncform mt">' +
       '<label class="fld">' + esc(t("email")) + '<input type="email" id="sync-email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></label>' +
       '<label class="fld">' + esc(t("password")) + '<input type="password" id="sync-pw" autocomplete="current-password" minlength="6"></label>' +
@@ -116,19 +125,26 @@ function dismissed(): boolean {
   }
 }
 
-/** Üst şerit: giriş yapılmamış cihazda bir kez davet; eşitleme durduysa uyarı. */
-export function syncBanner(): string {
+/** Üst şerit (en üstte): eşitleme durduysa uyarı. Ayarlar'daki bölüm açıkken gösterilmez. */
+export function syncAlertBanner(): string {
+  const v = syncView();
+  if (!v.configured || route().name === "settings") return "";
+  const toSettings = '<button type="button" class="btn sm primary" data-a="nav" data-v="settings">';
+  if (v.lost) return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerLost")), text: esc(t("syncBannerLostText")), actions: toSettings + esc(t("signIn")) + "</button>" });
+  if (!v.user) return "";
+  if (v.status.state === "needsUpdate") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerUpdate")), text: esc(t("syncSt_needsUpdate")), actions: '<button type="button" class="btn sm primary" data-a="syncReload">' + esc(t("syncReload")) + "</button>" });
+  if (v.status.state === "error" && v.status.error === "auth") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerAuth")), text: esc(t("syncBannerAuthText")), actions: toSettings + esc(t("tabSettings")) + "</button>" });
+  return "";
+}
+
+/**
+ * Alt şerit (diğer hatırlatmaların ardından): giriş yapılmamış cihazda bir kez davet. Yeni sürüm, yedek ve
+ * saha hatırlatmalarının önüne geçip onları ekranın dışına itmesin diye en son eklenir.
+ */
+export function syncInviteBanner(): string {
   const v = syncView();
   // Ayarlar'daki eşitleme bölümü zaten açıkken ikinci bir "Giriş yap" gösterme.
-  if (!v.configured || route().name === "settings") return "";
-  if (v.user) {
-    if (v.status.state === "needsUpdate") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerUpdate")), text: esc(t("syncSt_needsUpdate")), actions: '<button type="button" class="btn sm primary" data-a="syncReload">' + esc(t("syncReload")) + "</button>" });
-    if (v.status.state === "error" && v.status.error === "auth") {
-      return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerAuth")), text: esc(t("syncBannerAuthText")), actions: '<button type="button" class="btn sm primary" data-a="nav" data-v="settings">' + esc(t("tabSettings")) + "</button>" });
-    }
-    return "";
-  }
-  if (v.loading || dismissed()) return "";
+  if (!v.configured || v.user || v.lost || v.loading || dismissed() || route().name === "settings") return "";
   const empty = store.s.players.length === 0;
   return bannerHTML({
     icon: IC.cloud,

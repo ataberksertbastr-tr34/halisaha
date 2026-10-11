@@ -13,7 +13,7 @@ import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
 import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
-import { refreshSyncSection, syncBanner } from "./ui/views/sync";
+import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/views/sync";
 import "./app/syncActions";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
@@ -66,6 +66,8 @@ async function boot(): Promise<void> {
   setupPWA();
   setupBackupReminder();
   setupReservationReminder();
+  // Eşitleme daveti en sonda: yeni sürüm, yedek ve saha hatırlatmalarını ekranın dışına itmesin.
+  addBanner(syncInviteBanner);
   autoSchedule();
   renderApp();
   // Uygulama ertesi gün öne geldiğinde yeni maç günlerini planla, hatırlatmaları tazele
@@ -105,7 +107,7 @@ function setupSync(): void {
     hasData,
     lang: () => store.s.settings.lang,
   });
-  addBanner(syncBanner);
+  addBanner(syncAlertBanner);
   onSyncChange(() => {
     refreshSyncSection();
     refreshHeroStatus();

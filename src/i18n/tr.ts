@@ -186,8 +186,8 @@ export const tr = {
   syncSignedIn: "{e} ile giriş yapıldı", syncNowBtn: "Şimdi eşitle", signOut: "Çıkış yap",
   signOutNote: "Çıkış yapınca veriler bu cihazda kalır, yalnızca eşitleme durur.",
   setPw: "Şifre belirle", newPw: "Yeni şifre (en az 6 karakter)", pwSet: "Şifre kaydedildi. Artık bu e-posta ve şifreyle de girebilirsin.",
-  setPwHint: "iPhone'da ana ekrandaki uygulamada Google penceresi açılmazsa, burada bir şifre belirleyip orada e-posta ve şifreyle gir.",
-  syncIosHint: "iPhone'daki uygulamada Google penceresi açılmazsa: başka bir cihazda Google ile girip Eşitleme → \"Şifre belirle\" de, burada e-posta ve şifreyle gir.",
+  setPwHint: "iPhone'da ana ekrandaki uygulamada Google ile giriş açılmaz; orada bu e-posta ve şifreyle girersin. Şifre belirleyince diğer cihazlar bir kez yeniden giriş isteyebilir.",
+  syncIosHint: "Ana ekrandaki uygulamada Google ile giriş açılmıyor (iPhone kısıtı). Bilgisayarda Google ile girip Ayarlar → Cihazlar arası eşitleme → \"Şifre belirle\" de; sonra burada aynı e-posta ve şifreyle gir.",
   syncSt_idle: "Eşitlendi", syncSt_syncing: "Eşitleniyor…", syncSt_offline: "Çevrimdışı: bağlantı gelince eşitlenecek", syncSt_error: "Eşitlenemedi",
   syncSt_needsUpdate: "Başka bir cihaz daha yeni bir sürüm kullanıyor; eşitleme için uygulamayı güncelle.", syncSt_signedOut: "Giriş yapılmadı", syncSt_off: "Kurulmadı",
   syncLoading: "Bağlanıyor…", syncLast: "Son eşitleme: {t}", syncJustNow: "az önce", syncMinAgo: "{n} dk önce", syncHourAgo: "{n} saat önce", syncDayAgo: "{n} gün önce",
@@ -207,6 +207,8 @@ export const tr = {
   syncBannerData: "Verilerin her cihazında olsun", syncBannerDataText: "Bir kez giriş yap; telefonda ve bilgisayarda aynı veriler kendiliğinden güncel kalır.",
   syncProject: "Firebase projesi: {p}", syncReload: "Yenile",
   syncBannerUpdate: "Eşitleme için güncelleme gerekiyor", syncBannerAuth: "Eşitleme durdu", syncBannerAuthText: "Buluta erişilemedi. Çıkış yapıp yeniden gir; düzelmezse Firebase'deki kuralları kontrol et.",
+  syncBannerLost: "Eşitleme durdu: oturum kapandı", syncBannerLostText: "Verilerin bu cihazda duruyor. Yeniden giriş yap, eşitleme kaldığı yerden sürsün.",
+  syncSt_lost: "Oturum kapandı; eşitleme için yeniden giriş yap",
 } as const;
 
 export type MsgKey = keyof typeof tr;
