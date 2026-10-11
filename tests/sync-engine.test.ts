@@ -232,6 +232,60 @@ describe("eşitleme motoru", () => {
     expect(phone.s.players.some((p) => p.id === "p7")).toBe(true);
   });
 
+  it("buluta yazma sürerken yapılan değişiklik tabana girmez, sonraki turda gönderilir", async () => {
+    const cloud = new Cloud();
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    phone.edit((s) => s.players.push(player("p8", "İlk Değişiklik")));
+    // Yazma sürerken (ağ beklenirken) aynı nesne yerinde değişir
+    cloud.beforeWrite = async () => phone.edit((s) => s.players.push(player("p9", "Araya Giren Değişiklik")));
+    await phone.sync();
+    const ids = async () => (await unpack(cloud.docs.get("u1")!.env)).players.map((p) => p.id);
+    expect(await ids()).toContain("p8");
+    expect(phone.metas.get("u1")!.base!.players.some((p) => p.id === "p9")).toBe(false);
+    expect(phone.engine.status().pending).toBe(true);
+    await phone.sync();
+    expect(await ids()).toContain("p9");
+    // Diğer cihaz ikisini de alır, telefondan da silinmez
+    const pc = new Device("pc", cloud);
+    await pc.sync();
+    expect(pc.s.players.map((p) => p.id)).toEqual(expect.arrayContaining(["p8", "p9"]));
+    await phone.sync();
+    expect(phone.s.players.map((p) => p.id)).toEqual(expect.arrayContaining(["p8", "p9"]));
+  });
+
+  it("bir cihaz sıfırlanırsa buluttaki ve diğer cihazdaki veriler silinmez, veri o cihaza geri gelir", async () => {
+    const cloud = new Cloud();
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    const pc = new Device("pc", cloud);
+    await pc.sync();
+    phone.edit(() => undefined);
+    phone.s = state();
+    phone.ver++;
+    await phone.sync();
+    expect(phone.s.players.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+    await pc.sync();
+    expect(pc.s.players.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+  });
+
+  it("ilk birleştirme öncesi kilitli yerel sürüm, meşgulken tekrar denense de bir kez alınır", async () => {
+    const cloud = new Cloud();
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    const other = state([player("x1", "Başka Oyuncu")]);
+    other.updatedAt = ++clock;
+    const pc = new Device("pc", cloud, other);
+    pc.busy = true;
+    await pc.sync();
+    await pc.sync();
+    pc.busy = false;
+    await pc.sync();
+    expect(pc.locks).toEqual(["before-sync"]);
+    expect(pc.s.players.map((p) => p.id).sort()).toEqual(["p1", "p2", "p3", "x1"]);
+    pc.engine.stop();
+  });
+
   it("iki cihaz da eşitlendikten sonra boşuna yazmaz (ping-pong yok)", async () => {
     const cloud = new Cloud();
     const phone = new Device("phone", cloud, base());

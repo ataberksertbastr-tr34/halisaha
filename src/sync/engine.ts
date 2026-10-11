@@ -38,7 +38,10 @@ export interface EngineDeps {
   getState(): State;
   /** Her yerel değişiklikte artan sayaç */
   version(): number;
-  /** Birleştirilmiş veriyi cihaza uygular (updatedAt'e dokunmadan kaydeder, ekranı yeniler). Meşgulse false. */
+  /**
+   * Birleştirilmiş veriyi cihaza uygular (updatedAt'e dokunmadan kaydeder, ekranı yeniler).
+   * Verilen nesne uygulama durumu olur (motor kendi kopyasını saklar). Meşgulse false.
+   */
   apply(s: State): boolean;
   /** Oturum açık değilse null */
   uid(): string | null;
@@ -73,7 +76,7 @@ export interface Engine {
 export const DEBOUNCE_MS = 1500;
 const MAX_ATTEMPTS = 5;
 const BACKOFF = [5000, 15000, 60000];
-const BUSY_RETRY_MS = 3000;
+const BUSY_RETRY_MS = 5000;
 
 /** Anahtar sırasından bağımsız, updatedAt'i yok sayan karşılaştırma. */
 export function canon(s: unknown): string {
@@ -102,6 +105,8 @@ export function createEngine(d: EngineDeps): Engine {
   let retry: ReturnType<typeof setTimeout> | null = null;
   let failures = 0;
   let syncedVersion = -1;
+  /** Bu oturumda ilk birleştirme öncesi kilitli sürümü alınmış hesaplar (her denemede tekrar alınmasın). */
+  const locked = new Set<string>();
 
   const set = (patch: Partial<SyncStatus>) => {
     st = { ...st, ...patch };
@@ -144,11 +149,15 @@ export function createEngine(d: EngineDeps): Engine {
       set({ state: "offline" });
       return true;
     }
-    set({ state: "syncing" });
+    // Bekleyen değişiklik yokken yapılan arka plan kontrolünde durum "Eşitleniyor"a dönmez
+    // (rozet her 30 sn'de bir yanıp sönmesin, ekran okuyucu boşuna duyurmasın).
+    if (st.pending || st.state !== "idle") set({ state: "syncing" });
     const m = await ensureMeta(uid);
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const v0 = d.version();
-      const local = d.getState();
+      // Kopya: uygulama durumu yerinde değişir; ağ beklenirken yapılan değişiklik
+      // "gönderildi" sanılıp tabana girmesin (bir sonraki turda gönderilir).
+      const local = clone(d.getState());
       const doc = await remote.read();
       try {
         if (!doc) {
@@ -163,6 +172,12 @@ export function createEngine(d: EngineDeps): Engine {
           syncedVersion = v0;
           return true;
         }
+        // Cihaz tamamen boşaldıysa (sıfırlama) bu, buluttaki her şeyi silme isteği sayılmaz:
+        // taban unutulur, buluttaki veri cihaza geri gelir. Diğer cihazlar silinmez.
+        if (m.base && d.isEmpty(local) && !d.isEmpty(m.base)) {
+          m.base = null;
+          m.token = null;
+        }
         if (doc.token === m.token && m.base) {
           if (sameData(local, m.base)) {
             syncedVersion = v0;
@@ -175,19 +190,24 @@ export function createEngine(d: EngineDeps): Engine {
           return true;
         }
         const theirs = await d.decode(doc.env);
-        if (!m.base && d.hasData(local)) await d.lock(local, "before-sync");
+        if (!m.base && d.hasData(local) && !locked.has(m.uid)) {
+          locked.add(m.uid);
+          await d.lock(local, "before-sync");
+        }
         const merged = d.merge(m.base, local, theirs);
         // Bu arada cihazda yeni değişiklik olduysa baştan (yeni hâliyle) birleştir.
         if (d.version() !== v0) continue;
+        const snap = clone(merged);
         if (!sameData(merged, local) && !d.apply(merged)) return false;
+        const vApplied = d.version();
         let token = doc.token;
         let rev = doc.env.rev;
-        if (!sameData(merged, theirs)) {
+        if (!sameData(snap, theirs)) {
           rev = doc.env.rev + 1;
-          token = await remote.write(await d.encode(merged, rev), doc.token);
+          token = await remote.write(await d.encode(snap, rev), doc.token);
         }
-        await commitMeta(m, merged, token, rev);
-        syncedVersion = d.version();
+        await commitMeta(m, snap, token, rev);
+        syncedVersion = vApplied;
         return true;
       } catch (e) {
         if (e instanceof ConflictError) continue;
@@ -203,13 +223,15 @@ export function createEngine(d: EngineDeps): Engine {
       try {
         const done = await once();
         if (!done) {
-          set({ pending: true });
+          // Uygulama meşgul (açık pencere ya da yazılmakta olan metin): biraz sonra tekrar.
+          set({ state: "idle", pending: true });
           schedule(BUSY_RETRY_MS);
           return;
         }
         failures = 0;
         const signedIn = !!d.uid() && !!d.remote();
-        if (signedIn && st.state === "syncing") set({ state: "idle", error: undefined, lastSyncAt: meta?.lastSyncAt || st.lastSyncAt });
+        // Son eşitleme: son başarılı kontrol (bir şey yazılmasa da bulutla aynı olduğu doğrulandı).
+        if (signedIn && (st.state === "syncing" || st.state === "idle")) set({ state: "idle", error: undefined, lastSyncAt: d.now() });
         set({ pending: syncedVersion !== d.version() && signedIn });
       } catch (e) {
         if (e instanceof SyncError && e.code === "future") {
