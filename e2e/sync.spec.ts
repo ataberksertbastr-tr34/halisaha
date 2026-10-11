@@ -212,6 +212,10 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     p.on("framenavigated", (f) => f === p.mainFrame() && logs.push(tag + " → " + f.url()));
   };
   watch(page, "sayfa");
+  page.on("dialog", (dlg) => {
+    logs.push("UYARI PENCERESİ (" + dlg.type() + "): " + dlg.message());
+    dlg.dismiss().catch(() => undefined);
+  });
   await page.goto("/#/settings");
   // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
   await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
@@ -257,6 +261,15 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
       pop = "pencere açık: " + popup.url() + "\n" + seen + "\n" + (await popup.locator("body").innerText().catch(() => "?")).slice(0, 600);
     }
     pop += "\nsayfa çerçeveleri: " + page.frames().map((f) => f.url()).join(" | ");
+    const fr = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"));
+    if (fr) {
+      pop += "\nçerçeve durumu: " + (await fr
+        .evaluate(() => {
+          const w = window as unknown as { gapi?: unknown; parentContainer?: unknown };
+          return JSON.stringify({ gapi: typeof w.gapi, parentContainer: !!w.parentContainer, sessionStorage: Object.keys(sessionStorage) });
+        })
+        .catch((err) => "değerlendirilemedi: " + String(err).slice(0, 200)));
+    }
     const body = [logs.join("\n"), "toast: " + (await page.locator("#toast").textContent()), "durum: " + (await page.locator("#sync-status").textContent()), pop].join("\n\n");
     await test.info().attach("google-giris-tani", { body, contentType: "text/plain" });
     console.log(body);
