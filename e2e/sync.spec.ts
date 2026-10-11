@@ -199,33 +199,54 @@ test("başka hesap bu verileri görmez; çıkış yapınca veriler cihazda kalı
   await b.ctx.close();
 });
 
-test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyip e-postayla aynı hesaba giriş", async ({ browser }) => {
-  // Firebase giriş penceresi apis.google.com'dan yüklenir; ağı kısıtlı yerel ortamlarda NO_GOOGLE_APIS=1 ile atlanır (CI'da çalışır).
-  test.skip(!!process.env.NO_GOOGLE_APIS, "apis.google.com erişilemiyor");
-  const gmail = "google." + uniq();
-  const d = await device(browser, "pc");
+/**
+ * Emülatörün sahte Google penceresiyle giriş. Başarısız olursa tanı için tarayıcı ve pencere
+ * kayıtlarını, başarısız istekleri ve pencerenin son hâlini rapora ekler.
+ */
+async function googleSignIn(page: Page, gmail: string): Promise<void> {
   const logs: string[] = [];
-  d.page.on("console", (m) => logs.push(m.type() + ": " + m.text()));
-  d.page.on("popup", (p) => p.on("console", (m) => logs.push("popup " + m.type() + ": " + m.text())));
-  await importBackupText(d.page, V2);
-  await d.page.goto("/#/settings");
+  const watch = (p: Page, tag: string) => {
+    p.on("console", (m) => logs.push(tag + " " + m.type() + ": " + m.text()));
+    p.on("requestfailed", (r) => logs.push(tag + " İSTEK BAŞARISIZ: " + r.url() + " " + (r.failure()?.errorText || "")));
+    p.on("pageerror", (e) => logs.push(tag + " HATA: " + e.message));
+    p.on("framenavigated", (f) => f === p.mainFrame() && logs.push(tag + " → " + f.url()));
+  };
+  watch(page, "sayfa");
+  await page.goto("/#/settings");
   // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
-  await d.page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
-  const popupP = d.page.waitForEvent("popup");
-  await d.page.locator('#sync-sec [data-a="syncGoogle"]').click();
+  await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
+  const popupP = page.waitForEvent("popup");
+  await page.locator('#sync-sec [data-a="syncGoogle"]').click();
   const popup = await popupP;
+  watch(popup, "pencere");
+  popup.on("close", () => logs.push("pencere KAPANDI"));
   await popup.waitForLoadState();
   await popup.getByText(/Add new account/i).click();
   await popup.locator("#email-input").fill(gmail);
   await popup.locator("#display-name-input").fill("Google Deneme");
   await popup.locator("#sign-in").click();
   try {
-    await expect(d.page.locator("#sync-sec")).toContainText(gmail, { timeout: 20_000 });
+    await expect(page.locator("#sync-sec")).toContainText(gmail, { timeout: 25_000 });
   } catch (e) {
-    await test.info().attach("tarayıcı kayıtları", { body: logs.join("\n") + "\n\ntoast: " + (await d.page.locator("#toast").textContent()), contentType: "text/plain" });
-    console.log(logs.join("\n"));
+    let pop = "pencere kapalı";
+    if (!popup.isClosed()) pop = "pencere açık: " + popup.url() + "\n" + (await popup.locator("body").innerText().catch(() => "?")).slice(0, 2000);
+    const body = [logs.join("\n"), "toast: " + (await page.locator("#toast").textContent()), "durum: " + (await page.locator("#sync-status").textContent()), pop].join("\n\n");
+    await test.info().attach("google-giris-tani", { body, contentType: "text/plain" });
+    console.log(body);
     throw e;
   }
+  await synced(page);
+}
+
+test("Google ile giriş (boş cihaz), şifre belirleyip başka cihazda e-postayla aynı hesaba giriş", async ({ browser }) => {
+  // Firebase giriş penceresi apis.google.com'dan yüklenir; ağı kısıtlı yerel ortamlarda NO_GOOGLE_APIS=1 ile atlanır (CI'da çalışır).
+  test.skip(!!process.env.NO_GOOGLE_APIS, "apis.google.com erişilemiyor");
+  const gmail = "google." + uniq();
+  const d = await device(browser, "pc");
+  await googleSignIn(d.page, gmail);
+  // Girişten sonra yedek yüklenir: buluta gider
+  await importBackupText(d.page, V2);
+  await d.page.goto("/#/settings");
   await synced(d.page);
   // Google hesabına şifre eklenir (iPhone ana ekran uygulaması için)
   await d.page.locator('details[data-keep="syncPw"] summary').click();
@@ -234,6 +255,7 @@ test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyi
   await expect(d.page.locator("#toast")).toContainText("Şifre kaydedildi", { timeout: 15_000 });
   await expect(d.page.locator('details[data-keep="syncPw"]')).toHaveCount(0);
   const names = await rosterNames(d.page);
+  expect(names.length).toBeGreaterThan(3);
 
   // Başka bir cihazda (iPhone gibi) aynı e-posta ve şifreyle: aynı hesap, aynı veriler.
   const phone = await device(browser, "phone");
@@ -243,6 +265,20 @@ test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyi
   expect(phone.errors).toEqual([]);
   await d.ctx.close();
   await phone.ctx.close();
+});
+
+test("yedek yüklendikten sonra Google ile giriş (organizatörün bilgisayardaki akışı)", async ({ browser }) => {
+  test.skip(!!process.env.NO_GOOGLE_APIS, "apis.google.com erişilemiyor");
+  const gmail = "google." + uniq();
+  const d = await device(browser, "pc");
+  await importBackupText(d.page, V2);
+  const names = await rosterNames(d.page);
+  await googleSignIn(d.page, gmail);
+  // Cihazdaki veri buluta gider; başka cihaz aynı hesapla (Google oturumu yok, yeni bağlam) görmez ama
+  // bu cihazda veriler yerinde kalır
+  expect((await rosterNames(d.page)).sort()).toEqual([...names].sort());
+  expect(d.errors).toEqual([]);
+  await d.ctx.close();
 });
 
 async function page_emailIn(page: Page, email: string, pw: string): Promise<void> {
