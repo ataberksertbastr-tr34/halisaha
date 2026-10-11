@@ -236,7 +236,37 @@ async function guarded<T>(fn: (m: AuthMod) => Promise<T>): Promise<T> {
   }
 }
 
-export const signInGoogle = () => guarded((m) => m.signInGoogle());
+/**
+ * Giriş modülünü önceden yükler (Ayarlar'daki eşitleme bölümü açılınca). Böylece
+ * "Google ile giriş yap"a dokununca pencere hemen, dokunuşun içinde açılır;
+ * iPhone Safari gecikmeli açılan pencereleri engeller.
+ */
+export function prewarmAuth(): void {
+  if (!activeConfig() || authLoading) return;
+  loadAuth().catch(() => undefined);
+}
+
+/** Google penceresini açar. Modül yüklüyse araya hiç bekleme koymadan (dokunuşun içinde) çağrılır. */
+export function signInGoogle(): Promise<void> {
+  const m = authMod;
+  if (!m) return guarded((mod) => mod.signInGoogle());
+  loading = true;
+  notify();
+  const run = m.signInGoogle(); // signInWithPopup burada, eşzamanlı olarak pencereyi açar
+  return run.then(
+    () => {
+      loading = false;
+      notify();
+    },
+    (e: unknown) => {
+      loading = false;
+      notify();
+      const key = m.errorKey(e);
+      if (key === "unknown") console.warn("giriş hatası", e);
+      throw new Error(key, { cause: e });
+    },
+  );
+}
 export const signInEmail = (email: string, pw: string) => guarded((m) => m.signInEmail(email, pw));
 export const signUpEmail = (email: string, pw: string) => guarded((m) => m.signUpEmail(email, pw));
 export const resetPassword = (email: string) => guarded((m) => m.resetPassword(email));

@@ -2,7 +2,7 @@
 import { t, type MsgKey } from "../../i18n";
 import { store } from "../../app/store";
 import { esc } from "../../domain/text";
-import { syncView, type SyncView } from "../../sync";
+import { prewarmAuth, syncView, type SyncView } from "../../sync";
 import { isIOS, isStandalone } from "../../pwa/register";
 import { IC } from "../icons";
 import { bannerHTML } from "../banner";
@@ -45,6 +45,8 @@ export function syncSection(): string {
   }
   h += '<p class="small muted" id="sync-status" role="status">' + esc(statusText(v)) + "</p>";
   if (!v.user) {
+    // Giriş düğmesine dokunulduğunda Google penceresi gecikmesiz açılsın diye giriş modülü şimdiden yüklenir.
+    queueMicrotask(prewarmAuth);
     h += '<p class="muted">' + esc(t("syncIntro")) + "</p>" +
       '<button type="button" class="btn block gbtn" data-a="syncGoogle"' + (v.loading ? " disabled" : "") + ">" + IC.google + esc(t("syncGoogle")) + "</button>";
     if (isIOS() && isStandalone()) h += '<p class="small muted mt">' + esc(t("syncIosHint")) + "</p>";
@@ -128,6 +130,8 @@ export function syncBanner(): string {
     icon: IC.cloud,
     title: esc(t(empty ? "syncBannerEmpty" : "syncBannerData")),
     text: esc(t(empty ? "syncBannerEmptyText" : "syncBannerDataText")),
-    actions: '<button type="button" class="btn sm primary" data-a="syncGoogle">' + esc(t("signIn")) + '</button><button type="button" class="btn sm ghost" data-a="nav" data-v="settings">' + esc(t("tabSettings")) + "</button>" + '<button type="button" class="btn sm ghost" data-a="syncDismiss">' + esc(t("later")) + "</button>",
+    // Doğrudan Google penceresi açmak yerine Ayarlar'daki bölüme götürür: orada giriş modülü önceden yüklenir
+    // (iPhone Safari gecikmeli pencereyi engeller) ve e-posta ile giriş seçeneği de görünür.
+    actions: '<button type="button" class="btn sm primary" data-a="nav" data-v="settings">' + esc(t("signIn")) + '</button><button type="button" class="btn sm ghost" data-a="syncDismiss">' + esc(t("later")) + "</button>",
   });
 }

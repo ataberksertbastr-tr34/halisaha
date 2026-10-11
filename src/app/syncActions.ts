@@ -9,10 +9,9 @@ import { clearConfig, resetPassword, saveConfigText, setPassword, signInEmail, s
 
 const val = (id: string): string => ((document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value || "").trim();
 
-/** Giriş hatasını kullanıcıya bildirir (iptal sessiz geçer). */
+/** Giriş hatasını kullanıcıya bildirir (pencere kapandıysa "iptal edildi" der; sessiz kalmaz). */
 function fail(e: unknown): void {
   const key = e instanceof Error ? e.message : "unknown";
-  if (key === "cancelled") return;
   toast(t(("authErr_" + key) as MsgKey) || t("authErr_unknown"), undefined, 5000);
 }
 

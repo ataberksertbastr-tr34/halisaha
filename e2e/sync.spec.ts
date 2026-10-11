@@ -164,8 +164,13 @@ test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyi
   test.skip(!!process.env.NO_GOOGLE_APIS, "apis.google.com erişilemiyor");
   const gmail = "google." + uniq();
   const d = await device(browser, "pc");
+  const logs: string[] = [];
+  d.page.on("console", (m) => logs.push(m.type() + ": " + m.text()));
+  d.page.on("popup", (p) => p.on("console", (m) => logs.push("popup " + m.type() + ": " + m.text())));
   await importBackupText(d.page, V2);
   await d.page.goto("/#/settings");
+  // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
+  await d.page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
   const popupP = d.page.waitForEvent("popup");
   await d.page.locator('#sync-sec [data-a="syncGoogle"]').click();
   const popup = await popupP;
@@ -174,7 +179,13 @@ test("Google ile giriş (emülatörün sahte Google penceresi), şifre belirleyi
   await popup.locator("#email-input").fill(gmail);
   await popup.locator("#display-name-input").fill("Google Deneme");
   await popup.locator("#sign-in").click();
-  await expect(d.page.locator("#sync-sec")).toContainText(gmail, { timeout: 20_000 });
+  try {
+    await expect(d.page.locator("#sync-sec")).toContainText(gmail, { timeout: 20_000 });
+  } catch (e) {
+    await test.info().attach("tarayıcı kayıtları", { body: logs.join("\n") + "\n\ntoast: " + (await d.page.locator("#toast").textContent()), contentType: "text/plain" });
+    console.log(logs.join("\n"));
+    throw e;
+  }
   await synced(d.page);
   // Google hesabına şifre eklenir (iPhone ana ekran uygulaması için)
   await d.page.locator('details[data-keep="syncPw"] summary').click();
