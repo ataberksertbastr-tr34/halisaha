@@ -226,6 +226,23 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     logs.push("UYARI PENCERESİ (" + dlg.type() + "): " + dlg.message());
     dlg.dismiss().catch(() => undefined);
   });
+  // Firebase'in iletişim çerçevesi ve emülatörün yardımcı çerçevesi Google'ın betiklerini
+  // (apis.google.com) yükler. CI'da tarayıcının bu isteklerinden biri arada bir hiç bitmiyor ve giriş
+  // sonucu uygulamaya ulaşamıyordu. Bu istekler tarayıcı yerine Playwright üzerinden, zaman aşımı ve
+  // yeniden denemeyle yapılır; uygulamanın ve Google betiklerinin davranışı aynı kalır.
+  await page.context().route("https://apis.google.com/**", async (route) => {
+    for (let i = 1; i <= 4; i++) {
+      try {
+        const response = await route.fetch({ timeout: 4_000 });
+        if (i > 1) logs.push("Google betiği " + i + ". denemede yüklendi: " + route.request().url().slice(0, 90));
+        await route.fulfill({ response });
+        return;
+      } catch (err) {
+        logs.push("Google betiği yüklenemedi (" + i + "): " + route.request().url().slice(0, 90) + " " + String(err).slice(0, 80));
+      }
+    }
+    await route.abort().catch(() => undefined);
+  });
   await page.goto("/#/settings");
   // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
   await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
@@ -238,24 +255,19 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
   await popup.getByText(/Add new account/i).click();
   await popup.locator("#email-input").fill(gmail);
   await popup.locator("#display-name-input").fill("Google Deneme");
-  // Emülatörün penceresi sonucu sayfadaki Firebase iletişim çerçevesine (iframe) gönderir; çerçeve
-  // henüz hazır değilse "No matching frame" deyip takılır. İnsan hesap seçerken çerçeve çoktan
-  // hazır olur; test insan hızının çok üstünde olduğu için çerçeveyi bekler ve gerekirse yeniden gönderir.
-  // Emülatörün yardımcı çerçevesi Google'ın betiğini (apis.google.com/js/api.js) yüklemeden sonucu
-  // iletemez; CI'da bu dış istek bazen hiç tamamlanmıyor. Betik yüklenmediyse çerçeve yeniden yüklenir.
+  // Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın
+  // betiği yüklenip hazır olmadan sonucu uygulamaya iletemez. İnsan hesap seçerken çerçeve çoktan
+  // hazır olur; test insan hızının çok üstünde olduğu için önce çerçevenin hazır olmasını bekler.
   await expect.poll(() => page.frames().some((f) => f.url().includes("/emulator/auth/iframe")), { timeout: 15_000 }).toBe(true);
   const helper = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"))!;
-  const ready = () => helper.evaluate(() => !!(window as unknown as { parentContainer?: unknown }).parentContainer).catch(() => false);
-  for (let i = 0; i < 4; i++) {
-    const t0 = Date.now();
-    while (Date.now() - t0 < 8_000 && !(await ready())) await page.waitForTimeout(250);
-    if (await ready()) {
-      logs.push("yardımcı çerçeve hazır (" + (i + 1) + ". deneme)");
-      break;
-    }
-    logs.push("yardımcı çerçeve hazır değil, yeniden yükleniyor (" + (i + 1) + ")");
-    await helper.goto(helper.url()).catch((err) => logs.push("çerçeve yeniden yüklenemedi: " + String(err).slice(0, 120)));
-  }
+  const ready = () =>
+    Promise.race([
+      helper.evaluate(() => !!(window as unknown as { parentContainer?: unknown }).parentContainer).catch(() => false),
+      new Promise<boolean>((r) => setTimeout(() => r(false), 2_000)),
+    ]);
+  const t0 = Date.now();
+  while (Date.now() - t0 < 20_000 && !(await ready())) await page.waitForTimeout(250);
+  logs.push("yardımcı çerçeve " + ((await ready()) ? "hazır" : "HAZIR DEĞİL") + " (" + (Date.now() - t0) + " ms)");
   // Sonuç iletilemezse pencere açık kalır; kullanıcı gibi birkaç saniye arayla yeniden gönderilir
   // (başarısız deneme emülatörde hesap oluşturmaz).
   for (let i = 0; i < 6 && !popup.isClosed(); i++) {
