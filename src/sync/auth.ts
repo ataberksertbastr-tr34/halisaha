@@ -21,6 +21,7 @@ import {
   signOut as fbSignOut,
   updatePassword,
   type Auth,
+  type PopupRedirectResolver,
   type User,
 } from "firebase/auth";
 import { EMULATOR, EMULATOR_HOST, type FirebaseCfg } from "./config";
@@ -36,6 +37,24 @@ export interface SyncUser {
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
+
+/**
+ * Firebase, telefonda ve Safari'de Google penceresinin altyapısını (apis.google.com betiği ve iletişim
+ * çerçevesi) açılışta, oturum açıkken bile kurar ve oturumu geri yüklemeyi bunun bitmesine bağlar. Uygulama
+ * bunu yalnızca girişsiz cihazda, Ayarlar'daki giriş bölümü açılınca yapar (prepareGoogle). Böylece oturumu
+ * açık telefonun her açılışında Google betiği yüklenmez, internetsiz açılışta konsola hata düşmez ve eşitleme
+ * beklemeden başlar. Firebase'in iç alanını kullanır (sürüm sabit); alan değişirse Firebase'in varsayılanı geçerli olur.
+ */
+function onDemandResolver(): PopupRedirectResolver {
+  const Base = browserPopupRedirectResolver as unknown;
+  if (typeof Base !== "function") return browserPopupRedirectResolver;
+  class OnDemandResolver extends (Base as new () => object) {
+    get _shouldInitProactively(): boolean {
+      return false;
+    }
+  }
+  return OnDemandResolver as unknown as PopupRedirectResolver;
+}
 
 function toUser(u: User | null): SyncUser | null {
   if (!u) return null;
@@ -54,7 +73,7 @@ export function start(cfg: FirebaseCfg, lang: string, onUser: (u: SyncUser | nul
     app = initializeApp(cfg, "halisaha");
     auth = initializeAuth(app, {
       persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-      popupRedirectResolver: browserPopupRedirectResolver,
+      popupRedirectResolver: onDemandResolver(),
     });
     if (EMULATOR) connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, { disableWarnings: true });
   }
@@ -68,22 +87,20 @@ export function setLanguage(lang: string): void {
 
 /**
  * Google penceresinin altyapısını (Firebase'in sayfaya eklediği iletişim çerçevesi) önceden kurar.
- * Firebase bunu telefonlarda ve Safari'de kendisi yapar; bilgisayarda ise çerçeveyi ancak dokunuşta
- * kurup pencereyi neredeyse aynı anda açar. Çerçeve yüklenirken açılan pencerenin sonucu uygulamaya
- * ulaşmayabiliyor (CI'da görüldü) ve yavaş bağlantıda gecikip engellenebiliyor. Önceden kurulunca
- * pencere dokunuşta hemen açılır. Firebase'in iç alanını kullanır (sürüm sabit); alan yoksa hiçbir şey
- * yapmaz, giriş yine çalışır.
+ * Bilgisayarda Firebase çerçeveyi ancak dokunuşta kurup pencereyi neredeyse aynı anda açar. Çerçeve
+ * yüklenirken açılan pencerenin sonucu uygulamaya ulaşmayabiliyor (CI'da görüldü) ve yavaş bağlantıda
+ * gecikip engellenebiliyor. Önceden kurulunca pencere dokunuşta hemen açılır. Firebase'in iç alanını
+ * kullanır (sürüm sabit); alan yoksa hiçbir şey yapmaz, giriş yine çalışır.
+ * Kurulum başlatıldıysa true döner (oturum açıksa ya da alan yoksa false).
  */
-export function prepareGoogle(): void {
+export async function prepareGoogle(): Promise<boolean> {
   const a = need();
-  void a
-    .authStateReady()
-    .then(() => {
-      if (a.currentUser) return;
-      const resolver = (a as unknown as { _popupRedirectResolver?: { _initialize?(auth: Auth): Promise<unknown> } })._popupRedirectResolver;
-      return resolver?._initialize?.(a);
-    })
-    .catch(() => undefined);
+  await a.authStateReady();
+  if (a.currentUser) return false;
+  const resolver = (a as unknown as { _popupRedirectResolver?: { _initialize?(auth: Auth): Promise<unknown> } })._popupRedirectResolver;
+  if (!resolver?._initialize) return false;
+  resolver._initialize(a).catch(() => undefined);
+  return true;
 }
 
 export async function signInGoogle(): Promise<void> {
@@ -156,6 +173,9 @@ export function errorKey(e: unknown): string {
       return "popup";
     case "auth/network-request-failed":
       return "network";
+    // İnternet yokken Google betiği yüklenemeyince Firebase bunu "iç hata" diye bildirir.
+    case "auth/internal-error":
+      return typeof navigator !== "undefined" && navigator.onLine === false ? "network" : "unknown";
     case "auth/invalid-credential":
     case "auth/wrong-password":
     case "auth/user-not-found":
