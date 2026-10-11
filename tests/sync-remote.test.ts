@@ -126,6 +126,22 @@ describe("Firestore REST", () => {
     await expect(r.read()).rejects.toBeInstanceOf(NetError);
     await expect(r.read()).rejects.toBeInstanceOf(NetError);
   });
+
+  it("belirteç bağlantı yüzünden yenilenemezse ağ hatası sayılır; başka belirteç hataları olduğu gibi geçer", async () => {
+    const failing = (code: string) =>
+      firestoreRemote({
+        projectId: "demo-proje",
+        uid: "uid1",
+        getToken: async () => {
+          throw Object.assign(new Error(code), { code });
+        },
+        fetch: fakeFetch([]).f,
+      });
+    await expect(failing("auth/network-request-failed").read()).rejects.toBeInstanceOf(NetError);
+    const other = failing("auth/user-token-expired").read();
+    await expect(other).rejects.not.toBeInstanceOf(NetError);
+    await expect(other).rejects.toMatchObject({ code: "auth/user-token-expired" });
+  });
 });
 
 describe("Firebase yapılandırması", () => {
