@@ -17,6 +17,9 @@ async function device(browser: Browser, kind: "phone" | "pc"): Promise<{ ctx: Br
       ? { viewport: { width: 360, height: 760 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
       : { viewport: { width: 1280, height: 800 } },
   );
+  // Ağı kısıtlı yerel ortamda (NO_GOOGLE_APIS=1) Google betikleri boş yanıtlanır: Ayarlar'da önceden
+  // kurulan Google altyapısının engellenen isteği konsola hata düşürmesin (CI'da gerçek betikler yüklenir).
+  if (process.env.NO_GOOGLE_APIS) await ctx.route("https://apis.google.com/**", (r) => r.fulfill({ contentType: "text/javascript", body: "" }));
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   return { ctx, page, errors };
@@ -226,11 +229,11 @@ async function helperState(page: Page): Promise<string> {
  * Emülatörün sahte Google penceresiyle giriş.
  *
  * Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın betiğini
- * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da, Google penceresinin sayfası
- * çerçeveninkinden önce işlenirse çerçevenin belgesi hiç yüklenmiyordu (belge boş kalıyor, pencere açık
- * kalıyor). Test bu yüzden pencerenin sayfasını çerçeve hazır olana dek bekletir. Yine de olmazsa, bir
- * kullanıcının yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin
- * tanısı CI kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
+ * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. Pencere, çerçeve yüklenirken açılınca
+ * CI'da çerçevenin belgesi hiç yüklenmiyordu (belge boş, pencere açık kalıyor). Uygulama artık çerçeveyi
+ * Ayarlar'daki bölüm açılınca kurar; test de bir insan gibi çerçeve hazır olduktan sonra dokunur. Yine de
+ * olmazsa, kullanıcının yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her
+ * denemenin tanısı CI kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
  */
 async function googleSignIn(page: Page, gmail: string): Promise<void> {
   const logs: string[] = [];
@@ -254,22 +257,17 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     dlg.dismiss().catch(() => undefined);
   });
 
-  // CI kaydına göre takılma, Google penceresinin sayfa isteği yardımcı çerçeveninkinden önce işlenince
-  // oluyor (aynı siteden iki belge aynı anda açılırken otomasyonun yarışı). Pencerenin sayfası, çerçeve
-  // hazır olana dek (en fazla 15 sn) bekletilir; insan hızında zaten bu sırayla olur.
-  await ctx.route("http://127.0.0.1:9099/emulator/auth/handler**", async (route) => {
-    const t0 = Date.now();
-    while (Date.now() - t0 < 15_000 && !(await helperState(page)).includes('"parentContainer":true')) await new Promise((r) => setTimeout(r, 100));
-    logs.push("pencere sayfası " + (Date.now() - t0) + " ms bekletildi");
-    await route.continue();
-  });
-
   for (let attempt = 1; attempt <= 3; attempt++) {
     logs.push("--- " + attempt + ". deneme");
     if (attempt > 1) await page.reload();
     await page.goto("/#/settings");
     // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
     await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
+    // Uygulama Google altyapısını (yardımcı çerçeve) bölüm açılınca kurar; insan dokunana dek hazır olur.
+    const ready = async () => (await helperState(page)).includes('"parentContainer":true');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 20_000 && !(await ready())) await page.waitForTimeout(250);
+    logs.push("yardımcı çerçeve, dokunmadan önce (" + (Date.now() - t0) + " ms): " + (await helperState(page)));
     const popupP = page.waitForEvent("popup");
     await page.locator('#sync-sec [data-a="syncGoogle"]').click();
     const popup = await popupP;
@@ -278,11 +276,6 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     await popup.getByText(/Add new account/i).click();
     await popup.locator("#email-input").fill(gmail);
     await popup.locator("#display-name-input").fill("Google Deneme");
-    // İnsan hesap seçerken çerçeve çoktan hazır olur; test insan hızının çok üstünde olduğu için bekler.
-    const ready = async () => (await helperState(page)).includes('"parentContainer":true');
-    const t0 = Date.now();
-    while (Date.now() - t0 < 15_000 && !(await ready())) await page.waitForTimeout(250);
-    logs.push("yardımcı çerçeve (" + (Date.now() - t0) + " ms): " + (await helperState(page)));
     if (await ready()) {
       for (let i = 0; i < 4 && !popup.isClosed(); i++) {
         await popup.locator("#sign-in").click({ timeout: 5_000 }).catch(() => undefined);
@@ -294,7 +287,7 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
         .catch(() => false);
       if (ok) {
         if (attempt > 1) console.log("Google girişi " + attempt + ". denemede oldu. Önceki denemelerin tanısı:\n" + logs.join("\n"));
-        else console.log("Google girişi ilk denemede oldu · " + logs.filter((l) => l.includes("bekletildi")).join(" · "));
+        else console.log("Google girişi ilk denemede oldu · " + logs.filter((l) => l.includes("dokunmadan önce")).map((l) => l.slice(0, 60)).join(" · "));
         await synced(page);
         return;
       }
