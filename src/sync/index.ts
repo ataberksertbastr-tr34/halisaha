@@ -30,6 +30,8 @@ export interface SyncView {
   configured: boolean;
   /** Yapılandırma kodun içinde mi (ayarlardan değiştirilemez) */
   builtIn: boolean;
+  /** Bağlı Firebase projesi */
+  project: string;
   /** Giriş modülü yükleniyor / oturum açılıyor */
   loading: boolean;
   user: SyncUser | null;
@@ -201,7 +203,7 @@ export function onSyncChange(fn: () => void): () => void {
 export function syncView(): SyncView {
   const cfg = activeConfig();
   const status: SyncStatus = engine ? engine.status() : { state: "off", lastSyncAt: 0, pending: false };
-  return { configured: !!cfg, builtIn: builtIn(), loading, user, status: cfg ? (navigator.onLine === false && user ? { ...status, state: "offline" } : status) : { ...status, state: "off" } };
+  return { configured: !!cfg, builtIn: builtIn(), project: cfg?.projectId || "", loading, user, status: cfg ? (navigator.onLine === false && user ? { ...status, state: "offline" } : status) : { ...status, state: "off" } };
 }
 
 /** Yerel değişiklik oldu (store.commit). */

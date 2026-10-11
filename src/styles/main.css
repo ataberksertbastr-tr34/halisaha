@@ -157,6 +157,7 @@ select { padding-right: 30px; }
 .btn.xs { white-space: nowrap; min-height: 44px; padding: 0 10px; font-size: 13px; border-radius: 10px; }
 .btn.block { width: 100%; }
 .syncform { display: grid; gap: 10px; }
+.wrapany { overflow-wrap: anywhere; }
 .gbtn { gap: 10px; font-weight: 700; }
 .gbtn svg { width: 20px; height: 20px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }

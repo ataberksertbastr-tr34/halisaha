@@ -59,9 +59,13 @@ test("telefondaki veriler bilgisayara gelir, değişiklikler iki yönde eşitlen
 
   // Telefon: eski uygulamanın yedeği yüklenmiş, sonra hesap oluşturup giriş yapılır.
   await importBackupText(phone.page, V2);
+  // Ayarlar'da eşitleme bölümü zaten görünür; şerit ana ekranda çıkar.
+  await expect(phone.page.locator("#banner")).not.toContainText("Verilerin her cihazında olsun");
+  await phone.page.locator('#tabs [data-v="match"]').click();
   await expect(phone.page.locator("#banner")).toContainText("Verilerin her cihazında olsun");
   await emailAuth(phone.page, email, "up");
   await expect(phone.page.locator("#hero #sync")).toContainText("Eşitlendi");
+  await phone.page.locator('#tabs [data-v="match"]').click();
   await expect(phone.page.locator("#banner")).not.toContainText("Verilerin her cihazında olsun");
   await noHorizontalScroll(phone.page);
   const phoneNames = await rosterNames(phone.page);
@@ -70,6 +74,8 @@ test("telefondaki veriler bilgisayara gelir, değişiklikler iki yönde eşitlen
   // Bilgisayar: boş açılır, "başka cihazda mı?" şeridi çıkar; giriş yapınca aynı kadro gelir.
   await pc.page.goto("/");
   await expect(pc.page.locator("#banner")).toContainText("Verilerin başka bir cihazda mı?");
+  await pc.page.locator('#banner [data-a="nav"][data-v="settings"]').click();
+  await expect(pc.page.locator("#sync-sec")).toBeVisible();
   await emailAuth(pc.page, email, "in");
   expect((await rosterNames(pc.page)).sort()).toEqual([...phoneNames].sort());
 
@@ -127,6 +133,40 @@ test("iki cihazda internetsizken yapılan farklı değişiklikler kaybolmadan bi
   await expect(pc.page.locator('[data-f="s.price"]')).toHaveValue("4321");
   expect(await rosterNames(phone.page)).toContain("Çevrimdışı Eklenen");
   expect(await rosterNames(pc.page)).toContain("Çevrimdışı Eklenen");
+  expect(phone.errors).toEqual([]);
+  expect(pc.errors).toEqual([]);
+  await phone.ctx.close();
+  await pc.ctx.close();
+});
+
+test("yazı yazılırken gelen değişiklik yazılanı silmez; yazı bitince uygulanır", async ({ browser }) => {
+  const email = uniq();
+  const phone = await device(browser, "phone");
+  const pc = await device(browser, "pc");
+  await importBackupText(phone.page, V2);
+  await emailAuth(phone.page, email, "up");
+  await emailAuth(pc.page, email, "in");
+
+  // Bilgisayarda yeni oyuncu adı yazılıyor (henüz eklenmedi)
+  await pc.page.goto("/#/players");
+  await pc.page.locator("#newName").fill("Yarım Kalan");
+  // Bu sırada telefonda başka bir oyuncu eklenir ve gönderilir
+  await phone.page.goto("/#/players");
+  await phone.page.locator("#newName").fill("Telefondan Gelen");
+  await phone.page.locator('[data-a="addPlayer"]').click();
+  await phone.page.goto("/#/settings");
+  await synced(phone.page);
+  // Bilgisayar öne gelir (eşitleme tetiklenir): yazılan metin yerinde kalır
+  await pc.page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await pc.page.waitForTimeout(2500);
+  await expect(pc.page.locator("#newName")).toHaveValue("Yarım Kalan");
+  // Yazı tamamlanıp eklenince bekleyen değişiklik de uygulanır
+  await pc.page.locator('[data-a="addPlayer"]').click();
+  await expect.poll(async () => (await pc.page.locator("#list-roster li .plink").allTextContents()).map((x) => x.trim()), { timeout: 20_000 }).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
+  await pc.page.goto("/#/settings");
+  await synced(pc.page);
+  await syncNow(phone.page);
+  expect(await rosterNames(phone.page)).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
   expect(phone.errors).toEqual([]);
   expect(pc.errors).toEqual([]);
   await phone.ctx.close();

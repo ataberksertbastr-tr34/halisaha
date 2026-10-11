@@ -1,7 +1,6 @@
 /** Eşitleme düğmeleri: giriş/çıkış, şifre, elle eşitleme, Firebase yapılandırması. */
 import { registerActions } from "./actions";
 import { t, type MsgKey } from "../i18n";
-import { render } from "./store";
 import { toast } from "../ui/toast";
 import { renderBanners } from "../ui/banner";
 import { dismissSyncBanner } from "../ui/views/sync";
@@ -66,16 +65,22 @@ registerActions({
   syncNow: () => {
     void syncNow();
   },
+  // Yapılandırma değişince Firebase baştan başlamalı: kayıttan sonra sayfa yenilenir.
   syncCfgSave: () => {
     if (saveConfigText(val("sync-cfg"))) {
       toast(t("syncCfgOk"));
-      render();
+      setTimeout(() => location.reload(), 600);
     } else toast(t("syncCfgBad"), undefined, 4000);
   },
   syncCfgClear: () => {
-    clearConfig();
-    render();
+    signOutSync()
+      .catch(() => undefined)
+      .finally(() => {
+        clearConfig();
+        location.reload();
+      });
   },
+  syncReload: () => location.reload(),
   syncDismiss: () => {
     dismissSyncBanner();
     renderBanners();

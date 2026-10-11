@@ -6,6 +6,7 @@ import { prewarmAuth, syncView, type SyncView } from "../../sync";
 import { isIOS, isStandalone } from "../../pwa/register";
 import { IC } from "../icons";
 import { bannerHTML } from "../banner";
+import { route } from "../../app/router";
 
 /** "az önce", "5 dk önce" … */
 export function agoText(ts: number, now = Date.now()): string {
@@ -29,9 +30,9 @@ function statusText(v: SyncView): string {
   return parts.join(" · ");
 }
 
-/** Bölümün yapısını belirleyen durum; değişmedikçe yalnızca durum satırı güncellenir (yazılan alanlar silinmesin). */
+/** Bölümün yapısını belirleyen durum; değişmedikçe yalnızca durum satırı ve düğmeler güncellenir (yazılan alanlar silinmesin). */
 export function syncShapeKey(v = syncView()): string {
-  return [v.configured, v.builtIn, v.user?.uid || "", v.user?.hasPassword, v.loading && !v.user].join("|");
+  return [v.configured, v.builtIn, v.user?.uid || "", v.user?.hasPassword].join("|");
 }
 
 export function syncSection(): string {
@@ -43,7 +44,7 @@ export function syncSection(): string {
       '<div class="row mt"><button type="button" class="btn grow" data-a="syncCfgSave">' + esc(t("syncCfgSave")) + "</button></div>";
     return h + "</section>";
   }
-  h += '<p class="small muted" id="sync-status" role="status">' + esc(statusText(v)) + "</p>";
+  h += '<p class="small muted" id="sync-status">' + esc(statusText(v)) + "</p>";
   if (!v.user) {
     // Giriş düğmesine dokunulduğunda Google penceresi gecikmesiz açılsın diye giriş modülü şimdiden yüklenir.
     queueMicrotask(prewarmAuth);
@@ -58,7 +59,7 @@ export function syncSection(): string {
       '<button type="button" class="btn grow" data-a="syncEmailUp">' + esc(t("signUp")) + "</button></div>" +
       '<button type="button" class="btn ghost sm" data-a="syncReset">' + esc(t("forgotPw")) + "</button></form></details>";
   } else {
-    h += '<p class="m0"><strong>' + esc(t("syncSignedIn", { e: v.user.email || v.user.name || "" })) + "</strong></p>" +
+    h += '<p class="m0 wrapany"><strong>' + esc(t("syncSignedIn", { e: v.user.email || v.user.name || "" })) + "</strong></p>" +
       '<div class="row mt"><button type="button" class="btn primary grow" data-a="syncNow">' + IC.cloud + esc(t("syncNowBtn")) + "</button>" +
       '<button type="button" class="btn grow" data-a="syncOut" data-confirm="1">' + esc(t("signOut")) + "</button></div>" +
       '<p class="small muted">' + esc(t("signOutNote")) + "</p>";
@@ -69,7 +70,8 @@ export function syncSection(): string {
         '<button type="button" class="btn" data-a="syncSetPw">' + esc(t("setPw")) + "</button></form></details>";
     }
   }
-  if (!v.builtIn) h += '<div class="row mt"><button type="button" class="btn ghost sm" data-a="syncCfgClear" data-confirm="1">' + esc(t("syncCfgClear")) + "</button></div>";
+  // Yapıştırılmış yapılandırma: hangi projeye bağlı olunduğu görünsün.
+  if (!v.builtIn) h += '<p class="small muted mt">' + esc(t("syncProject", { p: v.project })) + '</p><div class="row"><button type="button" class="btn ghost sm" data-a="syncCfgClear" data-confirm="1">' + esc(t("syncCfgClear")) + "</button></div>";
   return h + "</section>";
 }
 
@@ -84,6 +86,7 @@ export function refreshSyncSection(): void {
   }
   const p = document.getElementById("sync-status");
   if (p) p.textContent = statusText(v);
+  sec.querySelectorAll<HTMLButtonElement>('[data-a="syncGoogle"], [data-a="syncEmailIn"], [data-a="syncEmailUp"], [data-a="syncSetPw"]').forEach((b) => (b.disabled = v.loading));
 }
 
 /** Üst köşedeki rozet: giriş yapılmışsa eşitleme durumu, değilse "Bu cihazda kayıtlı". */
@@ -116,9 +119,10 @@ function dismissed(): boolean {
 /** Üst şerit: giriş yapılmamış cihazda bir kez davet; eşitleme durduysa uyarı. */
 export function syncBanner(): string {
   const v = syncView();
-  if (!v.configured) return "";
+  // Ayarlar'daki eşitleme bölümü zaten açıkken ikinci bir "Giriş yap" gösterme.
+  if (!v.configured || route().name === "settings") return "";
   if (v.user) {
-    if (v.status.state === "needsUpdate") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerUpdate")), text: esc(t("syncSt_needsUpdate")), actions: "" });
+    if (v.status.state === "needsUpdate") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerUpdate")), text: esc(t("syncSt_needsUpdate")), actions: '<button type="button" class="btn sm primary" data-a="syncReload">' + esc(t("syncReload")) + "</button>" });
     if (v.status.state === "error" && v.status.error === "auth") {
       return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerAuth")), text: esc(t("syncBannerAuthText")), actions: '<button type="button" class="btn sm primary" data-a="nav" data-v="settings">' + esc(t("tabSettings")) + "</button>" });
     }

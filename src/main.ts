@@ -12,7 +12,7 @@ import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers"
 import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
-import { initSync, onSyncChange, syncChanged, syncView } from "./sync";
+import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
 import { refreshSyncSection, syncBanner } from "./ui/views/sync";
 import "./app/syncActions";
 import { renderApp } from "./ui/shell";
@@ -78,14 +78,25 @@ async function boot(): Promise<void> {
   if (hasData(store.s)) requestPersistence().then(() => undefined);
 }
 
+/** Ekranda yazılıp henüz kaydedilmemiş (değeri ilk hâlinden farklı) bir metin alanı var mı. */
+function hasDraft(): boolean {
+  // Arama kutuları hariç: değerleri arayüz durumunda tutulur, yeniden çizimde kaybolmaz.
+  const els = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("#view input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=search]):not([data-q]):not(#q-rules), #view textarea");
+  return Array.from(els).some((el) => el.value !== el.defaultValue);
+}
+
 /** Cihazlar arası eşitleme (Firebase). Giriş yapılmamışsa hiçbir şey yüklenmez. */
 function setupSync(): void {
-  setChangeHook(syncChanged);
+  setChangeHook(() => {
+    syncChanged();
+    setSyncLanguage(store.s.settings.lang);
+  });
   initSync({
     getState: () => store.s,
     version: storeVersion,
     apply: (next) => {
-      if (isModalOpen()) return false;
+      // Açık pencere ya da henüz kaydedilmemiş yazı varken bekle (yeniden çizim yazılanı silmesin).
+      if (isModalOpen() || hasDraft()) return false;
       applyExternal(next, t("syncPulled"));
       autoSchedule();
       return true;
