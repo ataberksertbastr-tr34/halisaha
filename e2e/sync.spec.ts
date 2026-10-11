@@ -5,7 +5,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, stubGoogle, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const PW = "deneme123";
@@ -19,7 +19,7 @@ async function device(browser: Browser, kind: "phone" | "pc"): Promise<{ ctx: Br
   );
   // Ağı kısıtlı yerel ortamda (NO_GOOGLE_APIS=1) Google betikleri boş yanıtlanır: Ayarlar'da önceden
   // kurulan Google altyapısının engellenen isteği konsola hata düşürmesin (CI'da gerçek betikler yüklenir).
-  if (process.env.NO_GOOGLE_APIS) await ctx.route("https://apis.google.com/**", (r) => r.fulfill({ contentType: "text/javascript", body: "" }));
+  if (process.env.NO_GOOGLE_APIS) await stubGoogle(ctx);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   return { ctx, page, errors };

@@ -1,8 +1,8 @@
 /** Uygulama geneli: konsol hatası yok, 360 px düzen, çevrimdışı çalışma, yüklenebilirlik, Geri al. */
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const TABS = ["match", "teams", "pay", "players", "more"];
@@ -20,7 +20,7 @@ test("tüm sekmeler hatasız açılır ve 360 px'e sığar (açık ve koyu tema)
     }
     for (const sub of SUBPAGES) {
       await page.locator('#tabs [data-v="more"]').click();
-      await page.locator(`[data-a="nav"][data-v="${sub}"]`).click();
+      await page.locator(`#view [data-a="nav"][data-v="${sub}"]`).click();
       await expect(page.locator(".subtitle")).toBeVisible();
       await noHorizontalScroll(page);
       await page.goBack();
