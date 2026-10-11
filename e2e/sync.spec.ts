@@ -238,7 +238,25 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     await expect(page.locator("#sync-sec")).toContainText(gmail, { timeout: 25_000 });
   } catch (e) {
     let pop = "pencere kapalı";
-    if (!popup.isClosed()) pop = "pencere açık: " + popup.url() + "\n" + (await popup.locator("body").innerText().catch(() => "?")).slice(0, 2000);
+    if (!popup.isClosed()) {
+      const seen = await popup
+        .evaluate(() => {
+          const o = window.opener as Window | null;
+          if (!o) return "opener yok";
+          const out: string[] = ["opener çerçeve sayısı: " + o.frames.length];
+          for (let i = 0; i < o.frames.length; i++) {
+            try {
+              out.push(i + ": " + o.frames[i].location.href);
+            } catch (err) {
+              out.push(i + ": erişilemedi (" + String(err).slice(0, 80) + ")");
+            }
+          }
+          return out.join("\n");
+        })
+        .catch((err) => "değerlendirilemedi: " + String(err).slice(0, 200));
+      pop = "pencere açık: " + popup.url() + "\n" + seen + "\n" + (await popup.locator("body").innerText().catch(() => "?")).slice(0, 600);
+    }
+    pop += "\nsayfa çerçeveleri: " + page.frames().map((f) => f.url()).join(" | ");
     const body = [logs.join("\n"), "toast: " + (await page.locator("#toast").textContent()), "durum: " + (await page.locator("#sync-status").textContent()), pop].join("\n\n");
     await test.info().attach("google-giris-tani", { body, contentType: "text/plain" });
     console.log(body);
