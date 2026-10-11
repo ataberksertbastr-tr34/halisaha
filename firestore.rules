@@ -1,0 +1,15 @@
+rules_version = '2';
+// Her hesap yalnızca kendi tek belgesini okur ve yazar: users/{uid}/halisaha/state.
+// Başka yol yok; belge yalnızca uygulamanın alanlarını içerir ve ~1 MB'ı geçemez.
+// Firebase konsolunda: Firestore Database → Kurallar → bu içerik → Yayınla.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/halisaha/state {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(["fmt", "schema", "rev", "at", "dev", "enc", "data"])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 1000000;
+    }
+  }
+}

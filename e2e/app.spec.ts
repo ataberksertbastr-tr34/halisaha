@@ -44,6 +44,23 @@ test("service worker sonrası internetsiz açılır, yüklenebilir", async ({ pa
   await page.locator('#tabs [data-v="players"]').click();
   await page.locator("#newName").fill("Çevrimdışı Çetin");
   await page.locator('[data-a="addPlayer"]').click();
+  // Kayıt IndexedDB'ye yazılmadan sayfa yenilenirse yazma yarıda kalabilir; yazıldığını gör, sonra yenile.
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((res) => {
+        const q = indexedDB.open("halisaha");
+        q.onerror = () => res(false);
+        q.onsuccess = () => {
+          const db = q.result;
+          const g = db.transaction("kv").objectStore("kv").get("state");
+          g.onsuccess = () => {
+            res(JSON.stringify(g.result || {}).includes("Çevrimdışı Çetin"));
+            db.close();
+          };
+          g.onerror = () => res(false);
+        };
+      }),
+  );
 
   await context.setOffline(true);
   await page.reload();

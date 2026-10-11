@@ -85,6 +85,10 @@ main:focus { outline: none; }
 .brand-acts { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
 .sync { font-size: 12px; padding: 3px 9px; border-radius: 20px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .1); white-space: nowrap; color: rgba(238, 234, 217, .8); }
 .sync.off { background: var(--crimson); border-color: var(--crimson); color: var(--cream); font-weight: 700; }
+.sync { display: inline-flex; align-items: center; gap: 4px; }
+.sync svg { width: 14px; height: 14px; flex: none; }
+.sync.on { color: var(--cream); border-color: rgba(201, 160, 75, .45); }
+.sync.warn { background: rgba(201, 160, 75, .18); border-color: rgba(201, 160, 75, .6); color: var(--gold-hi); font-weight: 700; }
 .hero-main { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; margin-top: 12px; padding-right: 96px; }
 .hero-kicker { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(238, 234, 217, .72); font-weight: 600; }
 .hero-kicker svg { width: 16px; height: 16px; color: var(--gold); }
@@ -129,7 +133,7 @@ p { margin: 0 0 8px; }
 .lbl { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
 label.fld { display: block; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
 label.fld input, label.fld select, label.fld textarea { margin-top: 4px; }
-input[type=text], input[type=search], input[type=tel], input[type=url], input[type=number], input[type=date], input[type=time], input[type=month], select, textarea {
+input[type=text], input[type=search], input[type=tel], input[type=url], input[type=email], input[type=password], input[type=number], input[type=date], input[type=time], input[type=month], select, textarea {
   width: 100%; padding: 10px 11px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); min-height: 44px; color: var(--ink); font-size: 16px;
 }
 input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; }
@@ -152,6 +156,10 @@ select { padding-right: 30px; }
 .btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; }
 .btn.xs { white-space: nowrap; min-height: 44px; padding: 0 10px; font-size: 13px; border-radius: 10px; }
 .btn.block { width: 100%; }
+.syncform { display: grid; gap: 10px; }
+.wrapany { overflow-wrap: anywhere; }
+.gbtn { gap: 10px; font-weight: 700; }
+.gbtn svg { width: 20px; height: 20px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 1px solid transparent; background: transparent; color: var(--muted); flex: 0 0 auto; }
 .iconbtn svg { width: 20px; height: 20px; }

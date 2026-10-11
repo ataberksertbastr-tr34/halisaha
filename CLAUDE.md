@@ -14,6 +14,8 @@ Predators grubunda haftada iki halı saha maçı ve paintball, airsoft, voleybol
 - Organizatör telefonunda hiçbir şey kurmaz. Test, derleme ve yayın GitHub Actions ile yapılır; yayın GitHub Pages'e gider.
 - Görsel kimlik: Predators arması ve renkleri — gece siyahı `#13161C`, altın `#C9A04B`, bordo `#84191F`, krem `#EEEAD9`; üst bölüm iki temada da gece siyahı. Takım yelekleri Ayarlar'dan (varsayılan Sarılar `#E6CF3A`, Turuncular `#EE7A2C`). Barlow / Barlow Condensed fontları. Açık (fildişi) ve koyu (gece) tema desteklenir.
 - Halı saha mesaj şablonlarının varsayılanları eski uygulamanın mesajlarıyla birebir aynı kalır (`tests/messages.test.ts`).
+- Cihazlar arası eşitleme organizatörün kendi Firebase projesiyle yapılır (`src/sync/`; Google/e-posta girişi, Firestore'da hesap başına tek belge, `firestore.rules`: herkes yalnızca kendi verisi). Uygulama yerel öncelikli kalır: internetsiz tam çalışır, eşitleme üstüne eklenir. Firebase web yapılandırması (`src/sync/config.ts`) gizli değildir, repoda durabilir; kullanıcı verisi yine asla repoya girmez.
+- State'e yeni alan eklenirken `src/sync/merge.ts`'in onu doğru birleştirdiği test edilir (kimlikli diziler `id` ile, kimliksiz diziler bütün olarak birleşir). Şema sürümü artarsa eski sürümdeki cihaz buluttaki yeni veriye dokunmaz, "güncelle" der.
 
 ## Çalışma şekli
 - Organizatöre soru sormak için durma; makul varsayımlar yap ve PR açıklamasında listele.

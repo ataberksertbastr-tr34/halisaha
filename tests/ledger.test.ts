@@ -1,6 +1,6 @@
 /** Hesap defteri: kısmi ödeme, FIFO dağıtım, avans, dondurulmuş pay, aylık özet ve kasa. */
 import { describe, expect, it } from "vitest";
-import { accounts, cashAt, chargeOf, debts, markPaid, monthSummary, newPayment, settleAll, unmarkPaid } from "../src/domain/ledger";
+import { accounts, cashAt, chargeOf, debts, markPaid, monthSummary, newPayment, settleAll, settleId, unmarkPaid } from "../src/domain/ledger";
 import { billOf, freezeBill } from "../src/domain/money";
 import { allIn, match, roster, state } from "./helpers/factory";
 
@@ -64,6 +64,17 @@ describe("hesap defteri", () => {
     expect(s.payments.filter((p) => p.pid === "p1").map((p) => p.amount)).toEqual([40, 60]);
     expect(unmarkPaid(s, m2, "p1")).toBe(true);
     expect(chargeOf(s, m2, "p1", TODAY)!.status).toBe("unpaid");
+  });
+
+  it("'Ödedi' kaydının kimliği borçtan türetilir (iki cihazda basılırsa tek kayıt); pay artarsa aynı kayıt büyür", () => {
+    const { s, m2 } = setup();
+    markPaid(s, m2, "p1", TODAY);
+    expect(s.payments.map((p) => [p.id, p.amount])).toEqual([[settleId("p1", "m2"), 100]]);
+    s.payments[0].amount = 60; // eski pay; sonra pay arttı gibi
+    markPaid(s, m2, "p1", TODAY);
+    expect(s.payments.map((p) => [p.id, p.amount])).toEqual([[settleId("p1", "m2"), 100]]);
+    expect(settleAll(s, "p2", TODAY)).toBe(200);
+    expect(s.payments.filter((p) => p.pid === "p2").map((p) => p.id).sort()).toEqual([settleId("p2", "m1"), settleId("p2", "m2")].sort());
   });
 
   it("genel ödemeden karşılanan pay maç üzerinden kaldırılamaz", () => {

@@ -10,7 +10,8 @@ diğerleri) organize etmek için telefonun ana ekranına kurulan, **internetsiz 
 **Uygulama adresi:** <https://ataberksertbastr-tr34.github.io/halisaha/>
 
 > Telefonuna hiçbir şey kurman gerekmez (uygulama mağazası yok). Adresi açıp
-> "Ana ekrana ekle" demen yeterli. Veriler yalnızca senin telefonunda durur.
+> "Ana ekrana ekle" demen yeterli. Veriler cihazında durur; Google hesabınla
+> giriş yaparsan telefonda ve bilgisayarda kendiliğinden aynı kalır.
 
 ---
 
@@ -55,17 +56,69 @@ Ayarlar → Yedekleme → **Otomatik yerel sürümler**'den önceki hale dön.
 
 ---
 
-## 3. Yedekleme (önemli)
+## 3. Cihazlar arası eşitleme
 
-Veriler telefonunda saklanır. Telefon kaybolur ya da tarayıcı verisi silinirse
-veriler gider; bu yüzden **düzenli yedek al**.
+Telefonda, bilgisayarda, hangi cihazda açarsan aç veriler güncel olsun diye
+uygulama verileri senin Firebase projende (Google) saklar ve eşitler.
+
+**Her cihazda bir kez:** Daha → Ayarlar → **Cihazlar arası eşitleme** →
+**Google ile giriş yap**. (Henüz giriş yapılmamış cihazda üstte "Verilerin
+başka bir cihazda mı?" şeridi de çıkar.)
+
+- Cihazda zaten veri varsa buluttakiyle **birleştirilir**, hiçbir şey silinmez;
+  birleştirmeden önce cihazdaki hâl otomatik yerel sürüm olarak saklanır.
+- Her değişiklik birkaç saniye içinde gönderilir. Uygulama açılınca, öne gelince
+  ve açık kaldıkça en geç 30 saniyede bir diğer cihazların değişiklikleri alınır.
+- İnternet yokken uygulama aynen çalışır; bağlantı gelince eşitlenir. İki
+  cihazda aynı anda farklı şeyler değiştirilirse ikisi de korunur (aynı alan
+  iki yerde değiştiyse son yapılan geçerli olur).
+- Üst köşedeki rozet durumu gösterir: **Eşitlendi**, **Eşitleniyor**,
+  **Çevrimdışı**.
+- **iPhone'da ana ekrandaki uygulamada** Google penceresi açılmazsa: başka bir
+  cihazda Google ile giriş yap → Eşitleme → **Şifre belirle**; iPhone'da
+  **E-posta ve şifreyle giriş**'i kullan.
+- **Çıkış yap** dersen veriler cihazda kalır, yalnızca eşitleme durur.
+
+Güvenlik: Verine yalnızca kendi Google hesabınla erişilir (Firestore kuralı:
+herkes yalnızca kendi verisini okur/yazar, `firestore.rules`). Veriler bu
+repoya hiçbir zaman girmez.
+
+### Firebase kurulumu (bir kez, bilgisayardan ~10 dakika)
+
+1. <https://console.firebase.google.com> → **Proje oluştur** → ad: `halisaha`
+   (Gemini ve Google Analytics'i kapat/atla).
+2. **Build → Authentication → Başlayın**:
+   - **Google** → Etkinleştir → destek e-postası seç → Kaydet.
+   - **Yeni sağlayıcı ekle → E-posta/Şifre** → ilk anahtarı aç → Kaydet.
+   - **Ayarlar → Yetkili alan adları → Alan adı ekle** →
+     `ataberksertbastr-tr34.github.io`.
+3. **Build → Firestore Database → Veritabanı oluştur** → Standard, Avrupa'da
+   bir konum, **Üretim modunda başlat**.
+4. Firestore → **Kurallar** → [`firestore.rules`](firestore.rules) içeriğini
+   yapıştır → **Yayınla**.
+5. ⚙️ **Proje ayarları → Uygulamalarınız → `</>`** → takma ad → **Uygulamayı
+   kaydet** → çıkan `firebaseConfig` değerlerini `src/sync/config.ts` içindeki
+   `BUILT_IN`'e yaz ve `main`'e gönder. (Kod değiştirmeden denemek için aynı
+   metni uygulamada Ayarlar → Eşitleme kutusuna da yapıştırabilirsin; o zaman
+   yalnızca o cihazda geçerli olur.)
+
+`firebaseConfig` gizli değildir (apiKey bir şifre değil, projenin herkese açık
+kimliğidir); veriyi 4. adımdaki kural korur.
+
+---
+
+## 4. Yedekleme (önemli)
+
+Veriler cihazında saklanır. Eşitleme açık değilse telefon kaybolduğunda ya da
+tarayıcı verisi silindiğinde veriler gider; bu yüzden **düzenli yedek al**.
+Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidir.
 
 - **Yedeği paylaş:** Ayarlar → Yedekleme → **Yedeği paylaş**. Yedek dosyasını
   (`halisaha-yedek-YYYY-AA-GG.json`) WhatsApp'ta kendine, Google Drive'a ya da
   e-postaya gönder. Paylaşım yoksa dosya indirilir.
 - **Dosya olarak indir** ve **Yedeği kopyala** (metin) seçenekleri de var.
-- **Haftalık hatırlatma:** 7 gün yedek almazsan üstte "Yedek alma zamanı"
-  şeridi çıkar.
+- **Hatırlatma:** 7 gün yedek almazsan üstte "Yedek alma zamanı" şeridi
+  çıkar (eşitleme çalışıyorsa 30 günde bir).
 - **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir,
   son 10 sürüm saklanır; silme, iptal, yedek yükleme gibi işlemlerden önce ayrıca
   sürüm alınır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
@@ -78,7 +131,7 @@ veriler gider; bu yüzden **düzenli yedek al**.
 
 ---
 
-## 4. Neler yapabilirsin?
+## 5. Neler yapabilirsin?
 
 - **Etkinlikler (Kısım 3):** "+ Yeni etkinlik" ile halı saha, paintball,
   airsoft, voleybol, ayak tenisi, masa tenisi, kıraathane ya da diğer etkinlik.
@@ -133,13 +186,16 @@ veriler gider; bu yüzden **düzenli yedek al**.
 
 ---
 
-## 5. Geliştirici notları
+## 6. Geliştirici notları
 
 Organizatörün bu bölümle işi yok; test, derleme ve yayın GitHub Actions'ta
 otomatik çalışır.
 
-**Teknoloji:** Vite + TypeScript, çalışma zamanı bağımlılığı yok. Veriler
-IndexedDB'de; service worker tüm dosyaları önbelleğe alır. Yönlendirme hash
+**Teknoloji:** Vite + TypeScript. Veriler IndexedDB'de; service worker tüm
+dosyaları önbelleğe alır. Tek çalışma zamanı bağımlılığı Firebase Auth'tur
+(`firebase`); yalnızca giriş yapılmış ya da giriş istenen cihazda, ayrı bir
+dosya olarak sonradan yüklenir. Firestore'a SDK'sız REST ile erişilir
+(`src/sync/firestore.ts`). Yönlendirme hash
 tabanlıdır (`#/match`, `#/rules/2.3`), GitHub Pages'te ek ayar gerekmez; taban yol
 görelidir (`base: "./"`), `/halisaha/` altında da özel alan adında da çalışır.
 
@@ -150,6 +206,11 @@ npm run typecheck # TypeScript kontrolü
 npm test          # birim testleri (Vitest)
 npm run build     # dist/ (service worker dahil)
 npm run e2e       # uçtan uca testler (Playwright, derlenmiş uygulama üzerinde)
+
+# Eşitleme testleri: Firebase emülatörleri (Java 21 gerekir)
+npm run build:emu
+npx firebase-tools emulators:exec --only auth,firestore --project demo-halisaha \
+  "npm run test:emu && npm run e2e:sync"
 ```
 
 **Klasörler**
@@ -158,6 +219,7 @@ npm run e2e       # uçtan uca testler (Playwright, derlenmiş uygulama üzerind
 |---|---|
 | `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`) |
 | `src/data/` | IndexedDB, otomatik yerel sürümler, yedek dosyası |
+| `src/sync/` | Cihazlar arası eşitleme: üç yönlü birleştirme (`merge.ts`), eşitleme motoru (`engine.ts`), Firestore REST (`firestore.ts`), bulut belgesi (`envelope.ts`), Firebase girişi (`auth.ts`), yapılandırma (`config.ts`) |
 | `src/ui/` | Görünümler, alt sayfalar, saha çizimi ve sürükle-bırak |
 | `src/app/` | Durum (Geri al dahil), eylemler, yönlendirme |
 | `src/sw.ts`, `scripts/vite-plugin-sw.ts` | Service worker ve önbellek listesi |
@@ -169,6 +231,14 @@ değişirse sürüm artar, `src/domain/migrate.ts`'e adım ve test eklenir. Eski
 uygulamanın v1/v2 yedekleri `tests/migrate.test.ts` ve
 `e2e/legacy-compat.spec.ts` ile sürekli doğrulanır (ikincisi eski uygulamayı
 gerçek tarayıcıda kullanıp yedeğini yeni uygulamaya yükler).
+
+**Eşitleme nasıl çalışır:** Firestore'da hesap başına tek belge
+(`users/{uid}/halisaha/state`, gzip + base64). Her cihaz buluttakiyle en son
+anlaştığı hâli ("taban") saklar; bulut değiştiyse taban–cihaz–bulut üç yönlü
+birleştirilir (kayıtlar `id` ile, alanlar tek tek; silme ile düzenleme çakışırsa
+düzenleme korunur). Yazmalar ön koşulludur (`updateTime`); araya başka cihaz
+girerse yeniden okunur. Otomatik planlanan maçların kimliği tarih/saatten
+türetilir, iki cihaz aynı maçı ayrı ayrı oluşturmaz.
 
 **Kuralları güncellemek:** `KURALLAR.md` dosyasını düzenleyip `main`'e gönder;
 uygulamanın Kurallar sayfası bir sonraki yayında güncellenir.

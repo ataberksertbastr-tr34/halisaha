@@ -195,6 +195,27 @@ export function newPayment(pid: string, amount: number, at: string, mid?: string
   return p;
 }
 
+/**
+ * "Ödedi" kaydının kimliği borçtan türetilir (kişi + maç ya da ek borç). İki cihaz aynı
+ * borcu ayrı ayrı "ödendi" yaparsa eşitlemede tek kayıt olur; elle girilen ödemeler
+ * rastgele kimlik alır ve hiçbir zaman birleşmez.
+ */
+export const settleId = (pid: string, mid?: string, cid?: string): string => "pd-" + (cid ? "x" + cid : "m" + (mid || "")) + "-" + pid;
+
+/** Borcun kalanını "Ödedi" kaydına yazar (kayıt varsa tutarı artar). */
+function addSettle(s: State, pid: string, amount: number, at: string, mid?: string, cid?: string): void {
+  const id = settleId(pid, mid, cid);
+  const ex = s.payments.find((p) => p.id === id);
+  if (ex) {
+    ex.amount = r2(ex.amount + amount);
+    ex.at = at;
+    return;
+  }
+  const p = newPayment(pid, amount, at, mid, undefined, cid);
+  p.id = id;
+  s.payments.push(p);
+}
+
 /** Kişiye ek borç yazar (kişisel harcama, zarar bedeli). */
 export function newExtra(pid: string, amount: number, at: string, note: string, mid?: string, rule?: string): ExtraCharge {
   const x: ExtraCharge = { id: uid(), pid, amount: r2(amount), at, note };
@@ -213,7 +234,7 @@ export function toggleExtraPaid(s: State, x: ExtraCharge, today: string): "paid"
     return s.payments.length !== before ? "unpaid" : null;
   }
   const rest = r2(c.amount - c.paid);
-  if (rest > EPS) s.payments.push(newPayment(x.pid, rest, today, x.mid, undefined, x.id));
+  if (rest > EPS) addSettle(s, x.pid, rest, today, x.mid, x.id);
   return "paid";
 }
 
@@ -222,7 +243,7 @@ export function markPaid(s: State, m: Match, id: string, today: string): void {
   const c = chargeOf(s, m, id, today);
   if (!c) return;
   const rest = r2(c.amount - c.paid);
-  if (rest > EPS) s.payments.push(newPayment(id, rest, today, m.id));
+  if (rest > EPS) addSettle(s, id, rest, today, m.id);
 }
 
 /**
@@ -244,7 +265,7 @@ export function settleAll(s: State, id: string, today: string): number {
     if (!c.due) continue;
     const rest = r2(c.amount - c.paid);
     if (rest > EPS) {
-      s.payments.push(newPayment(id, rest, today, c.mid || undefined, undefined, c.cid));
+      addSettle(s, id, rest, today, c.mid || undefined, c.cid);
       total = r2(total + rest);
     }
   }
