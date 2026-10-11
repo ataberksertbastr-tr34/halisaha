@@ -3,10 +3,10 @@
  * raunt, araç, disiplin, bitirme), voleybol skorbordu, kıraathane masa kurası,
  * masa tenisi sırası, disiplin ve duyuru sayfaları. 360 px, konsol hatası yok.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const CLEAN = ["Kaleci Kemal", "Orta Ömer", "Defans Doğan", "Eldiven Ercan"];

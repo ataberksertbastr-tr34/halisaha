@@ -16,8 +16,15 @@ export interface FirebaseCfg {
   measurementId?: string;
 }
 
-/** Organizatörün Firebase projesi. Kurulum tamamlanınca doldurulur. */
-export const BUILT_IN: FirebaseCfg | null = null;
+/** Organizatörün Firebase projesi (Firebase konsolu → Proje ayarları → Uygulamalarınız). */
+export const BUILT_IN: FirebaseCfg | null = {
+  apiKey: "AIzaSyBJ0Q5klZvC6qlhjc0Hs8FtL120Ufoq5fU",
+  authDomain: "halisaha-684bc.firebaseapp.com",
+  projectId: "halisaha-684bc",
+  storageBucket: "halisaha-684bc.firebasestorage.app",
+  messagingSenderId: "87259258821",
+  appId: "1:87259258821:web:6479c3261ae0695133b5ac",
+};
 
 /** Uçtan uca testler için Firebase emülatörlerine bağlanan derleme (VITE_FIREBASE_EMULATOR=1). */
 export const EMULATOR = import.meta.env.VITE_FIREBASE_EMULATOR === "1";

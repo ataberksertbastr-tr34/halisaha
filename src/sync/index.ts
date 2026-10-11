@@ -36,11 +36,14 @@ export interface SyncView {
   loading: boolean;
   user: SyncUser | null;
   status: SyncStatus;
+  /** Oturum kullanıcı çıkış yapmadan kapandı (ör. başka cihazda şifre belirlendi, hesap silindi): yeniden giriş gerekli. */
+  lost: boolean;
 }
 
 type AuthMod = typeof import("./auth");
 
 const ON_KEY = "halisaha.sync.on";
+const LOST_KEY = "halisaha.sync.lost";
 const DEVICE_KEY = "halisaha.device";
 const POLL_MS = 30_000;
 const THROTTLE_MS = 3_000;
@@ -53,6 +56,10 @@ let user: SyncUser | null = null;
 let remote: Remote | null = null;
 let loading = false;
 let lastKick = 0;
+/** Kullanıcı kendisi çıkış yapıyor (oturumun kapanması "kayıp" sayılmaz). */
+let signingOut = false;
+/** Google altyapısı bu bağlantı döneminde önceden kuruldu (bağlantı gidip gelince yeniden denenir). */
+let warmed = false;
 const listeners = new Set<() => void>();
 
 const ls = {
@@ -102,6 +109,11 @@ async function saveMeta(m: SyncMeta): Promise<void> {
 }
 
 function onUser(u: SyncUser | null): void {
+  // Bu cihaz eşitleniyordu ama kullanıcı çıkış yapmadan oturum kapandı: sessizce durmasın, uyarılsın.
+  if (!u) {
+    if (!signingOut && ls.get(ON_KEY) === "1") ls.set(LOST_KEY, "1");
+    signingOut = false;
+  } else ls.set(LOST_KEY, null);
   user = u;
   loading = false;
   const cfg = activeConfig();
@@ -151,7 +163,12 @@ function bindTriggers(): void {
   });
   window.addEventListener("focus", () => kick());
   // Bağlantı gelince hemen değil, kısa ve rastgele bir gecikmeyle: aynı anda bağlanan iki cihaz çakışmasın.
-  window.addEventListener("online", () => setTimeout(() => kick(true), 300 + Math.random() * 1500));
+  window.addEventListener("online", () => {
+    setTimeout(() => kick(true), 300 + Math.random() * 1500);
+    // İnternetsizken atlanan Google ön hazırlığı: giriş bölümü açıksa şimdi yap.
+    warmed = false;
+    if (!user && document.getElementById("sync-sec")) prewarmAuth();
+  });
   window.addEventListener("offline", () => notify());
   window.addEventListener("pagehide", () => {
     if (engine?.status().pending) kick(true);
@@ -203,7 +220,15 @@ export function onSyncChange(fn: () => void): () => void {
 export function syncView(): SyncView {
   const cfg = activeConfig();
   const status: SyncStatus = engine ? engine.status() : { state: "off", lastSyncAt: 0, pending: false };
-  return { configured: !!cfg, builtIn: builtIn(), project: cfg?.projectId || "", loading, user, status: cfg ? (navigator.onLine === false && user ? { ...status, state: "offline" } : status) : { ...status, state: "off" } };
+  return {
+    configured: !!cfg,
+    builtIn: builtIn(),
+    project: cfg?.projectId || "",
+    loading,
+    user,
+    status: cfg ? (navigator.onLine === false && user ? { ...status, state: "offline" } : status) : { ...status, state: "off" },
+    lost: !!cfg && !user && !loading && ls.get(LOST_KEY) === "1",
+  };
 }
 
 /** Yerel değişiklik oldu (store.commit). */
@@ -241,13 +266,22 @@ async function guarded<T>(fn: (m: AuthMod) => Promise<T>): Promise<T> {
 /**
  * Giriş modülünü ve Google penceresinin altyapısını önceden hazırlar (Ayarlar'daki eşitleme
  * bölümü girişsiz açılınca). Böylece "Google ile giriş yap"a dokununca pencere hemen, dokunuşun
- * içinde açılır; iPhone Safari gecikmeli açılan pencereleri engeller.
+ * içinde açılır; iPhone Safari gecikmeli açılan pencereleri engeller. İnternet yokken denenmez
+ * (Google betiği yüklenemez, her denemede konsola hata düşer); bağlantı gelince yeniden denenir.
  */
 export function prewarmAuth(): void {
-  if (!activeConfig()) return;
+  if (!activeConfig() || warmed || navigator.onLine === false) return;
+  warmed = true;
   loadAuth()
     .then((m) => m.prepareGoogle())
-    .catch(() => undefined);
+    .then(
+      (started) => {
+        if (!started) warmed = false;
+      },
+      () => {
+        warmed = false;
+      },
+    );
 }
 
 /** Google penceresini açar. Modül yüklüyse araya hiç bekleme koymadan (dokunuşun içinde) çağrılır. */
@@ -281,7 +315,13 @@ export async function setPassword(pw: string): Promise<void> {
 }
 export async function signOutSync(): Promise<void> {
   await syncNow().catch(() => undefined);
-  await guarded((m) => m.signOut());
+  signingOut = true; // onUser(null) bu bayrağı görüp sıfırlar
+  try {
+    await guarded((m) => m.signOut());
+  } catch (e) {
+    signingOut = false;
+    throw e;
+  }
 }
 
 export function setLanguage(lang: string): void {

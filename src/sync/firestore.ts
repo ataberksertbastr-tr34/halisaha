@@ -77,7 +77,14 @@ export function firestoreRemote(o: FirestoreOpts): Remote {
   const timeout = o.timeoutMs ?? 20000;
 
   async function call(url: string, init: RequestInit, retried = false): Promise<Response> {
-    const token = await o.getToken(retried);
+    let token: string;
+    try {
+      token = await o.getToken(retried);
+    } catch (e) {
+      // Süresi dolan belirteç bağlantı yüzünden yenilenemediyse bu bir ağ sorunudur (birazdan tekrar denenir).
+      if ((e as { code?: string })?.code === "auth/network-request-failed") throw new NetError(0);
+      throw e;
+    }
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), timeout);
     let r: Response;

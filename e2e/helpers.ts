@@ -1,4 +1,29 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test as base, type BrowserContext, type Page } from "@playwright/test";
+
+/**
+ * Google'ın giriş betiklerini (apis.google.com) boş yanıtlar. Ayarlar'daki eşitleme bölümü Google girişinin
+ * altyapısını önceden kurar; testler organizatörün gerçek Firebase projesine ve dış ağa bağlanmasın,
+ * ağı kısıtlı ortamda da konsola hata düşmesin. (Google girişi emülatörle e2e/sync.spec.ts'te sınanır.)
+ */
+export async function stubGoogle(ctx: BrowserContext): Promise<void> {
+  await ctx.route("https://apis.google.com/**", (r) => r.fulfill({ contentType: "text/javascript", body: "" }));
+}
+
+/** Her tarayıcı bağlamında (page fikstürü ve browser.newContext) Google betiklerini boş yanıtlayan test. */
+export const test = base.extend<object, { stubbedBrowser: void }>({
+  stubbedBrowser: [
+    async ({ browser }, use) => {
+      const newContext = browser.newContext.bind(browser);
+      browser.newContext = async (options) => {
+        const ctx = await newContext(options);
+        await stubGoogle(ctx);
+        return ctx;
+      };
+      await use();
+    },
+    { scope: "worker", auto: true },
+  ],
+});
 
 /** Sayfadaki konsol hatalarını ve yakalanmamış istisnaları toplar. */
 export function watchErrors(page: Page): string[] {

@@ -5,7 +5,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, stubGoogle, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const PW = "deneme123";
@@ -19,7 +19,7 @@ async function device(browser: Browser, kind: "phone" | "pc"): Promise<{ ctx: Br
   );
   // Ağı kısıtlı yerel ortamda (NO_GOOGLE_APIS=1) Google betikleri boş yanıtlanır: Ayarlar'da önceden
   // kurulan Google altyapısının engellenen isteği konsola hata düşürmesin (CI'da gerçek betikler yüklenir).
-  if (process.env.NO_GOOGLE_APIS) await ctx.route("https://apis.google.com/**", (r) => r.fulfill({ contentType: "text/javascript", body: "" }));
+  if (process.env.NO_GOOGLE_APIS) await stubGoogle(ctx);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   return { ctx, page, errors };
@@ -190,6 +190,10 @@ test("başka hesap bu verileri görmez; çıkış yapınca veriler cihazda kalı
   await expect(a.page.locator('#sync-sec [data-a="syncGoogle"]')).toBeVisible({ timeout: 20_000 });
   await expect(a.page.locator("#hero #sync")).toContainText("Bu cihazda kayıtlı");
   expect(await rosterNames(a.page)).toEqual(before);
+  // Kendi isteğiyle çıkan cihaz "oturum kapandı" uyarısı görmez.
+  await a.page.reload();
+  await expect(a.page.locator("#list-roster")).toBeVisible();
+  await expect(a.page.locator("#banner")).not.toContainText("Eşitleme durdu");
 
   // Boş bir cihazda başka bir hesap: kimsenin verisini görmez.
   const b = await device(browser, "pc");
@@ -200,6 +204,37 @@ test("başka hesap bu verileri görmez; çıkış yapınca veriler cihazda kalı
   expect(b.errors).toEqual([]);
   await a.ctx.close();
   await b.ctx.close();
+});
+
+test("oturum çıkış yapılmadan kapanırsa (ör. hesap başka yerden silindi) cihaz uyarır; veriler cihazda kalır", async ({ browser }) => {
+  const email = uniq();
+  const d = await device(browser, "phone");
+  await importBackupText(d.page, V2);
+  await emailAuth(d.page, email, "up");
+  const names = await rosterNames(d.page);
+
+  // Hesap başka bir yerden geçersiz kılınır (şifre değişimi, hesap silme gibi): oturum açılışta düşer.
+  const AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1";
+  const post = (path: string, body: unknown) =>
+    fetch(`${AUTH}/${path}?key=demo-key`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json() as Promise<{ idToken?: string }>);
+  const { idToken } = await post("accounts:signInWithPassword", { email, password: PW, returnSecureToken: true });
+  await post("accounts:delete", { idToken });
+  await d.page.reload();
+
+  const banner = d.page.locator("#banner");
+  await expect(banner).toContainText("Eşitleme durdu: oturum kapandı", { timeout: 20_000 });
+  await expect(banner).not.toContainText("Verilerin her cihazında olsun"); // davet yerine uyarı
+  expect((await rosterNames(d.page)).sort()).toEqual([...names].sort());
+  await d.page.goto("/#/settings");
+  await expect(d.page.locator("#sync-status")).toContainText("Oturum kapandı");
+
+  // Yeniden giriş yapınca uyarı kalkar, eşitleme sürer.
+  await emailAuth(d.page, uniq(), "up");
+  await d.page.goto("/#/players");
+  await expect(banner).not.toContainText("Eşitleme durdu");
+  // Silinmiş hesabın doğrulanması tarayıcıda bir 400 yanıtı olarak görünür; bu senaryonun beklenen parçası.
+  expect(d.errors.filter((e) => !/status of 400/.test(e))).toEqual([]);
+  await d.ctx.close();
 });
 
 /** Emülatörün yardımcı çerçevesinin (iframe) iç durumu (tanı için). */
