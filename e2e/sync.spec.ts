@@ -209,6 +209,16 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
     p.on("console", (m) => logs.push(tag + " " + m.type() + ": " + m.text()));
     p.on("requestfailed", (r) => logs.push(tag + " İSTEK BAŞARISIZ: " + r.url() + " " + (r.failure()?.errorText || "")));
     p.on("pageerror", (e) => logs.push(tag + " HATA: " + e.message));
+    p.on("requestfinished", (r) => {
+      if (!r.url().includes("apis.google.com")) return;
+      let from = "";
+      try {
+        from = r.frame().url().slice(0, 60);
+      } catch {
+        /* çerçevesiz istek */
+      }
+      logs.push(tag + " yüklendi: " + r.url().slice(0, 90) + " ← " + from);
+    });
     p.on("framenavigated", (f) => f === p.mainFrame() && logs.push(tag + " → " + f.url()));
   };
   watch(page, "sayfa");
@@ -231,9 +241,23 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
   // Emülatörün penceresi sonucu sayfadaki Firebase iletişim çerçevesine (iframe) gönderir; çerçeve
   // henüz hazır değilse "No matching frame" deyip takılır. İnsan hesap seçerken çerçeve çoktan
   // hazır olur; test insan hızının çok üstünde olduğu için çerçeveyi bekler ve gerekirse yeniden gönderir.
+  // Emülatörün yardımcı çerçevesi Google'ın betiğini (apis.google.com/js/api.js) yüklemeden sonucu
+  // iletemez; CI'da bu dış istek bazen hiç tamamlanmıyor. Betik yüklenmediyse çerçeve yeniden yüklenir.
+  await expect.poll(() => page.frames().some((f) => f.url().includes("/emulator/auth/iframe")), { timeout: 15_000 }).toBe(true);
+  const helper = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"))!;
+  const ready = () => helper.evaluate(() => !!(window as unknown as { parentContainer?: unknown }).parentContainer).catch(() => false);
+  for (let i = 0; i < 4; i++) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 8_000 && !(await ready())) await page.waitForTimeout(250);
+    if (await ready()) {
+      logs.push("yardımcı çerçeve hazır (" + (i + 1) + ". deneme)");
+      break;
+    }
+    logs.push("yardımcı çerçeve hazır değil, yeniden yükleniyor (" + (i + 1) + ")");
+    await helper.goto(helper.url()).catch((err) => logs.push("çerçeve yeniden yüklenemedi: " + String(err).slice(0, 120)));
+  }
   // Sonuç iletilemezse pencere açık kalır; kullanıcı gibi birkaç saniye arayla yeniden gönderilir
   // (başarısız deneme emülatörde hesap oluşturmaz).
-  await expect.poll(() => page.frames().some((f) => f.url().includes("/emulator/auth/iframe")), { timeout: 15_000 }).toBe(true);
   for (let i = 0; i < 6 && !popup.isClosed(); i++) {
     await popup.locator("#sign-in").click({ timeout: 5_000 }).catch(() => undefined);
     await popup.waitForEvent("close", { timeout: 3_000 }).catch(() => undefined);
