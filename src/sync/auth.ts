@@ -86,8 +86,9 @@ export async function resetPassword(email: string): Promise<void> {
 
 /**
  * Google ile girilmiş hesaba şifre ekler (iPhone'daki uygulamada e-postayla girebilmek için).
- * Önce e-posta kimliği hesaba bağlanır; bazı ortamlar (ör. emülatör) aynı e-postayı "kullanımda"
- * sayarsa hesabın kendi şifresi atanır, ikisi de aynı hesaba "password" girişi ekler.
+ * Hesabın kendi e-postasına şifre atamak "password" girişini de ekler. Atanmadıysa e-posta
+ * kimliği hesaba bağlanır. (Doğrudan bağlamak, e-posta Google hesabında kayıtlı olduğundan
+ * bazı ortamlarda "kullanımda" hatası verip konsola hata düşürüyor.)
  * Oturum eskiyse Google ile yeniden doğrulanır.
  */
 export async function setPassword(password: string): Promise<SyncUser | null> {
@@ -96,13 +97,9 @@ export async function setPassword(password: string): Promise<SyncUser | null> {
   if (!u || !u.email) throw Object.assign(new Error("no-email"), { code: "auth/no-email" });
   const email = u.email;
   const attempt = async () => {
-    try {
-      await linkWithCredential(u, EmailAuthProvider.credential(email, password));
-    } catch (e) {
-      const code = (e as { code?: string }).code;
-      if (code !== "auth/email-already-in-use" && code !== "auth/credential-already-in-use") throw e;
-      await updatePassword(u, password);
-    }
+    await updatePassword(u, password);
+    await u.reload();
+    if (!u.providerData.some((p) => p.providerId === "password")) await linkWithCredential(u, EmailAuthProvider.credential(email, password));
   };
   try {
     await attempt();
