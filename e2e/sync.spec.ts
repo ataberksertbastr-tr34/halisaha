@@ -212,7 +212,7 @@ async function helperState(page: Page): Promise<string> {
           inlineScript: typeof w.storageKey,
           gapi: typeof w.gapi,
           parentContainer: !!w.parentContainer,
-          htmlLength: document.documentElement.outerHTML.length,
+          htmlLength: document.documentElement?.outerHTML.length ?? 0,
           resources: performance.getEntriesByType("resource").map((e) => e.name.slice(0, 70)),
           sessionStorage: Object.keys(sessionStorage),
         });
@@ -226,10 +226,11 @@ async function helperState(page: Page): Promise<string> {
  * Emülatörün sahte Google penceresiyle giriş.
  *
  * Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın betiğini
- * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da bu çerçeve arada bir hiç hazır
- * olmuyor (belgesi açılıyor ama betikleri çalışmıyor; Google penceresi açık kalıyor). Böyle olursa test,
- * bir kullanıcının yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin
- * tanısı CI kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
+ * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da, Google penceresi çerçeveyle
+ * aynı anda açıldığında çerçevenin belge isteği arada bir hiç tamamlanmıyor (belge boş kalıyor, pencere açık
+ * kalıyor); otomasyonun yarışı, yerelde ve ikinci denemede görülmüyor. Böyle olursa test, bir kullanıcının
+ * yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin tanısı CI
+ * kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
  */
 async function googleSignIn(page: Page, gmail: string): Promise<void> {
   const logs: string[] = [];
