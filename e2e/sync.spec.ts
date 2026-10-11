@@ -199,119 +199,104 @@ test("başka hesap bu verileri görmez; çıkış yapınca veriler cihazda kalı
   await b.ctx.close();
 });
 
+/** Emülatörün yardımcı çerçevesinin (iframe) iç durumu (tanı için). */
+async function helperState(page: Page): Promise<string> {
+  const fr = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"));
+  if (!fr) return "yardımcı çerçeve yok";
+  return Promise.race([
+    fr
+      .evaluate(() => {
+        const w = window as unknown as { gapi?: unknown; parentContainer?: unknown; storageKey?: unknown };
+        return JSON.stringify({
+          readyState: document.readyState,
+          inlineScript: typeof w.storageKey,
+          gapi: typeof w.gapi,
+          parentContainer: !!w.parentContainer,
+          htmlLength: document.documentElement.outerHTML.length,
+          resources: performance.getEntriesByType("resource").map((e) => e.name.slice(0, 70)),
+          sessionStorage: Object.keys(sessionStorage),
+        });
+      })
+      .catch((err) => "değerlendirilemedi: " + String(err).slice(0, 160)),
+    new Promise<string>((r) => setTimeout(() => r("değerlendirme zaman aşımı"), 3_000)),
+  ]);
+}
+
 /**
- * Emülatörün sahte Google penceresiyle giriş. Başarısız olursa tanı için tarayıcı ve pencere
- * kayıtlarını, başarısız istekleri ve pencerenin son hâlini rapora ekler.
+ * Emülatörün sahte Google penceresiyle giriş.
+ *
+ * Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın betiğini
+ * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da bu çerçeve arada bir hiç hazır
+ * olmuyor (belgesi açılıyor ama betikleri çalışmıyor; Google penceresi açık kalıyor). Böyle olursa test,
+ * bir kullanıcının yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin
+ * tanısı CI kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
  */
 async function googleSignIn(page: Page, gmail: string): Promise<void> {
   const logs: string[] = [];
-  const watch = (p: Page, tag: string) => {
-    p.on("console", (m) => logs.push(tag + " " + m.type() + ": " + m.text()));
-    p.on("requestfailed", (r) => logs.push(tag + " İSTEK BAŞARISIZ: " + r.url() + " " + (r.failure()?.errorText || "")));
-    p.on("pageerror", (e) => logs.push(tag + " HATA: " + e.message));
-    p.on("requestfinished", (r) => {
-      if (!r.url().includes("apis.google.com")) return;
-      let from = "";
-      try {
-        from = r.frame().url().slice(0, 60);
-      } catch {
-        /* çerçevesiz istek */
-      }
-      logs.push(tag + " yüklendi: " + r.url().slice(0, 90) + " ← " + from);
-    });
-    p.on("framenavigated", (f) => f === p.mainFrame() && logs.push(tag + " → " + f.url()));
+  const short = (u: string) => u.replace(/\?.*$/, "").slice(0, 90);
+  const ctx = page.context();
+  const interesting = (u: string) => /9099\/emulator|google|unpkg/.test(u);
+  const from = (r: { frame(): { url(): string } }) => {
+    try {
+      return short(r.frame().url());
+    } catch {
+      return "?";
+    }
   };
-  watch(page, "sayfa");
-  page.on("dialog", (dlg) => {
+  ctx.on("request", (r) => interesting(r.url()) && logs.push("istek: " + short(r.url()) + " ← " + from(r)));
+  ctx.on("requestfinished", (r) => interesting(r.url()) && logs.push("bitti: " + short(r.url())));
+  ctx.on("requestfailed", (r) => logs.push("İSTEK BAŞARISIZ: " + short(r.url()) + " " + (r.failure()?.errorText || "")));
+  ctx.on("console", (m) => logs.push("konsol " + m.type() + ": " + m.text().slice(0, 200)));
+  ctx.on("weberror", (e) => logs.push("HATA: " + e.error().message));
+  ctx.on("dialog", (dlg) => {
     logs.push("UYARI PENCERESİ (" + dlg.type() + "): " + dlg.message());
     dlg.dismiss().catch(() => undefined);
   });
-  // Firebase'in iletişim çerçevesi ve emülatörün yardımcı çerçevesi Google'ın betiklerini
-  // (apis.google.com) yükler. CI'da tarayıcının bu isteklerinden biri arada bir hiç bitmiyor ve giriş
-  // sonucu uygulamaya ulaşamıyordu. Bu istekler tarayıcı yerine Playwright üzerinden, zaman aşımı ve
-  // yeniden denemeyle yapılır; uygulamanın ve Google betiklerinin davranışı aynı kalır.
-  await page.context().route("https://apis.google.com/**", async (route) => {
-    for (let i = 1; i <= 4; i++) {
-      try {
-        const response = await route.fetch({ timeout: 4_000 });
-        if (i > 1) logs.push("Google betiği " + i + ". denemede yüklendi: " + route.request().url().slice(0, 90));
-        await route.fulfill({ response });
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    logs.push("--- " + attempt + ". deneme");
+    if (attempt > 1) await page.reload();
+    await page.goto("/#/settings");
+    // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
+    await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
+    const popupP = page.waitForEvent("popup");
+    await page.locator('#sync-sec [data-a="syncGoogle"]').click();
+    const popup = await popupP;
+    popup.on("close", () => logs.push("pencere kapandı"));
+    await popup.waitForLoadState();
+    await popup.getByText(/Add new account/i).click();
+    await popup.locator("#email-input").fill(gmail);
+    await popup.locator("#display-name-input").fill("Google Deneme");
+    // İnsan hesap seçerken çerçeve çoktan hazır olur; test insan hızının çok üstünde olduğu için bekler.
+    const ready = async () => (await helperState(page)).includes('"parentContainer":true');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15_000 && !(await ready())) await page.waitForTimeout(250);
+    logs.push("yardımcı çerçeve (" + (Date.now() - t0) + " ms): " + (await helperState(page)));
+    if (await ready()) {
+      for (let i = 0; i < 4 && !popup.isClosed(); i++) {
+        await popup.locator("#sign-in").click({ timeout: 5_000 }).catch(() => undefined);
+        await popup.waitForEvent("close", { timeout: 3_000 }).catch(() => undefined);
+      }
+      const ok = await expect(page.locator("#sync-sec"))
+        .toContainText(gmail, { timeout: 20_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (ok) {
+        if (attempt > 1) console.log("Google girişi " + attempt + ". denemede oldu. Önceki denemelerin tanısı:\n" + logs.join("\n"));
+        await synced(page);
         return;
-      } catch (err) {
-        logs.push("Google betiği yüklenemedi (" + i + "): " + route.request().url().slice(0, 90) + " " + String(err).slice(0, 80));
       }
     }
-    await route.abort().catch(() => undefined);
-  });
-  await page.goto("/#/settings");
-  // Bölüm açılınca giriş modülü önceden yüklenir; kullanıcı gibi o yüklendikten sonra dokun.
-  await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => r.name.includes("/assets/auth-")));
-  const popupP = page.waitForEvent("popup");
-  await page.locator('#sync-sec [data-a="syncGoogle"]').click();
-  const popup = await popupP;
-  watch(popup, "pencere");
-  popup.on("close", () => logs.push("pencere KAPANDI"));
-  await popup.waitForLoadState();
-  await popup.getByText(/Add new account/i).click();
-  await popup.locator("#email-input").fill(gmail);
-  await popup.locator("#display-name-input").fill("Google Deneme");
-  // Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın
-  // betiği yüklenip hazır olmadan sonucu uygulamaya iletemez. İnsan hesap seçerken çerçeve çoktan
-  // hazır olur; test insan hızının çok üstünde olduğu için önce çerçevenin hazır olmasını bekler.
-  await expect.poll(() => page.frames().some((f) => f.url().includes("/emulator/auth/iframe")), { timeout: 15_000 }).toBe(true);
-  const helper = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"))!;
-  const ready = () =>
-    Promise.race([
-      helper.evaluate(() => !!(window as unknown as { parentContainer?: unknown }).parentContainer).catch(() => false),
-      new Promise<boolean>((r) => setTimeout(() => r(false), 2_000)),
-    ]);
-  const t0 = Date.now();
-  while (Date.now() - t0 < 20_000 && !(await ready())) await page.waitForTimeout(250);
-  logs.push("yardımcı çerçeve " + ((await ready()) ? "hazır" : "HAZIR DEĞİL") + " (" + (Date.now() - t0) + " ms)");
-  // Sonuç iletilemezse pencere açık kalır; kullanıcı gibi birkaç saniye arayla yeniden gönderilir
-  // (başarısız deneme emülatörde hesap oluşturmaz).
-  for (let i = 0; i < 6 && !popup.isClosed(); i++) {
-    await popup.locator("#sign-in").click({ timeout: 5_000 }).catch(() => undefined);
-    await popup.waitForEvent("close", { timeout: 3_000 }).catch(() => undefined);
-  }
-  try {
-    await expect(page.locator("#sync-sec")).toContainText(gmail, { timeout: 25_000 });
-  } catch (e) {
-    let pop = "pencere kapalı";
+    logs.push("durum: " + (await page.locator("#sync-status").textContent()) + " · toast: " + (await page.locator("#toast").textContent()));
     if (!popup.isClosed()) {
-      const seen = await popup
-        .evaluate(() => {
-          const o = window.opener as Window | null;
-          if (!o) return "opener yok";
-          const out: string[] = ["opener çerçeve sayısı: " + o.frames.length];
-          for (let i = 0; i < o.frames.length; i++) {
-            try {
-              out.push(i + ": " + o.frames[i].location.href);
-            } catch (err) {
-              out.push(i + ": erişilemedi (" + String(err).slice(0, 80) + ")");
-            }
-          }
-          return out.join("\n");
-        })
-        .catch((err) => "değerlendirilemedi: " + String(err).slice(0, 200));
-      pop = "pencere açık: " + popup.url() + "\n" + seen + "\n" + (await popup.locator("body").innerText().catch(() => "?")).slice(0, 600);
+      logs.push("pencere açık: " + short(popup.url()) + " · " + (await popup.locator("body").innerText().catch(() => "?")).replace(/\s+/g, " ").slice(0, 200));
+      await popup.close().catch(() => undefined);
     }
-    pop += "\nsayfa çerçeveleri: " + page.frames().map((f) => f.url()).join(" | ");
-    const fr = page.frames().find((f) => f.url().includes("/emulator/auth/iframe"));
-    if (fr) {
-      pop += "\nçerçeve durumu: " + (await fr
-        .evaluate(() => {
-          const w = window as unknown as { gapi?: unknown; parentContainer?: unknown };
-          return JSON.stringify({ gapi: typeof w.gapi, parentContainer: !!w.parentContainer, sessionStorage: Object.keys(sessionStorage) });
-        })
-        .catch((err) => "değerlendirilemedi: " + String(err).slice(0, 200)));
-    }
-    const body = [logs.join("\n"), "toast: " + (await page.locator("#toast").textContent()), "durum: " + (await page.locator("#sync-status").textContent()), pop].join("\n\n");
-    await test.info().attach("google-giris-tani", { body, contentType: "text/plain" });
-    console.log(body);
-    throw e;
   }
-  await synced(page);
+  const body = logs.join("\n");
+  await test.info().attach("google-giris-tani", { body, contentType: "text/plain" });
+  console.log(body);
+  throw new Error("Google ile giriş 3 denemede de tamamlanmadı (tanı: google-giris-tani)");
 }
 
 test("Google ile giriş (boş cihaz), şifre belirleyip başka cihazda e-postayla aynı hesaba giriş", async ({ browser }) => {
