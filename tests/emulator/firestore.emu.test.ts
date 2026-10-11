@@ -50,4 +50,19 @@ describe("Firestore emülatörü", () => {
     const anon = await fetch(`http://${FS}/v1/projects/${PROJECT}/databases/(default)/documents/users/${a.uid}/halisaha/state`);
     expect(anon.status).toBe(403);
   });
+
+  it("kurallar: yalnızca uygulamanın belgesi, yalnızca kendi alanları, boyut sınırı", async () => {
+    const u = await signUp();
+    const base = `http://${FS}/v1/projects/${PROJECT}/databases/(default)/documents`;
+    const H = { "content-type": "application/json", authorization: "Bearer " + u.token };
+    const commit = (name: string, fields: Record<string, unknown>) =>
+      fetch(`${base}:commit`, { method: "POST", headers: H, body: JSON.stringify({ writes: [{ update: { name: `projects/${PROJECT}/databases/(default)/documents/${name}`, fields } }] }) });
+    const ok = { fmt: { integerValue: "1" }, schema: { integerValue: "4" }, rev: { integerValue: "1" }, at: { integerValue: "1" }, dev: { stringValue: "x" }, enc: { stringValue: "json" }, data: { stringValue: "{}" } };
+    expect((await commit(`users/${u.uid}/halisaha/state`, ok)).status).toBe(200);
+    expect((await commit(`users/${u.uid}/halisaha/baska`, ok)).status).toBe(403);
+    expect((await commit(`users/${u.uid}/dosyalar/x`, ok)).status).toBe(403);
+    expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, fazla: { stringValue: "x" } })).status).toBe(403);
+    expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, data: { integerValue: "5" } })).status).toBe(403);
+    expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, data: { stringValue: "x".repeat(1_000_001) } })).status).toBe(403);
+  });
 });
