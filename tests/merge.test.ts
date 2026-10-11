@@ -5,7 +5,7 @@ import { BackupError, migrate, normalize } from "../src/domain/migrate";
 import { ensureUpcoming } from "../src/domain/schedule";
 import { lineup, materializeOrder, setAtt } from "../src/domain/lineup";
 import { billOf, freezeBill } from "../src/domain/money";
-import { accounts, cashAt, markPaid } from "../src/domain/ledger";
+import { accounts, cashAt, markPaid, settleId } from "../src/domain/ledger";
 import { swapPlayers } from "../src/domain/teams";
 import type { Att, Match, Payment, State } from "../src/domain/types";
 import { allIn, match, player, roster, state } from "./helpers/factory";
@@ -467,6 +467,41 @@ describe("iki cihazın ayrı ayrı oluşturduğu otomatik maç (tabanda yok)", (
     expect(ensureUpcoming(clone(out), NOW)).toEqual([]);
   }
 
+  it("diğer cihazda sonradan sabit yapılan oyuncunun telefondaki açık 'Yok'u korunur", () => {
+    const b = stale();
+    const tablet = fork(b, TR);
+    tablet.players[1].fixed = true; // p1 sabit yapıldı (eşitlendi sayılır; telefon görmedi)
+    const phone = fork(b, TL);
+    ensureUpcoming(phone, NOW);
+    setAtt(at(phone, S13)!, "p1", "out", true);
+    ensureUpcoming(tablet, NOW); // tabletin kopyasında p1 sabit olduğu için "Var"
+    expect(at(tablet, S13)!.att.p1).toBe("in");
+    for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone)]) {
+      expect(at(out, S13)!.att.p1).toBe("out");
+      expect(lineup(out, at(out, S13)!).playing).not.toContain("p1");
+    }
+  });
+
+  it("telefonda rezerve edilen eski saha, tabletin varsayılan sahayı değiştirmesiyle yenisine dönmez", () => {
+    const b = stale();
+    b.fields = [
+      { id: "F1", name: "Eski Saha", address: "", link: "", phone: "", price: 3000, lat: null, lng: null },
+      { id: "F2", name: "Yeni Saha", address: "", link: "", phone: "", price: 3600, lat: null, lng: null },
+    ];
+    b.settings.defaultFieldId = "F1";
+    b.settings.price = 3000;
+    const tablet = fork(b, TR);
+    tablet.settings.defaultFieldId = "F2";
+    tablet.settings.price = 3600;
+    const phone = fork(b, TL);
+    ensureUpcoming(phone, NOW);
+    at(phone, S13)!.reserved = true;
+    ensureUpcoming(tablet, NOW);
+    for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone)]) {
+      expect(at(out, S13)).toMatchObject({ fieldId: at(phone, S13)!.fieldId, price: at(phone, S13)!.price, reserved: true });
+    }
+  });
+
   it("eşitlemeden önce aynı maçları oluşturan (daha yeni) cihazın dokunulmamış kopyası düzenlemeleri ezmez", () => {
     const b = stale();
     const phone = phoneEdits(b);
@@ -631,17 +666,17 @@ describe("'Ödedi' iki cihazda", () => {
     return b;
   };
 
-  it("aynı borç için iki cihazda basılan 'Ödedi' tek ödeme olur; elle girilen ödemeler ikisi de kalır", () => {
+  it("aynı borç için iki cihazda basılan 'Ödedi' tek ödeme olur; elle girilen eşit ödemelerin ikisi de kalır", () => {
     const b = four();
     const phone = fork(b, TL);
     markPaid(phone, m1(phone), "p0", "2026-10-06");
-    phone.payments.push({ id: "elle-1", pid: "p1", amount: 300, at: "2026-10-06" });
+    phone.payments.push({ id: "elle-1", pid: "p1", amount: 300, at: "2026-10-06", mid: "m1" });
     const pc = fork(b, TR);
     markPaid(pc, m1(pc), "p0", "2026-10-07");
-    pc.payments.push({ id: "elle-2", pid: "p1", amount: 300, at: "2026-10-07" });
-    const first = [phone.payments[0].id, pc.payments[0].id].sort()[0];
+    pc.payments.push({ id: "elle-2", pid: "p1", amount: 300, at: "2026-10-07", mid: "m1" });
+    expect(phone.payments[0].id).toBe(settleId("p0", "m1"));
     for (const out of [merge3(b, phone, pc), merge3(b, pc, phone)]) {
-      expect(out.payments.filter((p) => p.pid === "p0").map((p) => p.id)).toEqual([first]);
+      expect(out.payments.filter((p) => p.pid === "p0").map((p) => p.id)).toEqual([settleId("p0", "m1")]);
       expect(accounts(out, "2026-10-14").get("p0")).toMatchObject({ paidTotal: 300, credit: 0, owed: 0 });
       expect(out.payments.filter((p) => p.pid === "p1")).toHaveLength(2);
     }
@@ -788,9 +823,10 @@ const OPS: ((s: State, rnd: Rnd, id: string) => void)[] = [
     if (p) s.payments.push({ id: "pay" + id, pid: p.id, amount: int(r, 1, 9) * 100, at: pick(r, DATES)!, ...(m && r() < 0.7 ? { mid: m.id } : {}) });
   },
   (s, r, id) => {
-    // "Ödedi": maça bağlı, notsuz, pay kadar; iki cihazda aynı borç için basılabilir
+    // "Ödedi": kimliği borçtan türetilir (ledger.settleId); iki cihazda aynı borç için basılabilir
     const p = pick(r, s.players), m = pick(r, s.matches);
-    if (p && m) s.payments.push({ id: "pay" + id, pid: p.id, amount: 500, at: pick(r, DATES)!, mid: m.id });
+    void id;
+    if (p && m && !s.payments.some((x) => x.id === settleId(p.id, m.id))) s.payments.push({ id: settleId(p.id, m.id), pid: p.id, amount: 500, at: pick(r, DATES)!, mid: m.id });
   },
   (s, r) => { const p = pick(r, s.payments); if (p) p.amount = int(r, 1, 9) * 50; },
   (s, r) => { const p = pick(r, s.payments); if (p) s.payments = s.payments.filter((x) => x !== p); },
@@ -908,29 +944,10 @@ function flatten(s: State): Flat {
   return { leaves, entities, seqs };
 }
 
-/**
- * İki cihazda ayrı ayrı basılan "Ödedi"nin teke inen kopyaları ("payments/<id>"):
- * base'den sonra yalnızca bir tarafta eklenmiş, notsuz, maça/ek borca bağlı ve
- * sonuçta diğer taraftan aynı kişi + maç + ek borç + tutarlı bir ikizi kalmış olanlar.
- */
-function collapsed(b: State, l: State, r: State, out: State): Set<string> {
-  const idset = (s: State) => new Set(s.payments.map((p) => p.id));
-  const B = idset(b), Li = idset(l), Ri = idset(r), O = idset(out);
-  const sig = (p: Payment) => [p.pid, p.mid || "", p.cid || "", p.amount].join("|");
-  const fresh = (s: State, other: Set<string>) => s.payments.filter((p) => !B.has(p.id) && !other.has(p.id) && !p.note && (p.mid || p.cid));
-  const lo = fresh(l, Ri), ro = fresh(r, Li);
-  const gone = new Set<string>();
-  for (const [mine, theirs] of [[lo, ro], [ro, lo]]) {
-    for (const p of mine) if (!O.has(p.id) && theirs.some((q) => sig(q) === sig(p) && O.has(q.id))) gone.add("payments/" + p.id);
-  }
-  return gone;
-}
-
 /** Tek tarafta yapılıp sonuçta kaybolan düzenlemeleri (ve kural dışı çatışma çözümlerini) listeler. */
 function problems(b: State, l: State, r: State, out: State): string[] {
   const B = flatten(b), Lf = flatten(l), Rf = flatten(r), M = flatten(out);
   const errs: string[] = [];
-  const twins = collapsed(b, l, r, out);
   const changed = (f: Flat, k: string) => f.leaves.get(k) !== B.leaves.get(k);
   const keys = new Set([...B.leaves.keys(), ...Lf.leaves.keys(), ...Rf.leaves.keys()]);
   // Bir tarafın sildiği, diğerinin düzenlediği kayıt: düzenleyenin hali aynen kalmalı
@@ -947,7 +964,7 @@ function problems(b: State, l: State, r: State, out: State): string[] {
   }
   const lWins = l.updatedAt > r.updatedAt;
   for (const k of keys) {
-    if (kept.some((e) => k.startsWith(e + "/")) || [...twins].some((e) => k.startsWith(e + "/"))) continue;
+    if (kept.some((e) => k.startsWith(e + "/"))) continue;
     const lc = changed(Lf, k), rc = changed(Rf, k);
     if (!lc && !rc) continue;
     const ord = /^matches\/([^/]+)\/order\/#(.+)$/.exec(k);
@@ -1013,7 +1030,7 @@ function invariants(s: State): string[] {
 
 describe("rastgele özellik testi (tohumlu)", () => {
   it("tek tarafta yapılan hiçbir düzenleme kaybolmaz; sonuç normalize'dan geçer ve değişmezler korunur", () => {
-    let cases = 0, oneSided = 0, twins = 0;
+    let cases = 0, oneSided = 0, shared = 0;
     for (let seed = 1; seed <= 60; seed++) {
       const rnd = seeded(seed);
       const b = randomBase(rnd);
@@ -1031,7 +1048,11 @@ describe("rastgele özellik testi (tohumlu)", () => {
         const [orderErrs, n] = orderProblems(b, l, r, out);
         expect(orderErrs, where).toEqual([]);
         oneSided += n;
-        twins += collapsed(b, l, r, out).size;
+        // İki tarafta da basılan "Ödedi" (aynı kimlik) tek kayıt kalır
+        const pd = (s: State) => new Set(s.payments.filter((p) => p.id.startsWith("pd-") && !b.payments.some((q) => q.id === p.id)).map((p) => p.id));
+        const both = [...pd(l)].filter((x) => pd(r).has(x));
+        for (const x of both) expect(out.payments.filter((p) => p.id === x), where).toHaveLength(1);
+        shared += both.length;
         expect(invariants(out), where).toEqual([]);
         expect(out.updatedAt, where).toBe(Math.max(tl, tr));
         // Sonuç üzerinde yeniden birleştirme hiçbir şeyi değiştirmez
@@ -1040,8 +1061,8 @@ describe("rastgele özellik testi (tohumlu)", () => {
       }
     }
     expect(cases).toBe(1200);
-    // Denetimler gerçekten çalıştı: tek taraflı sıra değişikliği ve teke inen "Ödedi" görüldü
+    // Denetimler gerçekten çalıştı: tek taraflı sıra değişikliği ve iki tarafta basılan "Ödedi" görüldü
     expect(oneSided).toBeGreaterThan(0);
-    expect(twins).toBeGreaterThan(0);
+    expect(shared).toBeGreaterThan(0);
   });
 });

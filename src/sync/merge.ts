@@ -200,27 +200,48 @@ function created(s: State, date: string, time: string, id: string): Obj | undefi
 
 /**
  * Tabanda olmayan ama iki cihazda da bulunan, zamandan türetilmiş kimlikli otomatik
- * maç için sentetik taban: maçın otomatik planlamayla oluşturulduğu hâli (zaman
- * kimlikten; saha, ücret ve sabit oyuncular tabandaki durumdan). Böylece maçı yalnızca
- * oluşturan cihaz "değiştirmemiş" sayılır; diğer cihazdaki rezervasyon, not, iptal,
- * sabit oyuncunun "Yok"u ya da taşıma, daha yeni ama dokunulmamış kopyaya kaybolmaz.
- * İlk katılımda (taban yok) iki cihazın da aynı üreteceği alanlar taban olur.
+ * maç için sentetik taban. Her kopya, KENDİ cihazının o an oluşturacağı hâliyle
+ * (created(io.local) / created(io.remote)) karşılaştırılır: kopyada o hâlden farklı olan
+ * alan bir düzenlemedir. Böylece diğer cihazda sonradan değişen ayar (sabit oyuncu,
+ * varsayılan saha, ücret) bir düzenleme sanılıp gerçek düzenlemeyi (rezervasyon, not,
+ * iptal, sabit oyuncunun "Yok"u, taşıma) ezmez. Taban, genel kuralın şunu vereceği
+ * biçimde kurulur:
+ *  - yalnızca bir kopya değiştirdiyse o kopyanın değeri,
+ *  - ikisi de değiştirdiyse çatışma (yeni olan kazanır),
+ *  - ikisi de dokunmadıysa (ama değerler ayarlar yüzünden farklıysa) maça başka bir
+ *    yerinden dokunulmuş kopyanınki (ör. rezerve edilen eski saha), yoksa uzaktaki.
  */
 function autoBase(id: string, l: unknown, r: unknown, io: Inputs): Obj | undefined {
   if (!isObj(l) || !isObj(r) || l.auto !== true || r.auto !== true) return undefined;
   const slot = idSlot(id);
   if (!slot) return undefined;
-  const gens = (io.base ? [io.base] : [io.local, io.remote]).map((s) => created(s, slot.date, slot.time, id));
-  const [g, h] = gens;
-  if (!g || (gens.length > 1 && !h)) return undefined;
-  if (!h) return g;
+  const pl = created(io.local, slot.date, slot.time, id), pr = created(io.remote, slot.date, slot.time, id);
+  if (!pl || !pr) return undefined;
+  const touched = (x: Obj, p: Obj) => [...new Set([...Object.keys(x), ...Object.keys(p)])].some((k) => k !== "id" && !deepEqual(own(x, k), own(p, k)));
+  const preferL = touched(l, pl) && !touched(r, pr);
+  const pick = (lv: unknown, rv: unknown, plv: unknown, prv: unknown): unknown => {
+    const cl = !deepEqual(lv, plv), cr = !deepEqual(rv, prv);
+    if (cl && cr) return plv; // çatışma
+    if (cl) return rv; // yalnızca yerel değiştirdi → yerel kazanır
+    if (cr) return lv; // yalnızca uzak değiştirdi → uzak kazanır
+    return preferL ? rv : lv;
+  };
   const out: Obj = {};
-  for (const k of Object.keys(g)) if (deepEqual(g[k], own(h, k))) out[k] = g[k];
-  const ga = isObj(g.att) ? g.att : {}, ha = isObj(h.att) ? h.att : {};
+  for (const k of new Set([...Object.keys(l), ...Object.keys(r), ...Object.keys(pl), ...Object.keys(pr)])) {
+    if (k === "att" || k === "order") continue;
+    const v = pick(own(l, k), own(r, k), own(pl, k), own(pr, k));
+    if (v !== undefined) out[k] = v;
+  }
+  const la: Obj = isObj(l.att) ? l.att : {}, ra: Obj = isObj(r.att) ? r.att : {};
+  const pla: Obj = isObj(pl.att) ? pl.att : {}, pra: Obj = isObj(pr.att) ? pr.att : {};
   const att: Obj = {};
-  for (const k of Object.keys(ga)) if (own(ha, k) === ga[k]) att[k] = ga[k];
+  for (const k of new Set([...Object.keys(la), ...Object.keys(ra), ...Object.keys(pla), ...Object.keys(pra)])) {
+    if (k === "__proto__") continue;
+    const v = pick(own(la, k), own(ra, k), own(pla, k), own(pra, k));
+    if (v !== undefined) att[k] = v;
+  }
   out.att = att;
-  out.order = arrStr(g.order).filter((x) => own(att, x) !== undefined);
+  out.order = uniq([...arrStr(l.order), ...arrStr(r.order)]).filter((x) => own(att, x) === "in");
   return out;
 }
 
@@ -335,16 +356,17 @@ function dataScore(m: Match): number {
  * kalan maçta yalnızca oluşturma varsayılanı (def: otomatik planlamanın üreteceği
  * maç) duruyorsa kopyadaki düzenleme alınır (saha, ücret, sabit oyuncunun "Yok"u …).
  */
-function absorb(keep: Match, drop: Match, def: Obj): void {
+function absorb(keep: Match, drop: Match, defKeep: Obj, defDrop: Obj): void {
   const k = keep as unknown as Obj, d = drop as unknown as Obj;
   for (const key of RECORDS) {
     if (!isObj(d[key])) continue;
     const dst: Obj = isObj(k[key]) ? (k[key] as Obj) : (k[key] = {});
-    const dd: Obj = isObj(def[key]) ? (def[key] as Obj) : {};
+    const dk: Obj = isObj(defKeep[key]) ? (defKeep[key] as Obj) : {};
+    const dd: Obj = isObj(defDrop[key]) ? (defDrop[key] as Obj) : {};
     for (const [id, v] of Object.entries(d[key] as Obj)) {
       if (id === "__proto__") continue;
-      const cur = own(dst, id), dv = own(dd, id);
-      if (cur === undefined || (deepEqual(cur, dv) && !deepEqual(v, dv))) dst[id] = v;
+      const cur = own(dst, id);
+      if (cur === undefined || (deepEqual(cur, own(dk, id)) && !deepEqual(v, own(dd, id)))) dst[id] = v;
     }
   }
   for (const key of LISTS) {
@@ -353,9 +375,10 @@ function absorb(keep: Match, drop: Match, def: Obj): void {
     const have = new Set(dst.map((x) => isObj(x) && x.id));
     for (const x of d[key] as Obj[]) if (isObj(x) && !have.has(x.id)) dst.push(x);
   }
+  // Kopyanın alanı, yalnızca KENDİ cihazının varsayılanından farklıysa düzenlemedir.
   for (const key of SCALARS) {
-    const dv = own(d, key), base = own(def, key);
-    if (dv !== undefined && deepEqual(own(k, key), base) && !deepEqual(dv, base)) k[key] = dv;
+    const dv = own(d, key);
+    if (dv !== undefined && deepEqual(own(k, key), own(defKeep, key)) && !deepEqual(dv, own(defDrop, key))) k[key] = dv;
   }
   // Sıra: kalan maçın sırası, ardından kopyada yazılanlar (fixMatch "Var" olmayanları atar)
   keep.order = uniq([...arrStr(keep.order), ...arrStr(drop.order)]);
@@ -395,10 +418,13 @@ function dedupeAuto(s: State, io?: Inputs): void {
       return a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
     });
     const keep = ranked[0];
-    const def = created(s, keep.date, keep.time, keep.id) || {};
+    // Her kopyanın varsayılanı, geldiği cihazın ayarlarıyla (bilinmiyorsa birleşik durumla) üretilir.
+    const origin = (m: Match): State => (io && sides[0].has(m.id) ? io.local : io && sides[1].has(m.id) ? io.remote : s);
+    const defOf = (m: Match): Obj => created(origin(m), m.date, m.time, m.id) || {};
+    const defKeep = defOf(keep);
     for (const d of ranked.slice(1)) {
       if (refd.has(d.id)) continue;
-      absorb(keep, d, def);
+      absorb(keep, d, defKeep, defOf(d));
       drop.add(d);
     }
   }
@@ -431,48 +457,17 @@ function refreezeBills(s: State, io: Inputs): void {
 }
 
 /**
- * İki cihazda ayrı ayrı basılan "Ödedi" / "Hepsi ödedi" / "Ödendi say" aynı borcu iki kez
- * ödenmiş göstermesin: base'den sonra biri yalnızca yerelde, diğeri yalnızca uzakta
- * eklenen, notsuz, maça ya da ek borca bağlı ve kişi + maç + ek borç + tutarı aynı olan
- * ödemeler teke iner (küçük kimlikli kalır). Elle girilen ödemeler (maçsız) dokunulmaz.
- */
-function collapsePaid(s: State, io: Inputs): void {
-  if (!Array.isArray(s.payments)) return;
-  const inB = idsOf(io.base?.payments), inL = idsOf(io.local.payments), inR = idsOf(io.remote.payments);
-  const lo = new Map<string, string[]>(), ro = new Map<string, string[]>();
-  for (const p of s.payments) {
-    if (!isObj(p) || p.note || !(p.mid || p.cid)) continue;
-    const id = String(p.id);
-    if (inB.has(id) || inL.has(id) === inR.has(id)) continue;
-    const key = [p.pid, p.mid || "", p.cid || "", num(p.amount)].join("|");
-    const side = inL.has(id) ? lo : ro;
-    side.set(key, [...(side.get(key) || []), id]);
-  }
-  const drop = new Set<string>();
-  for (const [key, ls] of lo) {
-    const rs = ro.get(key);
-    if (!rs) continue;
-    ls.sort();
-    rs.sort();
-    for (let i = 0; i < Math.min(ls.length, rs.length); i++) drop.add(ls[i] < rs[i] ? rs[i] : ls[i]);
-  }
-  if (drop.size) s.payments = s.payments.filter((p) => !(isObj(p) && drop.has(String(p.id))));
-}
-
-/**
  * Birleştirme sonrası değişmezleri sağlar (yerinde). io (birleştirmenin girdileri)
- * verilirse silinen otomatik maçın geri gelmesi, donmuş ödeme listesi ve çift
- * "Ödedi" de düzeltilir.
+ * verilirse silinen otomatik maçın geri gelmesi ve donmuş ödeme listesi de düzeltilir.
  */
 export function reconcile(s: State, io?: Inputs): State {
   if (!Array.isArray(s.matches)) return s;
   if (io) dropResurrected(s, io);
   dedupeAuto(s, io);
   for (const m of s.matches) if (isObj(m)) fixMatch(m);
-  if (io) {
-    refreezeBills(s, io);
-    collapsePaid(s, io);
-  }
+  // İki cihazda basılan "Ödedi" ayrıca ele alınmaz: kaydın kimliği borçtan türetildiği
+  // için (ledger.settleId) ikisi aynı kayıttır ve kimlikle birleşir.
+  if (io) refreezeBills(s, io);
   return s;
 }
 
