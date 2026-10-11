@@ -226,11 +226,11 @@ async function helperState(page: Page): Promise<string> {
  * Emülatörün sahte Google penceresiyle giriş.
  *
  * Emülatörün penceresi sonucu sayfadaki yardımcı çerçeveye (iframe) gönderir; çerçeve Google'ın betiğini
- * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da, Google penceresi çerçeveyle
- * aynı anda açıldığında çerçevenin belge isteği arada bir hiç tamamlanmıyor (belge boş kalıyor, pencere açık
- * kalıyor); otomasyonun yarışı, yerelde ve ikinci denemede görülmüyor. Böyle olursa test, bir kullanıcının
- * yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin tanısı CI
- * kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
+ * (apis.google.com) yükleyip hazır olmadan sonucu uygulamaya iletemez. CI'da, Google penceresinin sayfası
+ * çerçeveninkinden önce işlenirse çerçevenin belgesi hiç yüklenmiyordu (belge boş kalıyor, pencere açık
+ * kalıyor). Test bu yüzden pencerenin sayfasını çerçeve hazır olana dek bekletir. Yine de olmazsa, bir
+ * kullanıcının yapacağı gibi pencereyi kapatıp sayfayı yeniler ve yeniden dener; başarısız her denemenin
+ * tanısı CI kaydına yazılır. Hiçbir deneme başarılı olmazsa test başarısız olur.
  */
 async function googleSignIn(page: Page, gmail: string): Promise<void> {
   const logs: string[] = [];
@@ -252,6 +252,16 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
   ctx.on("dialog", (dlg) => {
     logs.push("UYARI PENCERESİ (" + dlg.type() + "): " + dlg.message());
     dlg.dismiss().catch(() => undefined);
+  });
+
+  // CI kaydına göre takılma, Google penceresinin sayfa isteği yardımcı çerçeveninkinden önce işlenince
+  // oluyor (aynı siteden iki belge aynı anda açılırken otomasyonun yarışı). Pencerenin sayfası, çerçeve
+  // hazır olana dek (en fazla 15 sn) bekletilir; insan hızında zaten bu sırayla olur.
+  await ctx.route("http://127.0.0.1:9099/emulator/auth/handler**", async (route) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15_000 && !(await helperState(page)).includes('"parentContainer":true')) await new Promise((r) => setTimeout(r, 100));
+    logs.push("pencere sayfası " + (Date.now() - t0) + " ms bekletildi");
+    await route.continue();
   });
 
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -284,6 +294,7 @@ async function googleSignIn(page: Page, gmail: string): Promise<void> {
         .catch(() => false);
       if (ok) {
         if (attempt > 1) console.log("Google girişi " + attempt + ". denemede oldu. Önceki denemelerin tanısı:\n" + logs.join("\n"));
+        else console.log("Google girişi ilk denemede oldu · " + logs.filter((l) => l.includes("bekletildi")).join(" · "));
         await synced(page);
         return;
       }
