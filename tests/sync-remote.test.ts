@@ -127,7 +127,7 @@ describe("Firestore REST", () => {
     await expect(r.read()).rejects.toBeInstanceOf(NetError);
   });
 
-  it("belirteç bağlantı yüzünden yenilenemezse ağ hatası sayılır; başka belirteç hataları olduğu gibi geçer", async () => {
+  it("belirteç yenilenemezse: bağlantı sorunu ağ hatası, kalıcı geçersizlik yetki hatası, diğerleri olduğu gibi", async () => {
     const failing = (code: string) =>
       firestoreRemote({
         projectId: "demo-proje",
@@ -138,9 +138,13 @@ describe("Firestore REST", () => {
         fetch: fakeFetch([]).f,
       });
     await expect(failing("auth/network-request-failed").read()).rejects.toBeInstanceOf(NetError);
-    const other = failing("auth/user-token-expired").read();
+    for (const code of ["auth/invalid-refresh-token", "auth/invalid-user-token", "auth/user-token-expired", "auth/user-disabled"]) {
+      await expect(failing(code).read()).rejects.toBeInstanceOf(AuthError);
+    }
+    const other = failing("auth/internal-error").read();
     await expect(other).rejects.not.toBeInstanceOf(NetError);
-    await expect(other).rejects.toMatchObject({ code: "auth/user-token-expired" });
+    await expect(other).rejects.not.toBeInstanceOf(AuthError);
+    await expect(other).rejects.toMatchObject({ code: "auth/internal-error" });
   });
 });
 
