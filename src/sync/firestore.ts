@@ -14,6 +14,11 @@ export interface RemoteDoc {
 
 export interface Remote {
   read(): Promise<RemoteDoc | null>;
+  /**
+   * Hafif kontrol: veriyi indirmeden yalnızca belgenin sürüm belirtecini (updateTime) döner,
+   * belge yoksa null. Arka plan kontrollerinde bulut değişmediyse tam okuma yapılmaz.
+   */
+  peek?(): Promise<string | null>;
   /** ifToken null: belge henüz yoksa yaz. Yeni token döner. */
   write(env: Envelope, ifToken: string | null): Promise<string>;
 }
@@ -51,6 +56,7 @@ export interface FirestoreOpts {
 }
 
 type Value = { integerValue?: string; stringValue?: string };
+type Found = { fields?: Record<string, Value>; updateTime?: string };
 
 const FIELDS: (keyof Envelope)[] = ["fmt", "schema", "rev", "at", "dev", "enc", "data"];
 const INTS = new Set<keyof Envelope>(["fmt", "schema", "rev", "at"]);
@@ -107,17 +113,27 @@ export function firestoreRemote(o: FirestoreOpts): Remote {
     return r;
   }
 
+  /** batchGet: belge yoksa 404 yerine "missing" döner (tarayıcı konsolunda hata görünmez). */
+  async function batchGet(mask?: string[]): Promise<Found | undefined> {
+    const body = mask ? { documents: [name], mask: { fieldPaths: mask } } : { documents: [name] };
+    const r = await call(`${base}/${db}:batchGet`, { method: "POST", body: JSON.stringify(body) });
+    if (!r.ok) throw new NetError(r.status);
+    const arr = (await r.json()) as { found?: Found; missing?: string }[];
+    return Array.isArray(arr) ? arr.find((x) => x.found)?.found : undefined;
+  }
+
   return {
     async read() {
-      // batchGet: belge yoksa 404 yerine "missing" döner (tarayıcı konsolunda hata görünmez).
-      const r = await call(`${base}/${db}:batchGet`, { method: "POST", body: JSON.stringify({ documents: [name] }) });
-      if (!r.ok) throw new NetError(r.status);
-      const arr = (await r.json()) as { found?: { fields?: Record<string, Value>; updateTime?: string }; missing?: string }[];
-      const found = Array.isArray(arr) ? arr.find((x) => x.found)?.found : undefined;
+      const found = await batchGet();
       if (!found) return null;
       const env = fromFields(found.fields);
       if (!env || !found.updateTime) return null;
       return { env, token: found.updateTime };
+    },
+    async peek() {
+      // Maske yalnızca küçük "rev" alanını ister; yanıt yine updateTime içerir, veri (data) inmez.
+      const found = await batchGet(["rev"]);
+      return found?.updateTime || null;
     },
     async write(env, ifToken) {
       const body = {
