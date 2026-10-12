@@ -228,7 +228,16 @@ test("oturum çıkış yapılmadan kapanırsa (ör. hesap başka yerden silindi)
   await d.page.goto("/#/settings");
   await expect(d.page.locator("#sync-status")).toContainText("Oturum kapandı");
 
-  // Yeniden giriş yapınca uyarı kalkar, eşitleme sürer.
+  // "Bu cihazda kapalı kalsın": uyarı da davet de kalkar; sayfa yenilense de geri gelmez.
+  await d.page.goto("/#/players");
+  await banner.locator('[data-a="syncLostDismiss"]').click();
+  await expect(banner).not.toContainText("Eşitleme durdu");
+  await expect(banner).not.toContainText("Verilerin her cihazında olsun");
+  await d.page.reload();
+  await expect(d.page.locator("#list-roster")).toBeVisible();
+  await expect(banner).not.toContainText("Eşitleme durdu");
+
+  // İstenince yeniden giriş yapılır, eşitleme sürer.
   await emailAuth(d.page, uniq(), "up");
   await d.page.goto("/#/players");
   await expect(banner).not.toContainText("Eşitleme durdu");
@@ -351,6 +360,7 @@ test("Google ile giriş (boş cihaz), şifre belirleyip başka cihazda e-postayl
   await synced(d.page);
   // Google hesabına şifre eklenir (iPhone ana ekran uygulaması için)
   await d.page.locator('details[data-keep="syncPw"] summary').click();
+  await noHorizontalScroll(d.page); // gizli kullanıcı adı alanı sayfayı yana taşırmasın
   await d.page.locator("#sync-newpw").fill("yenisifre1");
   await d.page.locator('[data-a="syncSetPw"]').click();
   await expect(d.page.locator("#toast")).toContainText("Şifre kaydedildi", { timeout: 15_000 });

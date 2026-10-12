@@ -102,7 +102,11 @@ test("iPhone ana ekran uygulaması: Google düğmesi yerine ne yapılacağı yaz
   await expect(sec.locator('details[data-keep="syncEmail"]')).toHaveAttribute("open", "");
   await expect(page.locator("#sync-email")).toBeVisible();
   await noHorizontalScroll(page);
-  expect(google).toEqual([]); // Google altyapısı burada kurulmaz
+  // Bağlantı gidip gelince de Google altyapısı burada kurulmaz (düğme yok).
+  await ctx.setOffline(true);
+  await ctx.setOffline(false);
+  await page.waitForTimeout(500);
+  expect(google).toEqual([]);
   expect(errors).toEqual([]);
   await ctx.close();
 });

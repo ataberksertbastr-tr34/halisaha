@@ -189,7 +189,7 @@ export const en: Record<MsgKey, string> = {
   signOutNote: "If you sign out, your data stays on this device; only syncing stops.",
   setPw: "Set a password", newPw: "New password (at least 6 characters)", pwSet: "Password saved. You can now also sign in with this email and password.",
   setPwHint: "Google sign-in doesn't work in the iPhone home-screen app; sign in there with this email and password. After you set a password, other devices may ask you to sign in once more.",
-  syncIosHint: "Google sign-in doesn't work in the iPhone home-screen app (an iOS limitation). On a computer, sign in with Google, open Settings → Sync across devices → \"Set a password\", then sign in here with the same email and password.",
+  syncIosHint: "Google sign-in doesn't work in the iPhone/iPad home-screen app (an iOS limitation). Open this app in Safari or on a computer, sign in with Google, go to More → Settings → Sync across devices → \"Set a password\", then sign in here with the same email and password.",
   syncSt_idle: "Synced", syncSt_syncing: "Syncing…", syncSt_offline: "Offline: will sync when you're back online", syncSt_error: "Couldn't sync",
   syncSt_needsUpdate: "Another device uses a newer version; update the app to sync.", syncSt_signedOut: "Not signed in", syncSt_off: "Not set up",
   syncLoading: "Connecting…", syncLast: "Last sync: {t}", syncJustNow: "just now", syncMinAgo: "{n} min ago", syncHourAgo: "{n} h ago", syncDayAgo: "{n} d ago",
@@ -200,7 +200,7 @@ export const en: Record<MsgKey, string> = {
   syncCfgBad: "No valid Firebase config found in this text.", syncCfgOk: "Config saved", syncCfgClear: "Remove config",
   authErr_cancelled: "Sign-in cancelled.", authErr_popup: "The sign-in window couldn't open. Try email and password.",
   authErr_network: "No internet connection.", authErr_badLogin: "Wrong email or password.", authErr_badEmail: "Enter a valid email.",
-  authErr_weakPassword: "The password needs at least 6 characters.", authErr_emailInUse: "An account with this email already exists. Use \"Sign in\"; if you created it with Google, sign in with Google or choose \"Set a password\" on another device.",
+  authErr_weakPassword: "The password needs at least 6 characters.", authErr_emailInUse: "An account with this email already exists. If you have a password, use \"Sign in\". If you created it with Google, choose \"Set a password\" where Google sign-in works (a computer or Safari), then sign in with this email and password.",
   authErr_tooMany: "Too many attempts. Try again a bit later.", authErr_setup: "The Firebase setup is incomplete (sign-in method or authorised domain).",
   authErr_alreadyLinked: "This account already has a password.", authErr_unknown: "Couldn't sign in. Try again.",
   syncErr_auth: "Access to the cloud was denied. Check the Firestore rules, or sign out and sign in again.", syncErr_net: "Connection problem; retrying shortly.", syncErr_tooLarge: "The data is too large for the cloud.",
@@ -211,4 +211,5 @@ export const en: Record<MsgKey, string> = {
   syncBannerUpdate: "Update needed to sync", syncBannerAuth: "Syncing stopped", syncBannerAuthText: "The cloud couldn't be reached. Sign out and sign in again; if that doesn't help, check the Firebase rules.",
   syncBannerLost: "Sync stopped: signed out", syncBannerLostText: "Your data is still on this device. Sign in again to resume syncing.",
   syncSt_lost: "Signed out; sign in again to sync",
+  syncLostDismiss: "Keep sync off here",
 };

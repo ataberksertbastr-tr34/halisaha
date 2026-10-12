@@ -91,7 +91,7 @@ export function setLanguage(lang: string): void {
  * yüklenirken açılan pencerenin sonucu uygulamaya ulaşmayabiliyor (CI'da görüldü) ve yavaş bağlantıda
  * gecikip engellenebiliyor. Önceden kurulunca pencere dokunuşta hemen açılır. Firebase'in iç alanını
  * kullanır (sürüm sabit); alan yoksa hiçbir şey yapmaz, giriş yine çalışır.
- * Kurulum başlatıldıysa true döner (oturum açıksa ya da alan yoksa false).
+ * Altyapı hazırsa true; oturum açıksa, alan yoksa ya da kurulum başarısız olduysa false döner.
  */
 export async function prepareGoogle(): Promise<boolean> {
   const a = need();
@@ -99,8 +99,10 @@ export async function prepareGoogle(): Promise<boolean> {
   if (a.currentUser) return false;
   const resolver = (a as unknown as { _popupRedirectResolver?: { _initialize?(auth: Auth): Promise<unknown> } })._popupRedirectResolver;
   if (!resolver?._initialize) return false;
-  resolver._initialize(a).catch(() => undefined);
-  return true;
+  return resolver._initialize(a).then(
+    () => true,
+    () => false,
+  );
 }
 
 export async function signInGoogle(): Promise<void> {

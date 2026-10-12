@@ -4,7 +4,7 @@ import { t, type MsgKey } from "../i18n";
 import { toast } from "../ui/toast";
 import { renderBanners } from "../ui/banner";
 import { dismissSyncBanner } from "../ui/views/sync";
-import { clearConfig, resetPassword, saveConfigText, setPassword, signInEmail, signInGoogle, signOutSync, signUpEmail, syncNow } from "../sync";
+import { clearConfig, dismissLost, resetPassword, saveConfigText, setPassword, signInEmail, signInGoogle, signOutSync, signUpEmail, syncNow } from "../sync";
 
 const val = (id: string): string => ((document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value || "").trim();
 
@@ -84,5 +84,10 @@ registerActions({
   syncDismiss: () => {
     dismissSyncBanner();
     renderBanners();
+  },
+  // "Oturum kapandı" uyarısı: bu cihazda eşitleme kapalı kalsın (davet şeridi de bir daha çıkmasın).
+  syncLostDismiss: () => {
+    dismissSyncBanner();
+    dismissLost();
   },
 });
