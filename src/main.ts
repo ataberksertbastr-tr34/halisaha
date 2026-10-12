@@ -22,7 +22,7 @@ import { addBanner, bannerHTML, renderBanners } from "./ui/banner";
 import { refreshHeroStatus } from "./ui/shell";
 import { IC } from "./ui/icons";
 import { registerActions } from "./app/actions";
-import { applyUpdate, initPWA, promptInstall, pwa } from "./pwa/register";
+import { applyUpdate, initPWA, isIOS, isStandalone, promptInstall, pwa } from "./pwa/register";
 import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import { updateTemplatePreview } from "./ui/views/templates";
@@ -106,6 +106,7 @@ function setupSync(): void {
     lock: lockedSnapshot,
     hasData,
     lang: () => store.s.settings.lang,
+    canGoogle: () => !(isIOS() && isStandalone()),
   });
   addBanner(syncAlertBanner);
   onSyncChange(() => {

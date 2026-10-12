@@ -23,6 +23,8 @@ export interface SyncDeps {
   lock(s: State, reason: string): Promise<void>;
   hasData(s: State): boolean;
   lang(): string;
+  /** Bu cihazda Google ile giriş mümkün mü (iPhone'da ana ekran uygulamasında değil). */
+  canGoogle(): boolean;
 }
 
 export interface SyncView {
@@ -44,6 +46,8 @@ type AuthMod = typeof import("./auth");
 
 const ON_KEY = "halisaha.sync.on";
 const LOST_KEY = "halisaha.sync.lost";
+/** Son bilinçli çıkışın zamanı: aynı uygulamanın başka bir sekmesi de bu çıkışı "kayıp" saymasın. */
+const SIGNOUT_KEY = "halisaha.sync.signout";
 const DEVICE_KEY = "halisaha.device";
 const POLL_MS = 30_000;
 const THROTTLE_MS = 3_000;
@@ -111,8 +115,11 @@ async function saveMeta(m: SyncMeta): Promise<void> {
 function onUser(u: SyncUser | null): void {
   // Bu cihaz eşitleniyordu ama kullanıcı çıkış yapmadan oturum kapandı: sessizce durmasın, uyarılsın.
   if (!u) {
-    if (!signingOut && ls.get(ON_KEY) === "1") ls.set(LOST_KEY, "1");
+    const deliberate = signingOut || Date.now() - Number(ls.get(SIGNOUT_KEY) || 0) < 15_000;
+    if (!deliberate && ls.get(ON_KEY) === "1") ls.set(LOST_KEY, "1");
     signingOut = false;
+    // Yeniden giriş için Google altyapısını şimdiden hazırla (uyarıdaki "Giriş yap"a basılınca pencere hemen açılsın).
+    if (authMod) queueMicrotask(prewarmAuth);
   } else ls.set(LOST_KEY, null);
   user = u;
   loading = false;
@@ -270,7 +277,7 @@ async function guarded<T>(fn: (m: AuthMod) => Promise<T>): Promise<T> {
  * (Google betiği yüklenemez, her denemede konsola hata düşer); bağlantı gelince yeniden denenir.
  */
 export function prewarmAuth(): void {
-  if (!activeConfig() || warmed || navigator.onLine === false) return;
+  if (!activeConfig() || warmed || navigator.onLine === false || !deps?.canGoogle()) return;
   warmed = true;
   loadAuth()
     .then((m) => m.prepareGoogle())
@@ -316,12 +323,19 @@ export async function setPassword(pw: string): Promise<void> {
 export async function signOutSync(): Promise<void> {
   await syncNow().catch(() => undefined);
   signingOut = true; // onUser(null) bu bayrağı görüp sıfırlar
+  ls.set(SIGNOUT_KEY, String(Date.now()));
   try {
     await guarded((m) => m.signOut());
   } catch (e) {
     signingOut = false;
     throw e;
   }
+}
+
+/** "Oturum kapandı" uyarısını kapatır: bu cihazda eşitleme kapalı kalsın (istenince yeniden giriş yapılır). */
+export function dismissLost(): void {
+  ls.set(LOST_KEY, null);
+  notify();
 }
 
 export function setLanguage(lang: string): void {

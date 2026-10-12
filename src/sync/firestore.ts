@@ -81,8 +81,11 @@ export function firestoreRemote(o: FirestoreOpts): Remote {
     try {
       token = await o.getToken(retried);
     } catch (e) {
+      const code = (e as { code?: string })?.code;
       // Süresi dolan belirteç bağlantı yüzünden yenilenemediyse bu bir ağ sorunudur (birazdan tekrar denenir).
-      if ((e as { code?: string })?.code === "auth/network-request-failed") throw new NetError(0);
+      if (code === "auth/network-request-failed") throw new NetError(0);
+      // Belirteç kalıcı olarak geçersiz: yeniden giriş gerekir ("Eşitleme durdu" uyarısı).
+      if (code === "auth/invalid-refresh-token" || code === "auth/invalid-user-token" || code === "auth/user-token-expired" || code === "auth/user-disabled") throw new AuthError(401);
       throw e;
     }
     const ctl = new AbortController();

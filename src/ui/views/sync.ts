@@ -130,7 +130,15 @@ export function syncAlertBanner(): string {
   const v = syncView();
   if (!v.configured || route().name === "settings") return "";
   const toSettings = '<button type="button" class="btn sm primary" data-a="nav" data-v="settings">';
-  if (v.lost) return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerLost")), text: esc(t("syncBannerLostText")), actions: toSettings + esc(t("signIn")) + "</button>" });
+  if (v.lost) {
+    return bannerHTML({
+      icon: IC.alert,
+      tone: "warn",
+      title: esc(t("syncBannerLost")),
+      text: esc(t("syncBannerLostText")),
+      actions: toSettings + esc(t("signIn")) + '</button><button type="button" class="btn sm ghost" data-a="syncLostDismiss">' + esc(t("syncLostDismiss")) + "</button>",
+    });
+  }
   if (!v.user) return "";
   if (v.status.state === "needsUpdate") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerUpdate")), text: esc(t("syncSt_needsUpdate")), actions: '<button type="button" class="btn sm primary" data-a="syncReload">' + esc(t("syncReload")) + "</button>" });
   if (v.status.state === "error" && v.status.error === "auth") return bannerHTML({ icon: IC.alert, tone: "warn", title: esc(t("syncBannerAuth")), text: esc(t("syncBannerAuthText")), actions: toSettings + esc(t("tabSettings")) + "</button>" });

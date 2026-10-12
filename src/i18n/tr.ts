@@ -187,7 +187,7 @@ export const tr = {
   signOutNote: "Çıkış yapınca veriler bu cihazda kalır, yalnızca eşitleme durur.",
   setPw: "Şifre belirle", newPw: "Yeni şifre (en az 6 karakter)", pwSet: "Şifre kaydedildi. Artık bu e-posta ve şifreyle de girebilirsin.",
   setPwHint: "iPhone'da ana ekrandaki uygulamada Google ile giriş açılmaz; orada bu e-posta ve şifreyle girersin. Şifre belirleyince diğer cihazlar bir kez yeniden giriş isteyebilir.",
-  syncIosHint: "Ana ekrandaki uygulamada Google ile giriş açılmıyor (iPhone kısıtı). Bilgisayarda Google ile girip Ayarlar → Cihazlar arası eşitleme → \"Şifre belirle\" de; sonra burada aynı e-posta ve şifreyle gir.",
+  syncIosHint: "Ana ekrandaki uygulamada Google ile giriş açılmıyor (iPhone/iPad kısıtı). Bu uygulamayı Safari'de ya da bilgisayarda açıp Google ile gir, Daha → Ayarlar → Cihazlar arası eşitleme → \"Şifre belirle\" de; sonra burada aynı e-posta ve şifreyle gir.",
   syncSt_idle: "Eşitlendi", syncSt_syncing: "Eşitleniyor…", syncSt_offline: "Çevrimdışı: bağlantı gelince eşitlenecek", syncSt_error: "Eşitlenemedi",
   syncSt_needsUpdate: "Başka bir cihaz daha yeni bir sürüm kullanıyor; eşitleme için uygulamayı güncelle.", syncSt_signedOut: "Giriş yapılmadı", syncSt_off: "Kurulmadı",
   syncLoading: "Bağlanıyor…", syncLast: "Son eşitleme: {t}", syncJustNow: "az önce", syncMinAgo: "{n} dk önce", syncHourAgo: "{n} saat önce", syncDayAgo: "{n} gün önce",
@@ -198,7 +198,7 @@ export const tr = {
   syncCfgBad: "Bu metinde geçerli bir Firebase yapılandırması yok.", syncCfgOk: "Yapılandırma kaydedildi", syncCfgClear: "Yapılandırmayı kaldır",
   authErr_cancelled: "Giriş iptal edildi.", authErr_popup: "Giriş penceresi açılamadı. E-posta ve şifreyle girmeyi dene.",
   authErr_network: "İnternet bağlantısı yok.", authErr_badLogin: "E-posta ya da şifre hatalı.", authErr_badEmail: "Geçerli bir e-posta yaz.",
-  authErr_weakPassword: "Şifre en az 6 karakter olmalı.", authErr_emailInUse: "Bu e-postayla zaten bir hesap var. \"Giriş yap\"ı kullan; hesabı Google ile açtıysan Google ile gir ya da başka cihazda \"Şifre belirle\" de.",
+  authErr_weakPassword: "Şifre en az 6 karakter olmalı.", authErr_emailInUse: "Bu e-postayla zaten bir hesap var. Şifren varsa \"Giriş yap\"ı kullan. Hesabı Google ile açtıysan, Google ile girebildiğin yerde (bilgisayar ya da Safari) \"Şifre belirle\" de; sonra bu e-posta ve şifreyle gir.",
   authErr_tooMany: "Çok fazla deneme yapıldı. Biraz sonra tekrar dene.", authErr_setup: "Firebase kurulumu eksik (giriş yöntemi ya da yetkili alan adı).",
   authErr_alreadyLinked: "Bu hesabın zaten şifresi var.", authErr_unknown: "Giriş yapılamadı. Tekrar dene.",
   syncErr_auth: "Buluta erişim reddedildi. Firestore kurallarını kontrol et ya da çıkış yapıp yeniden gir.", syncErr_net: "Bağlantı sorunu; birazdan tekrar denenecek.", syncErr_tooLarge: "Veri buluta sığmayacak kadar büyük.",
@@ -209,6 +209,7 @@ export const tr = {
   syncBannerUpdate: "Eşitleme için güncelleme gerekiyor", syncBannerAuth: "Eşitleme durdu", syncBannerAuthText: "Buluta erişilemedi. Çıkış yapıp yeniden gir; düzelmezse Firebase'deki kuralları kontrol et.",
   syncBannerLost: "Eşitleme durdu: oturum kapandı", syncBannerLostText: "Verilerin bu cihazda duruyor. Yeniden giriş yap, eşitleme kaldığı yerden sürsün.",
   syncSt_lost: "Oturum kapandı; eşitleme için yeniden giriş yap",
+  syncLostDismiss: "Bu cihazda kapalı kalsın",
 } as const;
 
 export type MsgKey = keyof typeof tr;
