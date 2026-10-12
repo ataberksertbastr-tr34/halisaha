@@ -49,6 +49,7 @@ const LOST_KEY = "halisaha.sync.lost";
 /** Son bilinçli çıkışın zamanı: aynı uygulamanın başka bir sekmesi de bu çıkışı "kayıp" saymasın. */
 const SIGNOUT_KEY = "halisaha.sync.signout";
 const DEVICE_KEY = "halisaha.device";
+/** Arka plan kontrolü. Hiçbir yerde değişiklik yoksa yalnızca belgenin sürüm belirteci iner (Remote.peek). */
 const POLL_MS = 30_000;
 const THROTTLE_MS = 3_000;
 

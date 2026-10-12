@@ -15,7 +15,12 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 class Cloud {
   docs = new Map<string, { env: Envelope; token: string }>();
   writes = 0;
+  /** Tam okumalar (veri iner) */
   reads = 0;
+  /** Hafif kontroller (yalnızca sürüm belirteci) */
+  peeks = 0;
+  /** false: hafif kontrolü olmayan bulut (motor her turda tam okur) */
+  peekable = true;
   failNext = 0;
   /** read ile write arasında araya girecek başka bir yazma (yarış testi) */
   beforeWrite: (() => Promise<void>) | null = null;
@@ -23,7 +28,15 @@ class Cloud {
   afterRead: (() => void) | null = null;
   private n = 0;
   remote(uid: string): Remote {
-    return {
+    const r: Remote = {
+      peek: async () => {
+        this.peeks++;
+        if (this.failNext > 0) {
+          this.failNext--;
+          throw new NetError(503);
+        }
+        return this.docs.get(uid)?.token ?? null;
+      },
       read: async () => {
         this.reads++;
         if (this.failNext > 0) {
@@ -53,6 +66,8 @@ class Cloud {
         return token;
       },
     };
+    if (!this.peekable) delete r.peek;
+    return r;
   }
 }
 
@@ -306,6 +321,73 @@ describe("eşitleme motoru", () => {
     expect(cloud.writes).toBe(w);
   });
 
+  it("hiçbir yerde değişiklik yokken kontrol yalnızca sürüm belirtecine bakar, veri indirmez", async () => {
+    const cloud = new Cloud();
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    const pc = new Device("pc", cloud);
+    await pc.sync();
+    const reads = cloud.reads;
+    const peeks = cloud.peeks;
+    const writes = cloud.writes;
+    clock += 30_000;
+    for (let i = 0; i < 3; i++) {
+      await phone.sync();
+      await pc.sync();
+    }
+    expect(cloud.reads).toBe(reads);
+    expect(cloud.peeks).toBe(peeks + 6);
+    expect(cloud.writes).toBe(writes);
+    // "Son eşitleme" yine güncellenir: bulutla aynı olduğu doğrulandı
+    expect(pc.engine.status()).toMatchObject({ state: "idle", pending: false, lastSyncAt: clock });
+    // Gönderilecek değişiklik varken hafif kontrol atlanır, belge tam okunup yazılır
+    phone.edit((s) => s.players.push(player("p4", "Yeni Oyuncu")));
+    await phone.sync();
+    expect(cloud.peeks).toBe(peeks + 6);
+    expect(cloud.reads).toBe(reads + 1);
+    expect(cloud.writes).toBe(writes + 1);
+    // Bulut değişti: hafif kontrol farkı görür, belge tam okunur ve birleştirilir
+    await pc.sync();
+    expect(cloud.peeks).toBe(peeks + 7);
+    expect(cloud.reads).toBe(reads + 2);
+    expect(pc.s.players.some((p) => p.id === "p4")).toBe(true);
+    expect(cloud.writes).toBe(writes + 1);
+    // Sonraki kontroller yine hafif
+    await pc.sync();
+    await phone.sync();
+    expect(cloud.reads).toBe(reads + 2);
+    expect(cloud.peeks).toBe(peeks + 9);
+  });
+
+  it("hafif kontrol ağ hatası verirse her zamanki gibi sonra tekrar denenir", async () => {
+    const cloud = new Cloud();
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    cloud.failNext = 1;
+    await phone.sync();
+    expect(phone.engine.status()).toMatchObject({ state: "error", error: "net" });
+    await phone.sync();
+    expect(phone.engine.status()).toMatchObject({ state: "idle", pending: false });
+    phone.engine.stop();
+  });
+
+  it("hafif kontrolü olmayan bulutla da aynı çalışır (her turda tam okur)", async () => {
+    const cloud = new Cloud();
+    cloud.peekable = false;
+    const phone = new Device("phone", cloud, base());
+    await phone.sync();
+    const pc = new Device("pc", cloud);
+    await pc.sync();
+    const reads = cloud.reads;
+    await pc.sync();
+    expect(cloud.reads).toBe(reads + 1);
+    phone.edit((s) => s.players.push(player("p4", "Yeni Oyuncu")));
+    await phone.sync();
+    await pc.sync();
+    expect(pc.s.players.some((p) => p.id === "p4")).toBe(true);
+    expect(cloud.peeks).toBe(0);
+  });
+
   it("iki cihazda da veri varken ilk bağlanmada önce kilitli yerel sürüm alınır, veriler birleşir", async () => {
     const cloud = new Cloud();
     const phone = new Device("phone", cloud, base());
@@ -354,7 +436,7 @@ describe("eşitleme motoru", () => {
     const phone = new Device("phone", cloud, base());
     phone.signedIn = false;
     await phone.sync();
-    expect(cloud.reads + cloud.writes).toBe(0);
+    expect(cloud.reads + cloud.peeks + cloud.writes).toBe(0);
     expect(phone.engine.status().state).toBe("signedOut");
   });
 
