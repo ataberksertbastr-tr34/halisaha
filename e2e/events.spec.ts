@@ -207,3 +207,44 @@ test("disiplin ve duyuru sayfaları; oyuncu kartında sicil", async ({ page }) =
   await expect(page.locator("#rule-9\\.1")).toHaveClass(/flag/);
   expect(errors).toEqual([]);
 });
+
+test("geç iptal: yerine yedekten giren payı öder, geç iptal eden kendiliğinden muaf olur (Kural 15.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await newEvent(page, "paintball");
+  await page.locator('input[data-f="m.cap"]').fill("3");
+  await page.locator('input[data-f="m.cap"]').press("Tab");
+  await page.locator('input[data-f="m.price"]').fill("900");
+  await page.locator('input[data-f="m.price"]').press("Tab");
+  await page.locator('[data-a="toggleDetails"]').click();
+  await signUp(page, CLEAN); // 3 kişi kadroda, Eldiven Ercan yedekte
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="late"]').click();
+  await expect(page.locator("#toast")).toContainText("Orta Ömer geç iptal etti; yerine Eldiven Ercan girdi. Payı Eldiven Ercan öder, Orta Ömer muaf (Kural 15.3)");
+  await page.locator('#tabs [data-v="pay"]').click();
+  const row = page.locator(".payrow", { hasText: "Orta Ömer" });
+  await expect(row.locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  await expect(page.locator(".money-sum .count").first()).toContainText("300");
+  await expect(page.locator("section.section").first()).not.toContainText("Muaf tut\" de");
+  // Geri dönen sıranın sonuna (yedeğe) yazılır; başkasının yerine kadroya girince muafiyeti kalkar ve payını öder
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]').click();
+  await page.locator("#list-att li", { hasText: "Defans Doğan" }).locator('[data-s="late"]').click();
+  await expect(page.locator("#toast")).toContainText("yerine Orta Ömer girdi");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(row.locator('[data-a="exempt"]')).toHaveText("Muaf tut");
+  await expect(row).toContainText("300");
+  await expect(page.locator(".payrow", { hasText: "Defans Doğan" }).locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  // Yedek yokken geç iptal eden öder; boşalan yere eklenen misafirin onun yerine gelip gelmediği sorulur
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator("#list-att li", { hasText: "Kaleci Kemal" }).locator('[data-s="late"]').click();
+  await page.locator("#guestName").fill("Misafir Mehmet");
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(page.locator("#toast")).toContainText("Misafir Mehmet kadroya girdi. Geç iptal eden Kaleci Kemal yerine mi geldi?");
+  await page.locator("[data-toast-act]").click();
+  await expect(page.locator("#toast")).toContainText("Payı Misafir Mehmet öder, Kaleci Kemal muaf");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(page.locator(".payrow", { hasText: "Kaleci Kemal" }).locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  await expect(page.locator(".payrow", { hasText: "Misafir Mehmet" })).toContainText("300");
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});

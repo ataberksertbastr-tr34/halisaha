@@ -22,7 +22,7 @@ import { applyFixed, copyLastWeek, isLocked } from "../domain/roster";
 import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
 import { money } from "../i18n";
-import { billOf, freezeBill } from "../domain/money";
+import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
 import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams, swapPlayers } from "../domain/teams";
@@ -88,13 +88,33 @@ function openLink(u: string): void {
   window.open(u, "_blank", "noopener");
 }
 
-/** Yedekten kadroya giren için "Mesaj gönder" bildirimi (telefonu varsa doğrudan WhatsApp). */
-function promotedToast(m: Match, id: string): void {
+/** Kural 1.5 / 15.3 (halı saha / etkinlik). */
+const lateRule = (m: Match) => (isFootball(m) ? "1.5" : "15.3");
+
+/**
+ * Yedekten kadroya giren için "Mesaj gönder" bildirimi (telefonu varsa doğrudan WhatsApp).
+ * late: yerine girdiği geç iptalci ve payı yerine girenin ödeyip ödemediği (Kural 1.5).
+ */
+function promotedToast(m: Match, id: string, late?: { n: string; pays: boolean }): void {
   const p = getP(store.s, m, id);
   if (!p) return;
   const text = promotedText(store.s, m, id);
   const u = waLink((p as { phone?: string }).phone, text);
-  toast(t("promotedIn", { n: p.name }), { label: t("sendMsg"), run: () => (u ? openLink(u) : void shareText(text)) }, 9000);
+  const msg = late ? t(late.pays ? "lateReplaced" : "lateReplacedFree", { n: late.n, r: p.name, k: lateRule(m) }) : t("promotedIn", { n: p.name });
+  toast(msg, { label: t("sendMsg"), run: () => (u ? openLink(u) : void shareText(text)) }, 9000);
+}
+
+/** Kural 1.5: boş yere yazılan, geç iptal edenin yerine mi geldi? Organizatöre sorulur (12.1). */
+function coverToast(m: Match, by: string, late: string): void {
+  const r = nameOf(m, by), n = nameOf(m, late), k = lateRule(m);
+  toast(t("coverLateAsk", { r, n, k }), {
+    label: t("makeExempt"),
+    run: () => {
+      m.exempt[late] = true;
+      commit();
+      toast(t("lateReplaced", { n, r, k }));
+    },
+  }, 9000);
 }
 
 function nameOf(m: Match, id: string): string {
@@ -224,16 +244,22 @@ registerActions({
     const autoLate = st === "out" && m.att[id] !== "out" && wasPlaying && isLocked(m, new Date());
     if (autoLate) st = "late";
     setAtt(m, id, st, autoLate);
+    // Kural 1.5: yerine yedekten giren varsa geç iptal eden muaf olur; kadroya yeniden girenin muafiyeti kalkar.
+    const rep = replaceLate(store.s, m, id, before);
+    const cover = rep ? null : lateToCover(store.s, m, id, before);
     if (ui.f.att.q) {
       ui.f.att.q = "";
       ui.refocus = "q-att";
     }
     commit();
     const name = getP(store.s, m, id)?.name || "";
+    // Ücretsiz kaleci geç iptal etse de ödemez (Kural 2.1): bildirimde ödeme lafı geçmez.
+    const free = isFree(store.s, m, id);
+    if (rep) return promotedToast(m, rep.by, free ? undefined : { n: name, pays: rep.pays });
     const up = promoted(before, lineup(store.s, m).playing).filter((x) => x !== id);
     if (up.length) return promotedToast(m, up[0]);
     if (autoLate) {
-      return toast(t("autoLate", { n: name }), {
+      return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), {
         label: t("makeOut"),
         run: () => {
           setAtt(m, id, "out", true);
@@ -241,6 +267,7 @@ registerActions({
         },
       }, 8000);
     }
+    if (cover) return coverToast(m, id, cover);
     if (m.att[id] === "in" && !ds.force) {
       const debt = debtMap(store.s, today())[id];
       if (debt) {
@@ -318,9 +345,12 @@ registerActions({
     const g: Guest = { id: "g" + uid(), name: n, rating: Number(val("#guestRate")) || 3, pos: (val("#guestPos") || "") as Pos };
     const host = val("#guestHost");
     if (host) g.host = host;
+    const before = lineup(store.s, m).playing;
     m.guests.push(g);
     setAtt(m, g.id, "in", true);
+    const cover = lateToCover(store.s, m, g.id, before);
     commit();
+    if (cover) coverToast(m, g.id, cover);
   },
   rmGuest: (ds) => {
     const m = cur();
