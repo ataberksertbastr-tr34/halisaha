@@ -1,7 +1,7 @@
 /** Maç planlama: haftalık günlere göre sıradaki maç; diğer etkinliklerin oluşturulması. */
 import type { Kind, Match, State } from "./types";
 import { addDays, iso, matchStart, parseISO } from "./dates";
-import { applyFixed } from "./roster";
+import { applyFixed, sanctioned, type Skip } from "./roster";
 import { getField } from "./fields";
 import { blankMatch } from "./schema";
 import { inheritAgreements, isFootball, kindDef } from "./kinds";
@@ -80,11 +80,15 @@ export function idSlot(id: string): { date: string; time: string } | null {
 
 /**
  * Otomatik planlamanın o zaman için oluşturduğu maç: varsayılan saha ve ücret,
- * sabit oyuncular "Var". id verilmezse rastgele kimlik. Durumu değiştirmez.
+ * sabit oyuncular "Var" (skip verilirse engelliler hariç). id verilmezse rastgele
+ * kimlik. Durumu değiştirmez. Eşitleme (merge.ts) skip'siz çağırır: maçın
+ * "oluşturulduğu gibi" hâli uygulamanın her sürümünde aynı kalsın; cezalı olduğu
+ * için yazılmayan (ya da ceza verilince çıkarılan) sabit oyuncu orada bir düzenleme
+ * sayılır ve birleşimde geri gelmez.
  */
-export function autoMatch(s: State, date: string, time: string, id?: string): Match {
+export function autoMatch(s: State, date: string, time: string, id?: string, skip?: Skip): Match {
   const m = footballMatch(s, date, time, id ? { auto: true, id } : { auto: true });
-  applyFixed(s, m);
+  applyFixed(s, m, skip);
   return m;
 }
 
@@ -120,12 +124,14 @@ export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
   const skipped = new Set(s.skipped);
   const ids = new Set(s.matches.map((m) => m.id));
   const created: Match[] = [];
+  // Gruptan çıkarılmış ya da cezalı sabit oyuncu yazılmaz (Kural 9.1, 9.3); borç yazılırken sorulur (2.4).
+  const skip = sanctioned(s);
   for (const { date, time } of upcomingSlots(s, now, n)) {
     const key = slotKey(date, time);
     if (have.has(key) || skipped.has(key)) continue;
     // Zamandan türetilen kimlik başka bir maçta kullanılıyorsa (ör. maç taşındı) rastgele kimlik
     const id = slotId(date, time);
-    const m = autoMatch(s, date, time, ids.has(id) ? undefined : id);
+    const m = autoMatch(s, date, time, ids.has(id) ? undefined : id, skip);
     ids.add(m.id);
     s.matches.push(m);
     created.push(m);

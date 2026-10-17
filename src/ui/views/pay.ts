@@ -84,7 +84,8 @@ function matchPayView(): string {
     }
     h += '<div class="payrow"><div class="pname">' + personBtn(id, p.name) + (isLate ? ' <span class="tag wait">' + esc(t("late")) + "</span>" : "") + '<span class="sublinks">' + links + "</span></div>" + right + "</div>";
   });
-  if (late.length) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + "</p>";
+  // Kural 1.5: yerine yedekten giren varsa geç iptal eden kendiliğinden muaf olur; hâlâ ödeyen varsa organizatöre hatırlatılır.
+  if (late.some((id) => payers.includes(id))) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + " " + ruleChip(isFootball(mm) ? "1.5" : "15.3") + "</p>";
   h += "</section>";
   return h + extrasSection(mm, payers) + debtsSection();
 }
