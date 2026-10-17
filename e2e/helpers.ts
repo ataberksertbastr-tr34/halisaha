@@ -9,7 +9,14 @@ export async function stubGoogle(ctx: BrowserContext): Promise<void> {
   await ctx.route("https://apis.google.com/**", (r) => r.fulfill({ contentType: "text/javascript", body: "" }));
 }
 
-/** Her tarayıcı bağlamında (page fikstürü ve browser.newContext) Google betiklerini boş yanıtlayan test. */
+/**
+ * Testlerin "şimdi"si: tests/fixtures/backup-v2-legacy.json eski uygulamayla 10 Ekim 2026'da üretildi,
+ * maçları 13, 15 ve 20 Ekim tarihli. Tarayıcı saati bu andan başlar ve normal akar; böylece testler
+ * gerçek tarihten bağımsızdır (fikstürdeki maçlar geçmişte kalınca kırılmaz).
+ */
+export const TEST_NOW = "2026-10-11T12:00:00+03:00";
+
+/** Her tarayıcı bağlamında (page fikstürü ve browser.newContext) Google betiklerini boş yanıtlayan, saati TEST_NOW'dan başlatan test. */
 export const test = base.extend<object, { stubbedBrowser: void }>({
   stubbedBrowser: [
     async ({ browser }, use) => {
@@ -17,6 +24,7 @@ export const test = base.extend<object, { stubbedBrowser: void }>({
       browser.newContext = async (options) => {
         const ctx = await newContext(options);
         await stubGoogle(ctx);
+        await ctx.clock.install({ time: TEST_NOW });
         return ctx;
       };
       await use();

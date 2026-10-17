@@ -40,15 +40,22 @@ describe("otomatik planlama", () => {
   it("silinen ya da taşınan otomatik maç geri gelmez; iptal edilen maç yerinde kalır", () => {
     const s = state();
     const made = ensureUpcoming(s, NOW);
-    rememberSkip(s, made[0]);
+    rememberSkip(s, made[0], NOW);
     s.matches = s.matches.filter((m) => m !== made[0]);
     made[1].status = "cancelled";
-    rememberSkip(s, made[2]);
+    rememberSkip(s, made[2], NOW);
     made[2].date = "2026-10-21";
     expect(ensureUpcoming(s, NOW)).toEqual([]);
     expect(s.matches.map((m) => m.date).sort()).toEqual(["2026-10-15", "2026-10-21", "2026-10-22"]);
     // Pencere ilerleyince yeni gün eklenir
     expect(ensureUpcoming(s, NOW, 5).map((m) => m.date)).toEqual(["2026-10-27"]);
+  });
+  it("atlanan zamanlar listesi büyümez: 60 günden eskiler atılır", () => {
+    const s = state();
+    s.skipped = ["2026-08-01 21:00", "2026-08-11 21:00", "2026-09-29 21:00"];
+    const [first] = ensureUpcoming(s, NOW);
+    rememberSkip(s, first, NOW);
+    expect(s.skipped).toEqual(["2026-08-11 21:00", "2026-09-29 21:00", "2026-10-13 21:00"]);
   });
   it("otomatik maçın kimliği zamanından türetilir; eski maçların kimliği değişmez", () => {
     const s = state([], [match("x", { date: "2026-10-13", time: "21:00" })]);

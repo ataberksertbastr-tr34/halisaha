@@ -134,12 +134,12 @@ export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
 }
 
 /** Silinen ya da taşınan otomatik maçın zamanını hatırlar (tekrar oluşturulmasın). */
-export function rememberSkip(s: State, m: Match): void {
+export function rememberSkip(s: State, m: Match, now: Date = new Date()): void {
   if (!m.auto) return;
   const key = slotKey(m.date, m.time);
   if (!s.skipped.includes(key)) s.skipped.push(key);
   // Liste sonsuza büyümesin: geçmiş tarihler atılır
-  const cutoff = addDays(iso(new Date()), -60);
+  const cutoff = addDays(iso(now), -60);
   s.skipped = s.skipped.filter((k) => k.slice(0, 10) >= cutoff);
 }
 
