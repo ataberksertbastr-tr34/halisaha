@@ -237,7 +237,10 @@ gerçek tarayıcıda kullanıp yedeğini yeni uygulamaya yükler).
 anlaştığı hâli ("taban") saklar; bulut değiştiyse taban–cihaz–bulut üç yönlü
 birleştirilir (kayıtlar `id` ile, alanlar tek tek; silme ile düzenleme çakışırsa
 düzenleme korunur). Yazmalar ön koşulludur (`updateTime`); araya başka cihaz
-girerse yeniden okunur. Otomatik planlanan maçların kimliği tarih/saatten
+girerse yeniden okunur. Uygulama açıkken 30 sn'de bir kontrol edilir; cihazda
+gönderilecek değişiklik yoksa önce yalnızca belgenin `updateTime`'ı istenir
+(maskeli okuma, ~360 bayt), belge ancak bulut değiştiyse tam indirilir.
+Otomatik planlanan maçların kimliği tarih/saatten
 türetilir, iki cihaz aynı maçı ayrı ayrı oluşturmaz.
 
 **Kuralları güncellemek:** `KURALLAR.md` dosyasını düzenleyip `main`'e gönder;

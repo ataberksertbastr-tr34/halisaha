@@ -41,6 +41,41 @@ describe("Firestore emülatörü", () => {
     expect((await r.read())?.env.rev).toBe(2);
   });
 
+  it("hafif kontrol: maskeli okuma sürüm belirtecini getirir, veriyi indirmez", async () => {
+    const u = await signUp();
+    const bodies: string[] = [];
+    const r = firestoreRemote({
+      projectId: PROJECT,
+      uid: u.uid,
+      getToken: async () => u.token,
+      base: `http://${FS}/v1`,
+      fetch: (async (url: string, init: RequestInit) => {
+        const res = await fetch(url, init);
+        bodies.push(await res.clone().text());
+        return res;
+      }) as unknown as typeof fetch,
+    });
+    expect(await r.peek!()).toBeNull();
+    const s = state(Array.from({ length: 60 }, (_, i) => player("p" + i, "Oyuncu " + i, 1 + (i % 5))));
+    const t1 = await r.write(await pack(s, 1, "test"), null);
+    bodies.length = 0;
+    expect(await r.peek!()).toBe(t1);
+    const doc = await r.read();
+    expect(doc?.token).toBe(t1);
+    const [peeked, full] = bodies;
+    const found = (JSON.parse(peeked) as { found: { fields: Record<string, unknown>; updateTime: string } }[])[0].found;
+    expect(found.fields).toEqual({ rev: { integerValue: "1" } });
+    expect(found.updateTime).toBe(t1);
+    expect(peeked).not.toContain(doc!.env.data);
+    expect(peeked.length).toBeLessThan(full.length - doc!.env.data.length);
+    // Belge değişince yeni belirteç görünür
+    const t2 = await r.write(await pack(s, 2, "test"), t1);
+    expect(await r.peek!()).toBe(t2);
+    // Kurallar maskeli okumada da geçerli: başka hesap bakamaz
+    const b = await signUp();
+    await expect(remoteFor(u.uid, b.token).peek!()).rejects.toBeInstanceOf(AuthError);
+  });
+
   it("kurallar: başka hesap ve oturumsuz istek okuyamaz, yazamaz", async () => {
     const a = await signUp();
     const b = await signUp();

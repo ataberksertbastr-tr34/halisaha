@@ -5,7 +5,8 @@
  *  - Bulut değişmemiş, cihaz değişmiş → cihazdaki veri yazılır.
  *  - Bulut değişmiş → üç yönlü birleştirme (taban, cihaz, bulut); sonuç
  *    cihaza uygulanır ve gerekirse buluta yazılır.
- * Yazmalar ön koşulludur; araya başka cihaz girerse baştan okunur. Motor
+ * Yazmalar ön koşulludur; araya başka cihaz girerse baştan okunur. Cihazda
+ * değişiklik yokken önce yalnızca belgenin sürüm belirtecine bakılır (Remote.peek). Motor
  * platformdan bağımsızdır (testte sahte bulut ve sahte saatle çalışır).
  */
 import type { State } from "../domain/types";
@@ -158,6 +159,13 @@ export function createEngine(d: EngineDeps): Engine {
       // Kopya: uygulama durumu yerinde değişir; ağ beklenirken yapılan değişiklik
       // "gönderildi" sanılıp tabana girmesin (bir sonraki turda gönderilir).
       const local = clone(d.getState());
+      // Gönderilecek değişiklik yoksa önce yalnızca bulut belgesinin sürüm belirtecine bakılır
+      // (veri inmez). Bulut da değişmediyse tur biter: arka plan kontrollerinin çoğu böyledir.
+      // Değiştiyse aşağıda belge tam okunur ve her zamanki gibi birleştirilir.
+      if (attempt === 0 && remote.peek && m.token && m.base && sameData(local, m.base) && (await remote.peek()) === m.token) {
+        syncedVersion = v0;
+        return true;
+      }
       const doc = await remote.read();
       try {
         if (!doc) {

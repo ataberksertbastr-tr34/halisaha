@@ -91,6 +91,23 @@ describe("Firestore REST", () => {
     expect(await r.read()).toEqual({ token: "2026-10-10T10:00:00.123Z", env: { fmt: 1, schema: 4, rev: 7, at: 99, dev: "pc", enc: "gz64", data: "abc" } });
   });
 
+  it("hafif kontrol: maskeyle yalnızca 'rev' istenir, updateTime döner; belge yoksa null", async () => {
+    const { r, calls } = remote([
+      json(200, [{ found: { name: "x", fields: { rev: { integerValue: "7" } }, createTime: "T0", updateTime: "2026-10-10T10:00:00.123Z" }, readTime: "T" }]),
+      json(200, [{ missing: "projects/demo-proje/databases/(default)/documents/users/uid1/halisaha/state", readTime: "T" }]),
+      json(503, {}),
+    ]);
+    expect(await r.peek!()).toBe("2026-10-10T10:00:00.123Z");
+    expect(calls[0].url).toBe("https://firestore.googleapis.com/v1/projects/demo-proje/databases/(default)/documents:batchGet");
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      documents: ["projects/demo-proje/databases/(default)/documents/users/uid1/halisaha/state"],
+      mask: { fieldPaths: ["rev"] },
+    });
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe("Bearer tok");
+    expect(await r.peek!()).toBeNull();
+    await expect(r.peek!()).rejects.toBeInstanceOf(NetError);
+  });
+
   it("ön koşullu yazar: ilk yazmada 'yoksa', sonra updateTime", async () => {
     const env = { fmt: 1 as const, schema: 4, rev: 2, at: 5, dev: "tel", enc: "json" as const, data: "{}" };
     const { r, calls } = remote([json(200, { writeResults: [{ updateTime: "T1" }] }), json(200, { writeResults: [{ updateTime: "T2" }] })]);
@@ -118,6 +135,9 @@ describe("Firestore REST", () => {
     expect((a.calls[1].init.headers as Record<string, string>).authorization).toBe("Bearer yeni");
     const b = remote([json(403, {}), json(403, {})]);
     await expect(b.r.read()).rejects.toBeInstanceOf(AuthError);
+    const c = remote([json(401, {}), json(200, [{ found: { updateTime: "T9" } }]), json(403, {}), json(403, {})]);
+    expect(await c.r.peek!()).toBe("T9");
+    await expect(c.r.peek!()).rejects.toBeInstanceOf(AuthError);
   });
 
   it("ağ hatası, 429 ve 5xx tekrar denenebilir hata sayılır", async () => {

@@ -2,7 +2,7 @@
  * Cihazlar arası eşitleme, gerçek Firebase emülatörlerine karşı iki ayrı
  * tarayıcıyla (telefon ve bilgisayar). Uydurma isimler ve e-postalar.
  */
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page, type Request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { importBackupText, noHorizontalScroll, stubGoogle, watchErrors } from "./helpers";
@@ -99,6 +99,22 @@ test("telefondaki veriler bilgisayara gelir, değişiklikler iki yönde eşitlen
   await synced(pc.page);
   await syncNow(phone.page);
   await expect(phone.page.locator('[data-f="s.ibanName"]')).toHaveValue("Organizatör Deneme");
+
+  // Hiçbir yerde değişiklik yokken eşitleme yalnızca belgenin sürüm belirtecine bakar, veri indirmez.
+  // İki tur art arda: ilk tur belgeyi tam okusaydı o istek ikinci turdan önce görülürdü.
+  const isGet = (r: Request) => r.method() === "POST" && r.url().endsWith(":batchGet");
+  const gets: string[] = [];
+  phone.page.on("request", (r) => {
+    if (isGet(r)) gets.push(r.postData() || "");
+  });
+  for (let i = 0; i < 2; i++) {
+    const req = phone.page.waitForRequest(isGet);
+    await phone.page.locator('#sync-sec [data-a="syncNow"]').click();
+    await req;
+  }
+  await synced(phone.page);
+  expect(gets.length).toBeGreaterThanOrEqual(2);
+  for (const body of gets) expect(JSON.parse(body).mask).toEqual({ fieldPaths: ["rev"] });
 
   expect(phone.errors).toEqual([]);
   expect(pc.errors).toEqual([]);
