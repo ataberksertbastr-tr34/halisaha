@@ -7,6 +7,7 @@ import { lineup, materializeOrder, setAtt } from "../src/domain/lineup";
 import { billOf, freezeBill } from "../src/domain/money";
 import { accounts, cashAt, markPaid, settleId } from "../src/domain/ledger";
 import { swapPlayers } from "../src/domain/teams";
+import { addInfraction } from "../src/domain/discipline";
 import type { Att, Match, Payment, State } from "../src/domain/types";
 import { allIn, match, player, roster, state } from "./helpers/factory";
 import { seeded } from "./helpers/rng";
@@ -467,6 +468,36 @@ describe("iki cihazın ayrı ayrı oluşturduğu otomatik maç (tabanda yok)", (
     expect(ensureUpcoming(clone(out), NOW)).toEqual([]);
   }
 
+  it("engelli sabit oyuncuyu iki cihaz da otomatik maça yazmadıysa birleşimde de yazılmaz (Kural 9.1)", () => {
+    const b = stale();
+    b.players[1].fixed = true;
+    addInfraction(b, { pid: "p1", type: "fight", at: "2026-10-01", sanction: "expel", rule: "9.1" }, "2026-10-01");
+    const phone = fork(b, TL), tablet = fork(b, TR);
+    ensureUpcoming(phone, NOW);
+    ensureUpcoming(tablet, NOW);
+    expect(at(phone, S13)!.att).toEqual({ p0: "in" });
+    for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone)]) {
+      expect(out.matches.filter((m) => m.auto)).toHaveLength(4);
+      for (const id of [S13, S15, S20, S22]) expect(at(out, id)!.att).toEqual({ p0: "in" });
+      expect(ensureUpcoming(clone(out), NOW)).toEqual([]);
+    }
+  });
+
+  it("iki cihaz maçı açtıktan sonra birinde verilen ihraç cezası birleşimde geri alınmaz (Kural 9.1)", () => {
+    const b = stale();
+    b.players[1].fixed = true;
+    const phone = fork(b, TL), tablet = fork(b, TR);
+    ensureUpcoming(phone, NOW);
+    ensureUpcoming(tablet, NOW);
+    expect(at(tablet, S13)!.att).toEqual({ p0: "in", p1: "in" });
+    // Telefonda kavga kaydı: p1 açık maçlardan çıkar
+    addInfraction(phone, { pid: "p1", type: "fight", at: "2026-10-09", sanction: "expel", rule: "9.1" }, "2026-10-09");
+    expect(at(phone, S13)!.att).toEqual({ p0: "in" });
+    for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone), merge3(null, phone, tablet)]) {
+      for (const id of [S13, S15, S20, S22]) expect(at(out, id)!.att).toEqual({ p0: "in" });
+    }
+  });
+
   it("diğer cihazda sonradan sabit yapılan oyuncunun telefondaki açık 'Yok'u korunur", () => {
     const b = stale();
     const tablet = fork(b, TR);
@@ -499,6 +530,29 @@ describe("iki cihazın ayrı ayrı oluşturduğu otomatik maç (tabanda yok)", (
     ensureUpcoming(tablet, NOW);
     for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone)]) {
       expect(at(out, S13)).toMatchObject({ fieldId: at(phone, S13)!.fieldId, price: at(phone, S13)!.price, reserved: true });
+    }
+  });
+
+  it("cezalı sabit oyuncunun yazılmaması kopyayı 'dokunulmuş' yapmaz: rezerve edilen eski saha yine korunur", () => {
+    const b = stale();
+    b.players[1].fixed = true;
+    addInfraction(b, { pid: "p1", type: "fight", at: "2026-10-01", sanction: "expel", rule: "9.1" }, "2026-10-01");
+    b.fields = [
+      { id: "F1", name: "Eski Saha", address: "", link: "", phone: "", price: 3000, lat: null, lng: null },
+      { id: "F2", name: "Yeni Saha", address: "", link: "", phone: "", price: 3600, lat: null, lng: null },
+    ];
+    b.settings.defaultFieldId = "F1";
+    b.settings.price = 3000;
+    const tablet = fork(b, TR);
+    tablet.settings.defaultFieldId = "F2";
+    tablet.settings.price = 3600;
+    const phone = fork(b, TL);
+    ensureUpcoming(phone, NOW);
+    at(phone, S13)!.reserved = true;
+    ensureUpcoming(tablet, NOW);
+    for (const out of [merge3(b, phone, tablet), merge3(b, tablet, phone), merge3(null, phone, tablet)]) {
+      expect(at(out, S13)).toMatchObject({ fieldId: "F1", price: 3000, reserved: true });
+      expect(at(out, S13)!.att).toEqual({ p0: "in" });
     }
   });
 

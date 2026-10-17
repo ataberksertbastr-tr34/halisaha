@@ -11,7 +11,7 @@ import type { Game, Kind, Match, Sanction } from "../domain/types";
 import { KINDS } from "../domain/types";
 import { active, currentMatch, getMatch, getP } from "../domain/lineup";
 import { makeEvent } from "../domain/schedule";
-import { applyFixed } from "../domain/roster";
+import { applyFixed, blockedFor } from "../domain/roster";
 import { agreeValue, isFootball } from "../domain/kinds";
 import { newCar, seatsLeft } from "../domain/cars";
 import { addPoint, newGame, other, replay, resultGame, undoPoint, winnerOf, type Side } from "../domain/scoring";
@@ -81,7 +81,7 @@ registerActions({
     if (!KINDS.includes(k)) return;
     const S = store.s;
     const m = makeEvent(S, k, today());
-    if (k === "football") applyFixed(S, m);
+    const blocked = k === "football" ? applyFixed(S, m, blockedFor(S, today())).blocked : [];
     S.matches.push(m);
     ui.matchId = m.id;
     ui.payId = m.id;
@@ -91,6 +91,8 @@ registerActions({
       go({ name: "match" });
       commit();
       window.scrollTo(0, 0);
+      // Engelli sabit oyuncular yazılmadı (Kural 2.4, 9.1, 9.3); organizatör yine de elle ekleyebilir (12.1).
+      if (blocked.length) toast(t("blockedSkipped", { n: blocked.map((id) => getP(S, m, id)?.name || "").join(", ") }), undefined, 8000);
     });
   },
   check: (ds) => {

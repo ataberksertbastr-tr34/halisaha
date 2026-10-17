@@ -18,7 +18,7 @@ import { gamesTally } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
 import type { MsgKey } from "../i18n";
-import { applyFixed, copyLastWeek, isLocked } from "../domain/roster";
+import { applyFixed, blockedFor, copyLastWeek, isLocked, type Added } from "../domain/roster";
 import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
 import { money } from "../i18n";
@@ -48,13 +48,19 @@ const cur = (): Match | null => currentMatch(store.s, ui.matchId, today());
 
 export function newMatch(): void {
   const m = makeMatch(store.s, today());
-  applyFixed(store.s, m);
+  const { blocked } = applyFixed(store.s, m, blockedFor(store.s, today()));
   store.s.matches.push(m);
   ui.matchId = m.id;
   ui.payId = m.id;
   if (route().name !== "teams") go({ name: "match" });
   commit();
   window.scrollTo(0, 0);
+  if (blocked.length) toast(blockedText(m, blocked), undefined, 8000);
+}
+
+/** Toplu yazmada engel yüzünden atlananlar (organizatör yine de elle ekleyebilir, Kural 12.1). */
+function blockedText(m: Match, ids: string[]): string {
+  return t("blockedSkipped", { n: ids.map((id) => getP(store.s, m, id)?.name || "").join(", ") });
 }
 
 let pendingImport: State | null = null;
@@ -314,11 +320,11 @@ registerActions({
   copyLastWeek: () => {
     const m = cur();
     if (!m) return;
-    let n = 0;
-    mutate(() => t("copiedRoster", { n }), () => {
-      n = copyLastWeek(store.s, m);
-      if (!n) {
-        toast(t("nothingToCopy"));
+    let r: Added = { n: 0, blocked: [] };
+    mutate(() => t("copiedRoster", { n: r.n }) + (r.blocked.length ? " · " + blockedText(m, r.blocked) : ""), () => {
+      r = copyLastWeek(store.s, m, blockedFor(store.s, today()));
+      if (!r.n) {
+        toast(r.blocked.length ? blockedText(m, r.blocked) : t("nothingToCopy"), undefined, r.blocked.length ? 8000 : undefined);
         return false;
       }
     });

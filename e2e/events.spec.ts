@@ -248,3 +248,17 @@ test("geç iptal: yerine yedekten giren payı öder, geç iptal eden kendiliğin
   await noHorizontalScroll(page);
   expect(errors).toEqual([]);
 });
+
+test("borçlu sabit oyuncu yeni maça kendiliğinden yazılmaz, organizatöre söylenir (Kural 2.4, 12.1)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  await page.locator("#list-roster li", { hasText: "Bek Bülent" }).locator('[data-a="editP"]').click();
+  await page.locator('[data-a="fixed"]').click();
+  await expect(page.locator("#toast")).toContainText("Bek Bülent");
+  await newEvent(page, "football");
+  await expect(page.locator("#toast")).toContainText("Engel nedeniyle yazılmadı: Bek Bülent");
+  await expect(page.locator("#list-att li", { hasText: "Bek Bülent" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
