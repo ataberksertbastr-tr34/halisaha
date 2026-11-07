@@ -19,6 +19,8 @@ import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
 import type { MsgKey } from "../i18n";
 import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
+import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
+import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
 import { money } from "../i18n";
@@ -64,6 +66,8 @@ function blockedText(m: Match, ids: string[]): string {
 }
 
 let pendingImport: State | null = null;
+/** Önizlenen WhatsApp listesi (Metni düzenle ile metin geri gelir). */
+let pendingPaste: { mid: string; text: string; rows: PlanRow[] } | null = null;
 
 /** Skor girilmediyse takım gollerinden hesaplar. */
 function scoreFromGoals(m: Match): Match["score"] {
@@ -330,6 +334,38 @@ registerActions({
         toast(r.blocked.length ? blockedText(m, r.blocked) : t("nothingToCopy"), undefined, r.blocked.length ? 8000 : undefined);
         return false;
       }
+    });
+  },
+  pasteList: () => {
+    const m = cur();
+    if (!m) return;
+    openPasteSheet(pendingPaste?.mid === m.id ? pendingPaste.text : "");
+  },
+  pastePreview: () => {
+    const m = cur();
+    if (!m) return;
+    const text = val("#plist");
+    const entries = parseList(text);
+    if (!entries.length) return toast(t("pasteNone"));
+    pendingPaste = { mid: m.id, text, rows: planList(store.s, m, entries, today()) };
+    showPastePreview(store.s, m, pendingPaste.rows, today());
+  },
+  pasteApply: () => {
+    const m = cur();
+    const p = pendingPaste;
+    if (!m || !p || p.mid !== m.id) return closeModal();
+    // Seçimler pencere kapanmadan okunur
+    const rows = p.rows.map((r, i) => choose(r, val("#pr-" + i)));
+    pendingPaste = null;
+    closeModal(false, () => {
+      let n = 0;
+      mutate(() => t("pasteDone", { n }), () => {
+        n = applyPlan(store.s, m, rows);
+        if (!n) {
+          toast(t("pasteNothing"));
+          return false;
+        }
+      });
     });
   },
   noshow: (ds) => {

@@ -275,3 +275,41 @@ test("kurallar: arama, derin bağlantı ve madde paylaşımı", async ({ browser
   expect(errors).toEqual([]);
   await ctx.close();
 });
+
+test("WhatsApp listesi yapıştırılınca katılım tek seferde işaretlenir; önce önizlenir, geri alınabilir", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator('[data-a="newEvent"]').first().click();
+  await page.locator('[data-a="createEvent"][data-v="football"]').click();
+  await expect(page.locator("#modal")).toBeHidden();
+  await page.locator('[data-a="pasteList"]').click();
+  await page.locator("#plist").fill([
+    "⚽ Perşembe 15.10 – 21:00", "📍 Yeşil Vadi Halı Saha", "",
+    "1. Kaleci Kemal 🧤", "2. orta ömer", "3. İlker İleri", "4. DEFANS DOĞAN", "5. Mehmet Yeni", "6. Eldivn Ercan", "7. ", "",
+    "⏳ Yedek: Zeki Zorlu", "🤔 Belki: Ali Aslan",
+  ].join("\n"));
+  await page.locator('[data-a="pastePreview"]').click();
+  await expect(page.locator("#modal")).toContainText("8 isim bulundu");
+  await expect(page.locator("#pr-2")).toHaveValue("skip"); // İlker İleri borçlu (Kural 2.4)
+  await expect(page.locator("label.fld", { has: page.locator("#pr-2") })).toContainText("borçlu");
+  await expect(page.locator("#pr-4")).toHaveValue("guest"); // kayıtlı değil
+  await page.locator("#pr-5").selectOption({ label: "Eldiven Ercan" }); // yazım hatası elle düzeltilir
+  await noHorizontalScroll(page);
+  await page.locator('[data-a="pasteApply"]').click();
+  await expect(page.locator("#toast")).toContainText("Listeden 7 kişi işaretlendi");
+  await expect(page.locator(".counts .count").first()).toContainText("6");
+  const rows = page.locator("#list-att li");
+  await expect(rows.nth(0)).toContainText("Kaleci Kemal");
+  await expect(rows.nth(2)).toContainText("Defans Doğan");
+  await expect(rows.nth(3)).toContainText("Mehmet Yeni");
+  await expect(rows.nth(4)).toContainText("Eldiven Ercan");
+  await expect(rows.nth(5)).toContainText("Zeki Zorlu");
+  await expect(page.locator("#list-att li", { hasText: "Ali Aslan" }).locator('[data-s="maybe"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#list-att li", { hasText: "İlker İleri" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  // Geri al: hepsi eski hâline döner
+  await page.locator("[data-toast-act]").click();
+  await expect(page.locator(".counts .count").first()).toContainText("0");
+  await expect(page.locator("#list-att li", { hasText: "Mehmet Yeni" })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

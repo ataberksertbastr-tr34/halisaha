@@ -127,6 +127,7 @@ function attendanceBlock(m: Match): string {
   h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(kindOf(m).teams === "tables" ? t("drawTables") : t("buildTeams")) + "</button></div>";
   const cands = copyCandidates(S, m).length;
   if (cands) h += '<button type="button" class="btn block ghost mt-s" data-a="copyLastWeek">' + IC.copy + esc(fb ? t("copyLastWeek") : t("copyLastEvent")) + " (" + cands + ")</button>";
+  h += '<button type="button" class="btn block ghost mt-s" data-a="pasteList">' + IC.whatsapp + esc(t("pasteList")) + "</button>";
   h += filterBar("att", true, fb);
   h += '<ul class="plist" id="list-att">';
   people.forEach((p) => {
