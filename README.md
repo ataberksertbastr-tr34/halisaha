@@ -156,12 +156,14 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   (12.2) ve grup kuralları hatırlatması için hazır, düzenlenebilir metinler.
 - **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
-  "Geçen haftayı kopyala", sabit oyuncular, saha haritası/yol tarifi/arama,
+  "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
+  listesinden katılım tek seferde; önce önizlenir), sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler.
-- **Kurallarla uyum:** maça 24 saatten az kala "Yok" diyen geç iptal sayılır
-  (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
-  borçlu oyuncu yazılırken sorulur (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
+- **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
+  ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı
+  o öder (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
+  borçlu oyuncu yazılırken sorulur, toplu yazmada atlanır (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
   pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2). İkisi de Ayarlar'dan kapatılabilir.
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
