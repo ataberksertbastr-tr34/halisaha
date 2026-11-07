@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
-import { match, player, state } from "./helpers/factory";
+import { allIn, match, player, state } from "./helpers/factory";
+import { addInfraction } from "../src/domain/discipline";
 
 // Cuma 9 Ekim 2026, 12:00 (yerel)
 const NOW = new Date(2026, 9, 9, 12, 0);
@@ -56,6 +57,26 @@ describe("otomatik planlama", () => {
     const [first] = ensureUpcoming(s, NOW);
     rememberSkip(s, first, NOW);
     expect(s.skipped).toEqual(["2026-08-11 21:00", "2026-09-29 21:00", "2026-10-13 21:00"]);
+  });
+  it("cezalı ya da gruptan çıkarılmış sabit oyuncu otomatik maça yazılmaz; borca bakılmaz (Kural 2.4 yazılırken sorulur)", () => {
+    const fixed = (id: string, name: string) => player(id, name, 3, "", { fixed: true });
+    const s = state([fixed("a", "Sabit Selim"), fixed("b", "Sabit Borçlu"), fixed("c", "Sabit Cezalı")], [], { debtBlock: true });
+    const unpaid = allIn(match("old", { date: "2026-10-06", status: "played", price: 500 }), ["b"]);
+    unpaid.bill = { payers: ["b"], share: 500 };
+    s.matches.push(unpaid);
+    addInfraction(s, { pid: "c", type: "other", at: "2026-10-01", sanction: "ban", step: 3, rule: "9.3" }, "2026-10-01");
+    const made = ensureUpcoming(s, NOW);
+    expect(made).toHaveLength(4);
+    for (const m of made) expect(m.order).toEqual(["a", "b"]);
+    // Eşitlemenin "oluşturulduğu gibi" hâli (engelsiz) her sürümde aynı kalır
+    expect(autoMatch(s, "2026-10-13", "21:00", "a202610132100").order).toEqual(["a", "b", "c"]);
+  });
+  it("maç başlayınca açılan yeni maça, o günün payını henüz ödememiş sabit oyuncular da yazılır", () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Sabit Sinan", 3, "", { fixed: true })], [], { debtBlock: true });
+    ensureUpcoming(s, NOW);
+    // 13 Ekim 21:30: maç başladı, paylar henüz alınmadı; pencere bir sonraki maç gününe kayar
+    const made = ensureUpcoming(s, new Date(2026, 9, 13, 21, 30));
+    expect(made.map((m) => [m.date, m.order])).toEqual([["2026-10-27", ["a", "b"]]]);
   });
   it("otomatik maçın kimliği zamanından türetilir; eski maçların kimliği değişmez", () => {
     const s = state([], [match("x", { date: "2026-10-13", time: "21:00" })]);

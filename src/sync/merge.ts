@@ -15,6 +15,7 @@
 import { blankMatch, defaultSettings, SCHEMA_VERSION } from "../domain/schema";
 import { BackupError, normalize } from "../domain/migrate";
 import { autoMatch, idSlot, slotId, slotKey } from "../domain/schedule";
+import { sanctioned, type Skip } from "../domain/roster";
 import { penalized } from "../domain/lineup";
 import { freezeBill } from "../domain/money";
 import type { Match, State } from "../domain/types";
@@ -190,9 +191,9 @@ export function hasUserData(s: State): boolean {
 /* ---------- Otomatik maçlar ---------- */
 
 /** autoMatch'in bozuk girdiye dayanıklı hâli (hata olursa undefined). */
-function created(s: State, date: string, time: string, id: string): Obj | undefined {
+function created(s: State, date: string, time: string, id: string, skip?: (s: State) => Skip): Obj | undefined {
   try {
-    return autoMatch(s, date, time, id) as unknown as Obj;
+    return autoMatch(s, date, time, id, skip?.(s)) as unknown as Obj;
   } catch {
     return undefined;
   }
@@ -217,8 +218,15 @@ function autoBase(id: string, l: unknown, r: unknown, io: Inputs): Obj | undefin
   if (!slot) return undefined;
   const pl = created(io.local, slot.date, slot.time, id), pr = created(io.remote, slot.date, slot.time, id);
   if (!pl || !pr) return undefined;
-  const touched = (x: Obj, p: Obj) => [...new Set([...Object.keys(x), ...Object.keys(p)])].some((k) => k !== "id" && !deepEqual(own(x, k), own(p, k)));
-  const preferL = touched(l, pl) && !touched(r, pr);
+  const differs = (x: Obj, p: Obj) => [...new Set([...Object.keys(x), ...Object.keys(p)])].some((k) => k !== "id" && !deepEqual(own(x, k), own(p, k)));
+  // Otomatik planlama cezalı sabit oyuncuyu yazmaz (ensureUpcoming): o hâliyle duran kopya da dokunulmamıştır.
+  // (Alan alan karşılaştırmada referans engelsiz kalır: cezalının çıkarılması bir düzenleme sayılır.)
+  const touched = (x: Obj, p: Obj, s: State) => {
+    if (!differs(x, p)) return false;
+    const q = created(s, slot.date, slot.time, id, sanctioned);
+    return !q || differs(x, q);
+  };
+  const preferL = touched(l, pl, io.local) && !touched(r, pr, io.remote);
   const pick = (lv: unknown, rv: unknown, plv: unknown, prv: unknown): unknown => {
     const cl = !deepEqual(lv, plv), cr = !deepEqual(rv, prv);
     if (cl && cr) return plv; // çatışma

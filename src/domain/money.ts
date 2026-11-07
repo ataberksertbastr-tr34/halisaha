@@ -1,6 +1,6 @@
 /** Saha/tesis ücreti paylaşımı ve borçlar (Kural 1.5, 1.9, 2.1, 2.2, 2.4, 15.4, 15.7). */
 import type { Match, State } from "./types";
-import { capOf, getP, isGK, lineup } from "./lineup";
+import { capOf, getP, isGK, lineup, promoted } from "./lineup";
 import { isFootball } from "./kinds";
 
 /** Kaleciler ücretsizse (Kural 2.1) halı saha maçında kaleci ödemez. */
@@ -17,6 +17,40 @@ export function payersOf(s: State, m: Match): string[] {
   const { playing } = lineup(s, m);
   const late = Object.keys(m.att).filter((id) => m.att[id] === "late" && getP(s, m, id));
   return playing.concat(late).filter((id) => !isFree(s, m, id) && !m.exempt[id]);
+}
+
+/**
+ * Kural 1.5, 15.3: bir kişinin yanıtı değişince (id; before: önceki oynayan kadro) geç
+ * iptal muafiyetini günceller.
+ *  - Geç iptal edenin yerine yedekten biri kadroya girdiyse payı yerine gelen öder: geç
+ *    iptal eden muaf tutulur (organizatör Ödemeler'den geri alabilir). Yerine giren ücret
+ *    ödemiyorsa (kaleci, Kural 2.1) pay karşılanmaz, geç iptal eden öder.
+ *  - Muafiyet, kişi oynayan kadroya yeniden girince kalkar (geç iptalden dönüp boş yere
+ *    giren ya da yedekten kadroya giren payını öder). Yedekte bekleyen ya da yeniden geç
+ *    iptal eden, yerine giren hâlâ oynadığı için muaf kalır.
+ * Döner: geç iptal edenin yerine giren ve payı onun ödeyip ödemediği (yoksa null).
+ */
+export function replaceLate(s: State, m: Match, id: string, before: string[]): { by: string; pays: boolean } | null {
+  const entered = promoted(before, lineup(s, m).playing);
+  for (const x of entered) delete m.exempt[x];
+  const up = entered.filter((x) => x !== id);
+  if (m.att[id] !== "late" || !up.length) return null;
+  const by = up[0];
+  const pays = !isFree(s, m, by);
+  if (pays && !isFree(s, m, id)) m.exempt[id] = true;
+  return { by, pays };
+}
+
+/**
+ * Kural 1.5: boş yere kendisi yazılan ya da eklenen (joiner; yedekten girmeyen) bir geç
+ * iptalcinin yerine mi geldi? Hâlâ ödeyen tek bir geç iptalci varsa onu döner; organizatöre
+ * sorulur (12.1). Birden çoksa kimin yerine gelindiği bilinemez (null; "Muaf tut" ipucu kalır).
+ */
+export function lateToCover(s: State, m: Match, joiner: string, before: string[]): string | null {
+  if (before.includes(joiner) || !lineup(s, m).playing.includes(joiner) || isFree(s, m, joiner) || m.exempt[joiner]) return null;
+  const payers = payersOf(s, m);
+  const late = Object.keys(m.att).filter((x) => m.att[x] === "late" && payers.includes(x));
+  return late.length === 1 ? late[0] : null;
 }
 
 /** Kural 2.2: yuvarlama açıksa 5 ₺'nin katına yukarı yuvarlanır, değilse kuruşa yuvarlanır. */
