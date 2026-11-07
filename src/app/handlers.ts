@@ -296,6 +296,16 @@ registerActions({
       }
     }
   },
+  /** Sonucu girilmemiş maç uyarısından: o maçı açıp sonuç bölümüne kaydırır. */
+  openResult: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (!m || m.status !== "open") return;
+    ui.matchId = m.id;
+    ui.payId = m.id;
+    go({ name: "match" });
+    render();
+    document.getElementById("h-res")?.scrollIntoView({ block: "start" });
+  },
   reserve: (ds) => {
     const m = getMatch(store.s, ds.id);
     if (!m) return;
@@ -571,6 +581,8 @@ registerActions({
     const fb = isFootball(m);
     const k = kindOf(m);
     ui.matchId = null;
+    // Ödemeler sekmesi biten maçı göstersin: paylar artık kesin (freezeBill)
+    ui.payId = m.id;
     mutate(fb ? t("matchDone") : t("eventDone"), () => {
       // Kural 1.6: sıra cezası maç bitince kalıcı hale gelir
       materializeOrder(store.s, m);

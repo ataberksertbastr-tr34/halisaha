@@ -315,7 +315,8 @@ details summary { cursor: pointer; font-weight: 600; min-height: 44px; display: 
 .hist { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .hist:first-of-type { border-top: none; }
 .hist .kic { width: 18px; height: 18px; color: var(--accent); vertical-align: -3px; margin-right: 2px; }
-.score { font-family: var(--display); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; }
+.score { font-family: var(--display); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hist .row.nowrap { gap: 4px; }
 .scorebox { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 6px 0 12px; }
 .scorebox input { width: 76px; text-align: center; font-family: var(--display); font-size: 28px; font-weight: 800; }
 .scorebox .sw { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }

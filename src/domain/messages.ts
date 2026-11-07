@@ -162,6 +162,30 @@ export function msgCancel(s: State, m: Match): string {
   return render(tpl(s, "cancel", m), matchVars(s, m));
 }
 
+/** Maç sonucu: skor, goller (çoktan aza) ve maçın oyuncusu; etkinlikte skor ya da oynanan oyun sayısı. */
+export function msgResult(s: State, m: Match): string {
+  const fb = isFootball(m);
+  const sc = m.score;
+  const goals = Object.entries(m.goals || {})
+    .filter(([id, n]) => n > 0 && getP(s, m, id))
+    .sort((a, b) => b[1] - a[1] || nameOf(s, m, a[0]).localeCompare(nameOf(s, m, b[0]), "tr"));
+  const done = m.games.filter((g) => g.done).length;
+  // Kural 11.1 ön anlaşması: kaybeden takım tatlı ısmarlar
+  const dessert = fb && sc && sc.a !== sc.b && agreeValue(m, "dessert") === "yes" ? t("dessert", { t: sc.a < sc.b ? teamName(s, "a") : teamName(s, "b") }) : "";
+  // Skorsuz maçta skor satırı tümden düşer (render: yer tutucuları boş satır atlanır)
+  const noScore: Record<string, string> = sc ? {} : { renka: "", takima: "", takimb: "", renkb: "" };
+  return render(tpl(s, "result", m), {
+    ...matchVars(s, m),
+    ...noScore,
+    skora: sc ? String(sc.a) : "",
+    skorb: sc ? String(sc.b) : "",
+    goller: goals.map(([id, n]) => "• " + nameOf(s, m, id) + (n > 1 ? " ×" + n : "")).join("\n"),
+    mvp: m.mvp && getP(s, m, m.mvp) ? nameOf(s, m, m.mvp) : "",
+    sonuc: sc ? teamName(s, "a") + " " + sc.a + " – " + sc.b + " " + teamName(s, "b") : done ? t("gamesPlayed", { n: done }) : "",
+    kapanis: dessert || t("resultThanks"),
+  });
+}
+
 export function personalPayText(s: State, name: string, amt: number): string {
   return render(tpl(s, "personalPay"), { ad: name, tutar: money(amt), iban: ibanLine(s) });
 }

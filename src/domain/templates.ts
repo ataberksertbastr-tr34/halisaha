@@ -9,7 +9,7 @@
 import type { Lang } from "../i18n";
 import type { TemplateKey } from "./types";
 
-export const TEMPLATE_KEYS: TemplateKey[] = ["invite", "squad", "teams", "brief", "pay", "personalPay", "promoted", "cars", "cancel"];
+export const TEMPLATE_KEYS: TemplateKey[] = ["invite", "squad", "teams", "brief", "result", "pay", "personalPay", "promoted", "cars", "cancel"];
 
 /**
  * Halı saha şablonları (düzenlenebilir). Davet, kadro, takımlar, ödeme ve yedek
@@ -28,6 +28,7 @@ export const DEFAULT_TEMPLATES: Record<Lang, Record<TemplateKey, string>> = {
     promoted: "Selam {ad}, {gun} {tarih} {saat} maçında yer açıldı, kadrodasın! ⚽\n📍 {saha}\nGelemeyeceksen hemen haber ver lütfen.",
     cars: "🚗 Araç paylaşımı – {gun} {tarih} {saat}\n📍 {saha}\n\n{araclar}\n\n🙋 Araçsız: {bosta}\n\nYakıt ve geçiş ücreti araçtakiler arasında eşit bölünür (Kural 15.8).",
     cancel: "❌ İPTAL – {gun} {tarih} {saat} maçı\n📍 {saha}\n\nİptal edilen maç için ücret alınmaz (Kural 1.9).",
+    result: "🏁 Maç sonucu – {gun} {tarih}\n📍 {saha}\n\n{renka} {takima} {skora} – {skorb} {takimb} {renkb}\n\n⚽ Goller\n{goller}\n\n⭐ Maçın oyuncusu: {mvp}\n\n{kapanis}",
   },
   en: {
     invite:
@@ -41,6 +42,7 @@ export const DEFAULT_TEMPLATES: Record<Lang, Record<TemplateKey, string>> = {
     promoted: "Hi {ad}, a spot opened up for {gun} {tarih} {saat} – you're in! ⚽\n📍 {saha}\nIf you can't make it, let me know right away.",
     cars: "🚗 Car sharing – {gun} {tarih} {saat}\n📍 {saha}\n\n{araclar}\n\n🙋 Still need a ride: {bosta}\n\nFuel and tolls are split equally among those in the car (Rule 15.8).",
     cancel: "❌ CANCELLED – {gun} {tarih} {saat} match\n📍 {saha}\n\nNo fee is charged for a cancelled match (Rule 1.9).",
+    result: "🏁 Final score – {gun} {tarih}\n📍 {saha}\n\n{renka} {takima} {skora} – {skorb} {takimb} {renkb}\n\n⚽ Goals\n{goller}\n\n⭐ Player of the match: {mvp}\n\n{kapanis}",
   },
 };
 
@@ -61,6 +63,7 @@ export const EVENT_TEMPLATES: Record<Lang, Record<TemplateKey, string>> = {
     promoted: "Selam {ad}, {gun} {tarih} {saat} {baslik} listesinde yer açıldı, katılımcılar arasındasın! {ikon}\n📍 {saha}\nGelemeyeceksen hemen haber ver lütfen.",
     cars: "🚗 Araç paylaşımı – {baslik} · {gun} {tarih} {saat}\n📍 {saha}\n\n{araclar}\n\n🙋 Araçsız: {bosta}\n\nYakıt ve geçiş ücreti araçtakiler arasında eşit bölünür (Kural 15.8).",
     cancel: "❌ İPTAL – {baslik} · {gun} {tarih} {saat}\n📍 {saha}\n\nİptal edilen etkinlik için ücret alınmaz (Kural 1.9, 15.9).",
+    result: "{ikon} {baslik} – {gun} {tarih}\n📍 {saha}\n\n🏁 {sonuc}\n\n⭐ Günün oyuncusu: {mvp}\n\n{kapanis}",
   },
   en: {
     invite:
@@ -74,6 +77,7 @@ export const EVENT_TEMPLATES: Record<Lang, Record<TemplateKey, string>> = {
     promoted: "Hi {ad}, a spot opened up for {baslik} on {gun} {tarih} {saat} – you're in! {ikon}\n📍 {saha}\nIf you can't make it, let me know right away.",
     cars: "🚗 Car sharing – {baslik} · {gun} {tarih} {saat}\n📍 {saha}\n\n{araclar}\n\n🙋 Still need a ride: {bosta}\n\nFuel and tolls are split equally among those in the car (Rule 15.8).",
     cancel: "❌ CANCELLED – {baslik} · {gun} {tarih} {saat}\n📍 {saha}\n\nNo fee is charged for a cancelled event (Rule 1.9, 15.9).",
+    result: "{ikon} {baslik} – {gun} {tarih}\n📍 {saha}\n\n🏁 {sonuc}\n\n⭐ Player of the day: {mvp}\n\n{kapanis}",
   },
 };
 
@@ -90,6 +94,7 @@ export const PLACEHOLDERS: Record<TemplateKey, string[]> = {
   promoted: ["ad", ...BASE],
   cars: [...BASE, "araclar", "bosta"],
   cancel: [...BASE, "not"],
+  result: [...BASE, "renka", "takima", "skora", "skorb", "takimb", "renkb", "goller", "mvp", "sonuc", "kapanis"],
 };
 
 /**

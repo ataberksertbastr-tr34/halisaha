@@ -7,14 +7,14 @@ import { currentMatch, lineup, openMatches } from "../../domain/lineup";
 import { isFootball } from "../../domain/kinds";
 import { makeMatch } from "../../domain/schedule";
 import { DEFAULT_TEMPLATES, PLACEHOLDERS, render, TEMPLATE_KEYS, templateOf } from "../../domain/templates";
-import { matchVars, msgBrief, msgCancel, msgCars, msgInvite, msgPay, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
+import { matchVars, msgBrief, msgCancel, msgCars, msgInvite, msgPay, msgResult, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
 import { IC } from "../icons";
 
 export const TPL_NAMES: Record<TemplateKey, MsgKey> = {
   invite: "tplInvite", squad: "tplSquad", teams: "tplTeams", brief: "tplBrief", pay: "tplPay", personalPay: "tplPersonalPay", promoted: "tplPromoted",
-  cars: "tplCars", cancel: "tplCancel",
+  cars: "tplCars", cancel: "tplCancel", result: "tplResult",
 };
 
 /** Mesaj başlığı + metni (paylaşım ve önizleme için). */
@@ -33,6 +33,8 @@ export function buildMessage(k: string, m: Match): { title: string; text: string
       return { title: t("tplCars"), text: msgCars(S, m) };
     case "cancel":
       return { title: t("tplCancel"), text: msgCancel(S, m) };
+    case "result":
+      return { title: t("tplResult"), text: msgResult(S, m) };
     default:
       return { title: t("inviteMsg"), text: msgInvite(S, m) };
   }
@@ -56,10 +58,20 @@ function previewMatch(): Match {
   return openMatches(S).find(isFootball) || makeMatch(S, today());
 }
 
+/** Sonuç önizlemesi: son oynanan halı saha maçı; yoksa örnek skorla sıradaki maç. */
+function resultPreviewMatch(): Match {
+  const S = store.s;
+  const last = S.matches.filter((m) => m.status === "played" && isFootball(m) && m.score).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  if (last) return last;
+  const m = previewMatch();
+  const first = lineup(S, m).playing[0];
+  return { ...m, score: { a: 5, b: 3 }, mvp: first || "", goals: first ? { [first]: 2 } : {} };
+}
+
 /** Şablon metnini örnek veriyle doldurur. */
 export function previewOf(k: TemplateKey, tplText: string): string {
   const S = store.s;
-  const m = previewMatch();
+  const m = k === "result" ? resultPreviewMatch() : previewMatch();
   const saved = S.settings.templates[k];
   S.settings.templates[k] = tplText;
   try {

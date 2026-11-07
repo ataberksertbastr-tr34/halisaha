@@ -313,3 +313,74 @@ test("WhatsApp listesi yapıştırılınca katılım tek seferde işaretlenir; �
   await expect(page.locator("#list-att li", { hasText: "Mehmet Yeni" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("maç sonu: sonucu girilmemiş maç uyarısı, Ödemeler'de biten maç, sonuç ve iptal duyurusu paylaşımı", async ({ browser }) => {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    (window as unknown as { __shared: unknown[] }).__shared = [];
+    navigator.share = async (d?: ShareData) => {
+      (window as unknown as { __shared: unknown[] }).__shared.push(d);
+    };
+  });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  const banner = page.locator("#banner");
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(banner).not.toContainText("Sonuç bekleniyor");
+  // Ertesi sabah: 15 Ekim 21:00 maçı bitirilmedi (tarayıcının saat diliminden bağımsız olarak 3 saatten fazla geçti)
+  await page.clock.setSystemTime(new Date("2026-10-16T10:00:00+03:00"));
+  await page.locator('#tabs [data-v="players"]').click();
+  await expect(banner).toContainText("Sonuç bekleniyor");
+  await expect(banner).toContainText("Perşembe 15.10 21:00");
+  await noHorizontalScroll(page);
+  await banner.locator('[data-a="openResult"]').click();
+  await expect(page.locator(".chip.on")).toContainText("15.10");
+  // Organizatör arada geçen haftanın ödemelerine bakar, sonra maçı bitirir
+  await page.locator('#tabs [data-v="pay"]').click();
+  const lastWeek = await page.locator('[data-f="payId"] option', { hasText: "13.10" }).getAttribute("value");
+  await page.locator('[data-f="payId"]').selectOption(lastWeek!);
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(page.locator(".chip.on")).toContainText("15.10");
+  await page.locator("#scA").fill("3");
+  await page.locator("#scB").fill("2");
+  await page.locator('[data-a="finish"]').click();
+  await expect(page.locator("#toast")).toContainText("Maç kaydedildi");
+  await expect(banner).not.toContainText("Sonuç bekleniyor");
+  // Ödemeler biten maçı açar: paylar kesinleşti
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(page.locator('[data-f="payId"] option:checked')).toContainText("15.10");
+  await expect(page.locator('[data-f="payId"] option:checked')).toContainText("Oynandı");
+  // Geçmişten sonuç: önce önizlenir, sonra paylaşılır
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator(".hist", { hasText: "15.10" }).locator('[data-a="msgPreview"][data-k="result"]').click();
+  await expect(page.locator("#mtext")).toHaveValue(/^🏁 Maç sonucu – Perşembe 15\.10/);
+  await expect(page.locator("#mtext")).toHaveValue(/Sarılar 3 – 2 Turuncular/);
+  await page.locator('[data-a="shareSheet"]').click();
+  const shared = await page.evaluate(() => (window as unknown as { __shared: { text: string }[] }).__shared);
+  expect(shared.at(-1)?.text).toContain("Tatlı Turuncular takımından");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#modal")).toBeHidden();
+  // Günü gelmemiş iptal edilmiş maçın duyurusu: geçmişten ve Duyurular'dan
+  const gone = page.locator(".hist", { hasText: "20.10" });
+  await expect(gone).toContainText("İptal");
+  await gone.locator('[data-a="msgPreview"][data-k="cancel"]').click();
+  await expect(page.locator("#mtext")).toHaveValue(/^❌ İPTAL – Salı 20\.10 21:00 maçı/);
+  await page.keyboard.press("Escape");
+  await page.goto("/#/announce");
+  await expect(page.locator('[data-f="ann.cancel"] option:checked')).toContainText("20.10");
+  await expect(page.locator('[data-f="ann.cancel"] option:checked')).toContainText("İptal");
+  await noHorizontalScroll(page);
+  // Şablon düzenleyicide sonuç önizlemesi son oynanan maçla
+  await page.goto("/#/settings");
+  await page.locator('[data-a="tplEdit"][data-k="result"]').click();
+  await expect(page.locator("#tpl-preview")).toContainText("Sarılar 3 – 2 Turuncular");
+  await page.keyboard.press("Escape");
+  // Günü geçen iptal edilmiş maç artık duyurulmaz
+  await page.clock.setSystemTime(new Date("2026-10-22T10:00:00+03:00"));
+  await page.goto("/#/match");
+  await expect(page.locator(".hist", { hasText: "20.10" })).toContainText("İptal");
+  await expect(page.locator(".hist", { hasText: "20.10" }).locator('[data-k="cancel"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+  await ctx.close();
+});

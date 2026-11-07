@@ -154,14 +154,19 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   sıradaki maça kayar. Etkinlik seçilmeden kaydedilen kavgada kişi o gün oynadığı
   maçtan silinmez, oyundan alınır (payını öder). Cezalı, uzaklaştırılmış ya da borçlu kişi
   listeye yazılırken sorulur; son söz organizatörün (Kural 12.1).
-- **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9), kural değişikliği
-  (12.2) ve grup kuralları hatırlatması için hazır, düzenlenebilir metinler.
+- **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9; iptal edilmiş maçlar
+  da seçilebilir), kural değişikliği (12.2) ve grup kuralları hatırlatması için
+  hazır, düzenlenebilir metinler.
 - **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
   listesinden katılım tek seferde; önce önizlenir), sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler.
+- **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
+  uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
+  açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
+  iddiası) ve günü gelmemiş iptal edilmiş maçın duyurusu paylaşılır.
 - **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
   ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı
   o öder (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
@@ -175,7 +180,7 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   ödeme, avans, iade), biriken borçlar, kişiye özel WhatsApp hatırlatma, aylık
   özet, organizatör giderleri (top, yelek, su) ve kasa durumu. Etkinliklerde
   kişiye ya da herkese eşit bölünen ek harcamalar (boya, mermi, masa; Kural 15.4).
-- **Paylaşım:** davet, kadro, takım, brifing, araç, iptal ve ödeme mesajları
+- **Paylaşım:** davet, kadro, takım, brifing, maç sonucu, araç, iptal ve ödeme mesajları
   tek dokunuşla WhatsApp'a. Halı saha şablonları Ayarlar'dan düzenlenebilir;
   diğer etkinliklerin mesajları türüne göre hazır gelir. Takım adları ve yelek
   renkleri Ayarlar'dan seçilir.

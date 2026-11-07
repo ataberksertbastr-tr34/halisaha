@@ -210,6 +210,9 @@ export const tr = {
   syncBannerLost: "Eşitleme durdu: oturum kapandı", syncBannerLostText: "Verilerin bu cihazda duruyor. Yeniden giriş yap, eşitleme kaldığı yerden sürsün.",
   syncSt_lost: "Oturum kapandı; eşitleme için yeniden giriş yap",
   syncLostDismiss: "Bu cihazda kapalı kalsın",
+  tplResult: "Maç sonucu", resultThanks: "Herkese teşekkürler, haftaya görüşürüz!", shareResult: "Sonucu paylaş", announceCancel: "İptali duyur",
+  unfinishedTitle: "Sonuç bekleniyor", unfinishedText: "{d}: saati geçti ama bitirilmedi. Sonucu gir; ödemeler kesinleşsin, sıra cezaları işlesin (Kural 1.6).",
+  unfinishedGo: "Sonucu gir",
 } as const;
 
 export type MsgKey = keyof typeof tr;

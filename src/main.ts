@@ -2,10 +2,11 @@
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
 import { applyExternal, commit, replaceState, setChangeHook, setLockHook, setPersister, setRenderer, store, storeVersion, ui } from "./app/store";
-import { ensureUpcoming, needsReservation } from "./domain/schedule";
+import { ensureUpcoming, needsReservation, unfinished } from "./domain/schedule";
 import { fieldOf, telHref } from "./domain/fields";
 import { dayName } from "./domain/messages";
 import { ddmm } from "./domain/dates";
+import { eventTitle, isFootball } from "./domain/kinds";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
 import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
@@ -66,6 +67,7 @@ async function boot(): Promise<void> {
   setupPWA();
   setupBackupReminder();
   setupReservationReminder();
+  setupResultReminder();
   // Eşitleme daveti en sonda: yeni sürüm, yedek ve saha hatırlatmalarını ekranın dışına itmesin.
   addBanner(syncInviteBanner);
   autoSchedule();
@@ -129,6 +131,18 @@ function setupReservationReminder(): void {
     return bannerHTML({
       icon: IC.alert, tone: "warn", title: esc(t("reserveTitle")), text: esc(t("reserveText", { d: dayName(m.date) + " " + ddmm(m.date) + " " + m.time + (f ? ", " + f.name : "") })),
       actions: (tel ? '<a class="btn sm" href="tel:' + esc(tel) + '">' + IC.phone + esc(t("call")) + "</a>" : "") + '<button type="button" class="btn sm primary" data-a="reserve" data-id="' + esc(m.id) + '">' + esc(t("reservedDone")) + "</button>",
+    });
+  });
+}
+
+/** Saati geçmiş ama bitirilmemiş maç: sonucu, kalıcı sıra cezasını (1.6) ve kesin ödeme listesini bekler. */
+function setupResultReminder(): void {
+  addBanner(() => {
+    const m = unfinished(store.s, new Date())[0];
+    if (!m) return "";
+    return bannerHTML({
+      icon: IC.scoreboard, tone: "warn", title: esc(t("unfinishedTitle")), text: esc(t("unfinishedText", { d: (isFootball(m) ? "" : eventTitle(m) + " · ") + dayName(m.date) + " " + ddmm(m.date) + " " + m.time })),
+      actions: '<button type="button" class="btn sm primary" data-a="openResult" data-id="' + esc(m.id) + '">' + esc(t("unfinishedGo")) + "</button>",
     });
   });
 }

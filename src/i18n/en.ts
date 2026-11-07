@@ -212,4 +212,7 @@ export const en: Record<MsgKey, string> = {
   syncBannerLost: "Sync stopped: signed out", syncBannerLostText: "Your data is still on this device. Sign in again to resume syncing.",
   syncSt_lost: "Signed out; sign in again to sync",
   syncLostDismiss: "Keep sync off here",
+  tplResult: "Final score", resultThanks: "Thanks everyone, see you next week!", shareResult: "Share the result", announceCancel: "Announce cancellation",
+  unfinishedTitle: "Result pending", unfinishedText: "{d}: its time has passed but it wasn't finished. Enter the result so payments are final and queue penalties apply (Rule 1.6).",
+  unfinishedGo: "Enter result",
 };

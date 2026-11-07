@@ -169,6 +169,14 @@ function blockedHard(m: Match, id: string, disc: ReturnType<typeof statusMap>): 
   return !!ds && (ds.expelled || ds.banned || ds.kinds.includes(m.kind));
 }
 
+/** Geçmişteki maçın mesajı: oynanan maçın sonucu, günü gelmemiş iptal edilmiş maçın duyurusu (önizlemeyle açılır). */
+function histShare(m: Match): string {
+  const k = m.status === "played" ? "result" : m.status === "cancelled" && m.date >= today() ? "cancel" : "";
+  if (!k) return "";
+  const label = t(k === "result" ? "shareResult" : "announceCancel") + ": " + dayName(m.date) + " " + ddmm(m.date);
+  return '<button type="button" class="iconbtn" data-a="msgPreview" data-k="' + k + '" data-id="' + esc(m.id) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' + (k === "result" ? IC.share : IC.megaphone) + "</button>";
+}
+
 export function historyBlock(): string {
   const S = store.s;
   const past = S.matches.filter((m) => m.status !== "open").sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
@@ -183,7 +191,7 @@ export function historyBlock(): string {
     else if (m.status === "played" && !fb && m.games.length) sub = t("gamesPlayed", { n: m.games.filter((g) => g.done).length });
     const f = fieldOf(S, m);
     h += '<div class="hist"><div class="minw0"><strong>' + (fb ? "" : kindIcon(m).replace("<svg", '<svg class="kic"')) + esc(dayName(m.date)) + " " + esc(ddmm(m.date)) + '</strong> <span class="muted small">' + esc(m.time) + (fb ? "" : " · " + esc(eventTitle(m))) + (f ? ", " + esc(f.name) : "") + "</span>" + (sub ? '<div class="small muted">' + esc(sub) + "</div>" : "") +
-      '</div><div class="row nowrap">' + res + '<button type="button" class="btn xs ghost" data-a="reopen" data-id="' + esc(m.id) + '">' + esc(t("reopen")) + "</button></div></div>";
+      '</div><div class="row nowrap">' + res + histShare(m) + '<button type="button" class="btn xs ghost" data-a="reopen" data-id="' + esc(m.id) + '">' + esc(t("reopen")) + "</button></div></div>";
   });
   return h + "</section>";
 }
