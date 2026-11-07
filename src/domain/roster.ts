@@ -1,5 +1,5 @@
 /** Kadro yardımcıları: geçen haftayı kopyalama, sabit oyuncular, 24 saat kuralı, güvenilirlik. */
-import type { Match, State } from "./types";
+import type { Att, Match, State } from "./types";
 import { lineup, setAtt } from "./lineup";
 import { matchStart, weekday } from "./dates";
 import { isFootball } from "./kinds";
@@ -96,6 +96,15 @@ export function isLocked(m: Match, now: Date): boolean {
   if (m.status !== "open") return false;
   const at = lockAt(m);
   return !!at && now.getTime() >= at.getTime();
+}
+
+/**
+ * Kural 1.4, 1.5, 15.3: kadro kesinleştikten sonra oynayan kadrodan çıkan geç iptal sayılır;
+ * "Yok", "Belki" ya da "Var"ı kaldırmak (aynı yanıta yeniden dokunmak onu siler) fark etmez.
+ * st: dokunulan yanıt; wasPlaying: dokunmadan önce oynayan kadroda mıydı (yani "Var").
+ */
+export function lateCancel(m: Match, st: Att, wasPlaying: boolean, now: Date): boolean {
+  return wasPlaying && st !== "late" && isLocked(m, now);
 }
 
 export interface Reliability {

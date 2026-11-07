@@ -18,7 +18,7 @@ import { gamesTally } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
 import type { MsgKey } from "../i18n";
-import { applyFixed, blockedFor, copyLastWeek, isLocked, type Added } from "../domain/roster";
+import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
 import { debtMap } from "../domain/ledger";
 import { promotedText, waLink, waPersonal } from "../domain/messages";
 import { money } from "../i18n";
@@ -246,8 +246,9 @@ registerActions({
     }
     const before = lineup(store.s, m).playing;
     const wasPlaying = before.includes(id);
-    // Kural 1.4/1.5: kadro kesinleştikten sonra oynayan kadrodan "Yok" diyen geç iptal sayılır.
-    const autoLate = st === "out" && m.att[id] !== "out" && wasPlaying && isLocked(m, new Date());
+    const tapped = st;
+    // Kural 1.4/1.5: kadro kesinleştikten sonra oynayan kadrodan çıkan ("Yok", "Belki", "Var"ı kaldıran) geç iptal sayılır.
+    const autoLate = lateCancel(m, st, wasPlaying, new Date());
     if (autoLate) st = "late";
     setAtt(m, id, st, autoLate);
     // Kural 1.5: yerine yedekten giren varsa geç iptal eden muaf olur; kadroya yeniden girenin muafiyeti kalkar.
@@ -266,9 +267,11 @@ registerActions({
     if (up.length) return promotedToast(m, up[0]);
     if (autoLate) {
       return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), {
-        label: t("makeOut"),
+        label: t("notLate"),
+        // Geç iptal sayılmasın: dokunulan yanıt geri gelir (Yok, Belki ya da yanıtsız)
         run: () => {
-          setAtt(m, id, "out", true);
+          if (tapped === "in") delete m.att[id];
+          else setAtt(m, id, tapped, true);
           commit();
         },
       }, 8000);

@@ -1,6 +1,6 @@
 /** Kadro yardımcıları: geçen haftayı kopyalama, sabit oyuncular, 24 saat kuralı, güvenilirlik. */
 import { describe, expect, it } from "vitest";
-import { applyFixed, blockedFor, copyLastWeek, isLocked, lastWeekSource, noShowLastTime, reliability, sanctioned } from "../src/domain/roster";
+import { applyFixed, blockedFor, copyLastWeek, isLocked, lastWeekSource, lateCancel, noShowLastTime, reliability, sanctioned } from "../src/domain/roster";
 import { addInfraction } from "../src/domain/discipline";
 import { lineup } from "../src/domain/lineup";
 import { allIn, match, player, roster, state } from "./helpers/factory";
@@ -103,6 +103,21 @@ describe("24 saat kuralı (Kural 1.4)", () => {
     expect(isLocked(m, new Date(2026, 9, 12, 20, 0))).toBe(false);
     expect(isLocked(m, new Date(2026, 9, 12, 21, 30))).toBe(true);
     expect(isLocked({ ...m, status: "played" }, new Date(2026, 9, 13, 22))).toBe(false);
+  });
+  it("kesinleşince oynayan kadrodan nasıl çıkılırsa çıkılsın geç iptal sayılır (Kural 1.5)", () => {
+    const m = match("m", { date: "2026-10-13", time: "21:00" });
+    const before = new Date(2026, 9, 12, 20, 0), after = new Date(2026, 9, 12, 21, 30);
+    // "Yok", "Belki" ve "Var"a yeniden dokunup kaldırmak
+    for (const st of ["out", "maybe", "in"] as const) {
+      expect(lateCancel(m, st, true, before), st).toBe(false);
+      expect(lateCancel(m, st, true, after), st).toBe(true);
+    }
+    expect(lateCancel(m, "late", true, after)).toBe(false); // zaten geç iptal
+    expect(lateCancel(m, "maybe", false, after)).toBe(false); // yedekteki ya da yanıtsız
+    // Etkinlikte kesinleşme duyuruda belirtilen süreye göre (Kural 15.3); 0 = yok
+    const ev = match("e", { kind: "paintball", date: "2026-10-13", time: "21:00", lockH: 48 });
+    expect(lateCancel(ev, "maybe", true, new Date(2026, 9, 11, 22, 0))).toBe(true);
+    expect(lateCancel({ ...ev, lockH: 0 }, "maybe", true, after)).toBe(false);
   });
 });
 

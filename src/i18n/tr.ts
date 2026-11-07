@@ -74,7 +74,7 @@ export const tr = {
   share: "Paylaş", copiedPaste: "Kopyalandı — WhatsApp'a yapıştır", previewEdit: "Önizle ve düzenle", templateSaved: "Şablon kaydedildi", templateReset: "Varsayılan şablona dönüldü",
   tplInvite: "Davet", tplSquad: "Kadro kesinleşti", tplTeams: "Takımlar", tplPay: "Ödeme hatırlatması (grup)", tplPersonalPay: "Kişisel ödeme hatırlatması", tplPromoted: "Yedekten kadroya giren",
   squadMsg: "Kadroyu paylaş", sampleName: "Ahmet",
-  autoLate: "Kadro kesinleşti: {n} geç iptal sayıldı. Yerine kimse gelmezse payını öder (Kural {r})", autoLateFree: "Kadro kesinleşti: {n} geç iptal sayıldı (Kural {r})", makeOut: "Yok yap",
+  autoLate: "Kadro kesinleşti: {n} geç iptal sayıldı. Yerine kimse gelmezse payını öder (Kural {r})", autoLateFree: "Kadro kesinleşti: {n} geç iptal sayıldı (Kural {r})", notLate: "Geç iptal sayma",
   debtWarn: "{n}: {a} borcu var (Kural 2.4)", remindShort: "Hatırlat", copyLastWeek: "Geçen haftayı kopyala",
   copiedRoster: "{n} kişi geçen haftadan kopyalandı", nothingToCopy: "Kopyalanacak kimse yok (herkes yanıt vermiş ya da geçen maç yok).", blockedSkipped: "Engel nedeniyle yazılmadı: {n}. İstersen elle ekle (Kural 12.1).",
   promotedIn: "{n} yedekten kadroya girdi", lateReplaced: "{n} geç iptal etti; yerine {r} girdi. Payı {r} öder, {n} muaf (Kural {k})", lateReplacedFree: "{n} geç iptal etti; yerine {r} girdi ama {r} ücret ödemiyor. {n} payını öder (Kural {k})", coverLateAsk: "{r} kadroya girdi. Geç iptal eden {n} yerine mi geldi? Öyleyse {n} muaf olur (Kural {k})", sendMsg: "Mesaj gönder", locked: "Kadro kesinleşti", lockedHint: "Maça 24 saatten az kaldı (Kural 1.4). Bundan sonra çekilen, yerine kimse gelmezse payını öder (Kural 1.5).",
