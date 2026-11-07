@@ -10,7 +10,7 @@ import { esc, norm, trSort } from "../../domain/text";
 import { ddmm } from "../../domain/dates";
 import { getMatch, getP, openMatches } from "../../domain/lineup";
 import { L } from "../../domain/kinds";
-import { SANCTION_TXT, VIOLATIONS, benchTarget, sanctionText, statusMap, suggest, violation } from "../../domain/discipline";
+import { SANCTION_TXT, VIOLATIONS, benchMatch, benchTarget, sanctionText, statusMap, suggest, violation } from "../../domain/discipline";
 import { eventOption, ruleChip, subHeader } from "../components";
 import { showModal, updateModal } from "../modal";
 import { sheetHead } from "../sheets";
@@ -62,7 +62,8 @@ const SEVERE = new Set<Sanction>(["ban", "expel", "kindBan", "dropDay", "remove"
 export function recordRow(r: Infraction, who: string, withName: boolean): string {
   const S = store.s;
   const m = getMatch(S, r.mid);
-  const target = getMatch(S, r.target);
+  // Hedef iptal edildiyse ceza sıradaki maça kaymıştır (Kural 9.3)
+  const target = benchMatch(S, r);
   const stepTxt = r.step && r.sanction !== "warn" && r.sanction !== "bench" && r.sanction !== "ban" ? " + " + L(SANCTION_TXT[r.step === 1 ? "warn" : r.step === 2 ? "bench" : "ban"]) : "";
   const meta = [ddmm(r.at) + "." + r.at.slice(0, 4), m ? eventOption(m) : "", target ? t("benchFor", { e: eventOption(target) }) : "", r.note].filter(Boolean).join(" · ");
   return '<li class="lrow drow"><span class="dic' + (SEVERE.has(r.sanction) || r.step === 3 ? " sev" : "") + '">' + IC.gavel + '</span><div class="pname">' +
@@ -116,7 +117,9 @@ function body(): string {
       (sug.step ? '<span class="small muted">' + esc(t("discStep", { n: sug.step })) + "</span>" : "") + "</div>";
   }
   h += '<label class="fld">' + esc(t("discSanction")) + '<select data-f="disc.sanction">' + (Object.keys(SANCTION_TXT) as Sanction[]).map((k) => '<option value="' + k + '"' + (k === sanction ? " selected" : "") + ">" + esc(sanctionText({ sanction: k, kind: v.kind })) + "</option>").join("") + "</select></label>";
-  if (isBench) h += '<label class="fld">' + esc(t("discBenchFor")) + '<select data-f="disc.target">' + openMatches(S).filter((x) => x.id !== draft.mid).map((x) => '<option value="' + esc(x.id) + '"' + (tgt && x.id === tgt.id ? " selected" : "") + ">" + esc(eventOption(x)) + "</option>").join("") + "</select></label>";
+  const targets = openMatches(S).filter((x) => x.id !== draft.mid);
+  if (isBench && targets.length) h += '<label class="fld">' + esc(t("discBenchFor")) + '<select data-f="disc.target">' + targets.map((x) => '<option value="' + esc(x.id) + '"' + (tgt && x.id === tgt.id ? " selected" : "") + ">" + esc(eventOption(x)) + "</option>").join("") + "</select></label>";
+  else if (isBench) h += '<p class="small muted">' + esc(t("benchPending")) + "</p>";
   if (sanction === "damage") h += '<label class="fld">' + esc(t("discAmount")) + '<input type="number" inputmode="decimal" min="0" id="disc-amount" value="' + esc(draft.amount) + '"></label>';
   h += '<label class="fld">' + esc(t("note")) + '<input type="text" id="disc-note" value="' + esc(draft.note) + '" autocomplete="off"></label>';
   h += '<button type="button" class="btn primary block" data-a="discSave"' + (draft.pid ? "" : " disabled") + ">" + IC.check + esc(t("save")) + "</button></div>";

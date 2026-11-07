@@ -12,7 +12,7 @@ import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
 import { cleanBulkLine, cleanName, uid } from "../domain/text";
 import { currentMatch, getMatch, getP, lineup, materializeOrder, promoted, setAtt } from "../domain/lineup";
-import { joinBlock } from "../domain/discipline";
+import { joinBlock, retireMatch } from "../domain/discipline";
 import { isFootball, kindOf } from "../domain/kinds";
 import { gamesTally } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
@@ -58,6 +58,12 @@ export function newMatch(): void {
   commit();
   window.scrollTo(0, 0);
   if (blocked.length) toast(blockedText(m, blocked), undefined, 8000);
+}
+
+/** İptal/silinen maçtan sıradaki maça kayan "bir maç ceza"lar (Kural 9.3). */
+function benchMovedText(pids: string[]): string {
+  if (!pids.length) return "";
+  return " · " + t("benchMoved", { n: pids.map((id) => store.s.players.find((p) => p.id === id)?.name || "").join(", ") });
 }
 
 /** Toplu yazmada engel yüzünden atlananlar (organizatör yine de elle ekleyebilir, Kural 12.1). */
@@ -590,16 +596,20 @@ registerActions({
     const m = cur();
     if (!m) return;
     ui.matchId = null;
-    mutate(isFootball(m) ? t("matchCancelled") : t("eventCancelled"), () => {
-      m.status = "cancelled";
+    // Kural 9.3: bu maça bağlı "bir maç ceza" sıradaki maça kayar
+    let moved: string[] = [];
+    mutate(() => (isFootball(m) ? t("matchCancelled") : t("eventCancelled")) + benchMovedText(moved), () => {
+      moved = retireMatch(store.s, m);
     }, { lock: "before-delete" });
   },
   delMatch: () => {
     const m = cur();
     if (!m) return;
     ui.matchId = null;
-    mutate(isFootball(m) ? t("matchDeleted") : t("eventDeleted"), () => {
+    let moved: string[] = [];
+    mutate(() => (isFootball(m) ? t("matchDeleted") : t("eventDeleted")) + benchMovedText(moved), () => {
       rememberSkip(store.s, m);
+      moved = retireMatch(store.s, m, true);
       store.s.matches = store.s.matches.filter((x) => x.id !== m.id);
     }, { lock: "before-delete" });
   },

@@ -156,7 +156,7 @@ export const tr = {
   sideB: "2. taraf", gameLabel: "Oyun adı", gameN: "{n}. oyun", firstServe: "İlk servis", firstServeA: "1. taraf", firstServeB: "2. taraf",
   startGame: "Skorbordu aç", discTitle: "Disiplin", discWarned: "Uyarılı", discBenched: "Ceza bekleyen", discBanned: "Uzaklaştırmalı",
   discExpelled: "Çıkarılan", discHint: "1. ihlal uyarı, 2. ihlal bir maç ceza, 3. ihlal uzaklaştırma. Son karar organizatörün (Kural 12.1).",
-  discLog: "Kayıtlar", discEmpty: "Kayıt yok. Hep böyle kalsın.", sanctionTable: "Yaptırım tablosu", benchFor: "ceza: {e}",
+  discLog: "Kayıtlar", discEmpty: "Kayıt yok. Hep böyle kalsın.", sanctionTable: "Yaptırım tablosu", benchFor: "ceza: {e}", benchPending: "Açık maç yok: ceza açılacak ilk maçta uygulanır (Kural 9.3).", benchMoved: "bir maç cezası sonraki maça kaydı: {n} (Kural 9.3)",
   pardon: "Kaydı sil (affet)", discRecord: "İhlal kaydet", discRecordShort: "Kaydet", discWho: "Kim", discWhat: "İhlal", discWhere: "Nerede",
   discNoEvent: "Etkinlik dışında (grup vb.)", discNeedsEvent: "Bu ihlal bir etkinlikte olur; etkinliği seç.", discSuggested: "Yönetmeliğe göre",
   discStep: "{n}. kademe", discSanction: "Yaptırım", discBenchFor: "Ceza hangi etkinlikte uygulanacak?", discAmount: "Hasar tutarı (₺)",

@@ -158,7 +158,7 @@ export const en: Record<MsgKey, string> = {
   gameLabel: "Game name", gameN: "Game {n}", firstServe: "First serve", firstServeA: "Side 1", firstServeB: "Side 2", startGame: "Open scoreboard",
   discTitle: "Discipline", discWarned: "Warned", discBenched: "Benched", discBanned: "Suspended", discExpelled: "Expelled",
   discHint: "1st offence a warning, 2nd a one-match ban, 3rd a suspension. The organiser has the final say (Rule 12.1).", discLog: "Records",
-  discEmpty: "No records. Long may it last.", sanctionTable: "Sanctions table", benchFor: "benched: {e}", pardon: "Delete record (pardon)",
+  discEmpty: "No records. Long may it last.", sanctionTable: "Sanctions table", benchFor: "benched: {e}", benchPending: "No open match: the ban applies to the first match that opens (Rule 9.3).", benchMoved: "one-match ban moved to the next match: {n} (Rule 9.3)", pardon: "Delete record (pardon)",
   discRecord: "Record an offence", discRecordShort: "Record", discWho: "Who", discWhat: "Offence", discWhere: "Where",
   discNoEvent: "Outside an event (group etc.)", discNeedsEvent: "This offence happens at an event; pick the event.", discSuggested: "Per the rulebook",
   discStep: "Step {n}", discSanction: "Sanction", discBenchFor: "Which event does the ban apply to?", discAmount: "Damage amount (₺)",

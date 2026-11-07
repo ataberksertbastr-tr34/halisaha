@@ -150,7 +150,9 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   (okey, 101, batak, king, pişti, tavla).
 - **Disiplin (Bölüm 9, Ek tablo):** ihlal kaydı; yönetmeliğin öngördüğü yaptırım
   önerilir (1. uyarı → 2. bir maç ceza → 3. davet edilmez; kavga, replika,
-  maske, alkol, zarar bedeli…). Cezalı, uzaklaştırılmış ya da borçlu kişi
+  maske, alkol, zarar bedeli…). Bir maç ceza, o maç iptal edilir ya da silinirse
+  sıradaki maça kayar. Etkinlik seçilmeden kaydedilen kavgada kişi o gün oynadığı
+  maçtan silinmez, oyundan alınır (payını öder). Cezalı, uzaklaştırılmış ya da borçlu kişi
   listeye yazılırken sorulur; son söz organizatörün (Kural 12.1).
 - **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9), kural değişikliği
   (12.2) ve grup kuralları hatırlatması için hazır, düzenlenebilir metinler.

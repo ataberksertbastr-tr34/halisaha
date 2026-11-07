@@ -291,3 +291,30 @@ test("kesinleşen kadrodan 'Belki' ya da 'Var'ı kaldırarak çıkan da geç ipt
   await noHorizontalScroll(page);
   expect(errors).toEqual([]);
 });
+
+test("bir maç ceza, hedef maç iptal edilince sıradaki maça kayar (Kural 9.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.goto("/#/discipline");
+  for (const type of ["swear", "tackle"]) {
+    await page.locator('[data-a="discNew"]').first().click();
+    await page.locator('select[data-f="disc.pid"]').selectOption({ label: "Orta Ömer" });
+    await page.locator('select[data-f="disc.type"]').selectOption(type);
+    await page.locator('[data-a="discSave"]').click();
+    await expect(page.locator("#modal")).toBeHidden();
+  }
+  // İkinci ihlal: bir maç kadroya alınmaz; ceza sıradaki maça (15.10) düşer
+  await expect(page.locator("#list-disc")).toContainText("15.10");
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator('[data-a="selMatch"]', { hasText: "15.10" }).click();
+  await expect(page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  // Yağmur: 15.10 iptal. Ceza 22.10'a kayar
+  await page.locator('[data-a="cancelMatch"]').click();
+  await expect(page.locator("#toast")).toContainText("bir maç cezası sonraki maça kaydı: Orta Ömer (Kural 9.3)");
+  await page.locator('[data-a="selMatch"]', { hasText: "22.10" }).click();
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]').click();
+  await expect(page.locator("#toast")).toContainText("Orta Ömer: ceza: bu etkinlikte yok");
+  await page.goto("/#/discipline");
+  await expect(page.locator("#list-disc")).toContainText("22.10");
+  expect(errors).toEqual([]);
+});
