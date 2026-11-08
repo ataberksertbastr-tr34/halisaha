@@ -105,7 +105,9 @@ main:focus { outline: none; }
 .hero-chip.locked svg { color: #14161B; }
 .hero-chip.warn { background: var(--crimson); border-color: #B3262E; }
 .hero-chip.warn svg { color: var(--cream); }
-.herobtn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 16px; border: 1px solid rgba(201, 160, 75, .6); background: rgba(201, 160, 75, .12); color: var(--gold-hi); font-size: 13px; font-weight: 700; }
+.herobtn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 16px; border: 1px solid rgba(201, 160, 75, .6); background: rgba(201, 160, 75, .12); color: var(--gold-hi); font-size: 13px; font-weight: 700; position: relative; }
+/* Görünüm 32 px, dokunma alanı 44 px */
+.herobtn::after { content: ""; position: absolute; inset: -6px 0; }
 .herobtn svg { width: 16px; height: 16px; }
 @media (min-width: 480px) { .hero-crest { width: 120px; right: 14px; top: 50px; } .hero-main, .hero-empty { padding-right: 128px; } .hero-chips { padding-right: 120px; } }
 
@@ -165,7 +167,9 @@ select { padding-right: 30px; }
 .iconbtn svg { width: 20px; height: 20px; }
 .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
 .iconbtn.on { color: var(--accent); }
-.linkbtn { border: none; background: none; padding: 0 2px; min-height: 32px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; display: inline-flex; align-items: center; }
+.linkbtn { border: none; background: none; padding: 0 2px; min-height: 32px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; display: inline-flex; align-items: center; position: relative; }
+/* "Muaf tut", "Hatırlat": satır yüksekliği aynı, dokunma alanı 44 px */
+.linkbtn::after { content: ""; position: absolute; inset: -6px 0; }
 
 /* ---------- çipler / filtreler ---------- */
 .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 -2px 8px; scrollbar-width: none; }
@@ -213,7 +217,8 @@ select { padding-right: 30px; }
 .pname { flex: 1 1 auto; min-width: 0; }
 .pname strong { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pname .meta { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pname button.plink { border: none; background: none; padding: 0; text-align: left; font-weight: 600; max-width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; }
+/* Kişi adı: taşan ad "…" ile kesildiği için uzantı yerine iç boşluk + eksi kenar boşluğu (yerleşim 24 px, dokunma alanı 44 px) */
+.pname button.plink { border: none; background: none; padding: 10px 0; margin: -10px 0; text-align: left; font-weight: 600; max-width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 44px; }
 .prow.passive strong, .prow.passive .plink { color: var(--muted); }
 .num { font-family: var(--display); font-weight: 700; color: var(--muted); width: 18px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .pips { letter-spacing: 1px; font-size: 10px; color: var(--gold-ink); }
@@ -307,7 +312,7 @@ select { padding-right: 30px; }
 #toast:not(:has(.toast-act)) { padding-right: 16px; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .toast-msg { flex: 1 1 auto; min-width: 0; padding: 6px 0; }
-.toast-act { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 14px; }
+.toast-act { flex: 0 0 auto; min-height: 44px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 14px; }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 .empty { text-align: center; padding: 26px 12px; }
 .empty p { margin: 0 0 12px; color: var(--muted); }
@@ -390,7 +395,7 @@ button.qbtn { cursor: pointer; }
 .subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--surface-3); border-radius: 14px; padding: 4px; margin-bottom: 12px; }
 .subtab { min-height: 44px; border: none; background: transparent; border-radius: 10px; font-weight: 700; color: var(--muted); font-size: 15px; }
 .subtab.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
-.plink { border: none; background: none; padding: 0; font-weight: 600; text-align: left; color: inherit; max-width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 28px; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.plink { border: none; background: none; padding: 8px 0; margin: -8px 0; font-weight: 600; text-align: left; color: inherit; max-width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 44px; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 .acctrow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 52px; border: none; background: none; padding: 4px 0; text-align: left; color: inherit; }
 .acctrow > svg { width: 18px; height: 18px; color: var(--muted); }
 .bal { font-weight: 700; font-size: 14px; white-space: nowrap; flex: 0 0 auto; }
@@ -491,7 +496,7 @@ details[open] > summary::after { transform: rotate(-135deg); }
 /* ---------- kurallar ---------- */
 .rfinder { margin: 0 0 12px; border-radius: var(--radius); border: 1px solid var(--line); padding: 2px 12px 8px; top: 0; }
 .rfinder .filters { margin-left: 0; margin-right: 0; padding: 0; }
-.rfinder .fchip { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; text-decoration: none; }
+.rfinder .fchip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; text-decoration: none; }
 .rules { list-style: none; margin: 0; padding: 0; }
 .rule { display: flex; align-items: flex-start; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); scroll-margin-top: 140px; }
 .rule:first-child { border-top: none; }
@@ -535,7 +540,8 @@ section[id^="rule-s"], section[id^="rule-p"] { scroll-margin-top: 12px; }
 
 /* kural etiketi: madde numarasına götürür */
 .rchip { display: inline-flex; align-items: center; min-height: 26px; padding: 0 8px; border-radius: 13px; border: 1px solid var(--hair); background: transparent; color: var(--gold-ink); font-size: 11px; font-weight: 800; letter-spacing: .06em; vertical-align: 1px; white-space: nowrap; position: relative; }
-.rchip::after { content: ""; position: absolute; inset: -9px -2px; }
+/* Rozet 26 px; dokunma alanı en az 44 × 44 (dar rozette yanlara da taşar) */
+.rchip::after { content: ""; position: absolute; inset: -9px min(-2px, calc(50% - 22px)); }
 .rchip:hover { background: color-mix(in srgb, var(--gold) 14%, transparent); }
 .rref { color: var(--gold-ink); font-weight: 700; text-decoration: none; border-bottom: 1px dotted currentColor; }
 
