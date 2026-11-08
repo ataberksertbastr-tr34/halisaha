@@ -7,6 +7,7 @@ import { isIOS, isStandalone } from "../../pwa/register";
 import { IC } from "../icons";
 import { bannerHTML } from "../banner";
 import { route } from "../../app/router";
+import { iosMoveShowing } from "./iosmove";
 
 /** "az önce", "5 dk önce" … */
 export function agoText(ts: number, now = Date.now()): string {
@@ -153,6 +154,8 @@ export function syncInviteBanner(): string {
   const v = syncView();
   // Ayarlar'daki eşitleme bölümü zaten açıkken ikinci bir "Giriş yap" gösterme.
   if (!v.configured || v.user || v.lost || v.loading || dismissed() || route().name === "settings") return "";
+  // iPhone'daki Safari / ana ekran şeridi giriş yapmayı da önerir: ikinci şerit çıkmaz
+  if (iosMoveShowing()) return "";
   const empty = store.s.players.length === 0;
   return bannerHTML({
     icon: IC.cloud,

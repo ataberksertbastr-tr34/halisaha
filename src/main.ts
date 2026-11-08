@@ -15,6 +15,7 @@ import { flush, getMeta, listenOtherTabs, loadIssue, loadState, lockedSnapshot, 
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
 import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
 import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/views/sync";
+import { dismissIosMove, iosMoveBanner } from "./ui/views/iosmove";
 import "./app/syncActions";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
@@ -76,6 +77,8 @@ async function boot(): Promise<void> {
   setupReservationReminder();
   setupResultReminder();
   // Eşitleme daveti en sonda: yeni sürüm, yedek ve saha hatırlatmalarını ekranın dışına itmesin.
+  // iPhone: Safari ile ana ekrandaki uygulamanın verileri ayrı (eşitleme davetinden önce)
+  addBanner(iosMoveBanner);
   addBanner(syncInviteBanner);
   autoSchedule();
   renderApp();
@@ -210,6 +213,10 @@ function setupPWA(): void {
   });
   registerActions({
     applyUpdate: () => applyUpdate(flush),
+    iosMoveDismiss: () => {
+      dismissIosMove();
+      renderBanners();
+    },
     reloadPage: () => {
       flush().finally(() => location.reload());
     },
