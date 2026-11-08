@@ -7,7 +7,8 @@
  * Metinler paylaşmadan önce düzenlenebilir.
  */
 import { lang, t } from "../../i18n";
-import { store } from "../../app/store";
+import { store, today } from "../../app/store";
+import type { Match } from "../../domain/types";
 import { esc } from "../../domain/text";
 import { openMatches } from "../../domain/lineup";
 import { msgCancel } from "../../domain/messages";
@@ -76,10 +77,14 @@ export function viewAnnounce(): string {
   const checks = '<div class="phchips mb">' + MOVE_ITEMS.map((k) => '<button type="button" class="fchip' + (sel[k] ? " on" : "") + '" data-a="annMove" data-v="' + k + '" aria-pressed="' + sel[k] + '">' + esc(L2(MOVE_TXT[k])) + "</button>").join("") + "</div>";
   h += card("move", IC.install, t("annMove"), "14.3", checks, moveText());
   // İptal
-  const open = openMatches(S);
+  // Günü gelmemiş iptal edilmiş maçlar önce (duyurusu genelde iptalden hemen sonra yapılır), sonra açık maçlar
+  const td = today();
+  const gone = S.matches.filter((m) => m.status === "cancelled" && m.date >= td).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const open = [...gone, ...openMatches(S)];
   if (!open.find((m) => m.id === cancelId)) cancelId = open[0]?.id || "";
   const cm = open.find((m) => m.id === cancelId);
-  const pick = open.length ? '<label class="fld mb"><span class="visually-hidden">' + esc(t("matchSel")) + '</span><select data-f="ann.cancel">' + open.map((m) => '<option value="' + esc(m.id) + '"' + (m.id === cancelId ? " selected" : "") + ">" + esc(eventOption(m)) + "</option>").join("") + "</select></label>" : '<p class="muted small">' + esc(t("noEvent")) + "</p>";
+  const label = (m: Match) => eventOption(m) + (m.status === "cancelled" ? " · " + t("cancelled") : "");
+  const pick = open.length ? '<label class="fld mb"><span class="visually-hidden">' + esc(t("matchSel")) + '</span><select data-f="ann.cancel">' + open.map((m) => '<option value="' + esc(m.id) + '"' + (m.id === cancelId ? " selected" : "") + ">" + esc(label(m)) + "</option>").join("") + "</select></label>" : '<p class="muted small">' + esc(t("noEvent")) + "</p>";
   h += card("cancel", IC.alert, t("annCancel"), "1.9", pick, cm ? msgCancel(S, cm) : "");
   // Kural değişikliği
   const b = ruleBook();

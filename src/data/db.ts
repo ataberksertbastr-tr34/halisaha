@@ -1,6 +1,7 @@
 /**
  * IndexedDB sarmalayıcısı (bağımlılıksız).
- *  - kv: "state" (uygulama verisi), "meta" (yedek tarihleri vb.)
+ *  - kv: "state" (uygulama verisi), "meta" (yedek tarihleri vb.), "snapIndex" (sürümlerin
+ *    küçük dizini: hangisinin silineceğine sürümlerin verisini okumadan karar verilir)
  *  - snapshots: otomatik yerel yedek sürümleri
  */
 export const DB_NAME = "halisaha";
@@ -92,28 +93,87 @@ export async function snapGet(id: number): Promise<Snapshot | undefined> {
   return req(db.transaction("snapshots").objectStore("snapshots").get(id)) as Promise<Snapshot | undefined>;
 }
 
+/** Sürümün dizindeki özeti (verisi olmadan). */
+export interface SnapMeta {
+  id: number;
+  at: number;
+  start: number;
+  locked?: boolean;
+}
+
+export interface Retention {
+  /** Her durumda tutulan en yeni sürüm sayısı */
+  keep: number;
+  /** Son bu kadar günün her günü için o günün en son sürümü */
+  days: number;
+  /** Kilitli sürümler (silme, yedek yükleme, taşıma, eşitleme öncesi) bu kadar gün … */
+  lockedDays: number;
+  /** … en çok bu kadar tutulur */
+  lockedMax: number;
+}
+
+export const RETENTION: Retention = { keep: 10, days: 14, lockedDays: 30, lockedMax: 20 };
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Silinecek sürümler. Tutulanlar: en yeni "keep" sürüm; son "days" günün her günü için o
+ * günün en son sürümü; son "lockedDays" gündeki kilitli sürümlerin en yeni "lockedMax" tanesi.
+ * Böylece yoğun bir saatte 10 sürüm dolsa da dünkü ve geçen haftaki hâl, bir hafta önceki
+ * "yedek yükleme öncesi" hâli kalır.
+ */
+export function pruneSnapshots(list: SnapMeta[], now: number, r: Retention = RETENTION): number[] {
+  const byNew = list.slice().sort((a, b) => b.id - a.id);
+  const keep = new Set(byNew.slice(0, r.keep).map((x) => x.id));
+  const days = new Set<string>();
+  for (const x of byNew.slice().sort((a, b) => b.at - a.at)) {
+    if (now - x.at >= r.days * DAY) continue;
+    const d = new Date(x.at).toDateString();
+    if (days.has(d)) continue;
+    days.add(d);
+    keep.add(x.id);
+  }
+  byNew.filter((x) => x.locked && now - x.at < r.lockedDays * DAY).slice(0, r.lockedMax).forEach((x) => keep.add(x.id));
+  return byNew.filter((x) => !keep.has(x.id)).map((x) => x.id);
+}
+
+const INDEX_KEY = "snapIndex";
+const metaOf = (x: Snapshot): SnapMeta => ({ id: x.id!, at: x.at, start: x.start ?? x.at, ...(x.locked ? { locked: true } : {}) });
+
 /**
  * Sürüm kaydeder. Son sürüm kilitli değilse ve "coalesceMs" içinde açılmışsa
  * onun üzerine yazar (art arda yapılan değişiklikler tek sürümde birleşir);
- * aksi halde yeni sürüm açar. En fazla "keep" sürüm tutulur.
+ * aksi halde yeni sürüm açar. Fazlalar katmanlı olarak silinir (pruneSnapshots).
  */
-export async function snapPut(s: Omit<Snapshot, "id" | "start">, opts: { coalesceMs: number; keep: number; forceNew?: boolean }): Promise<void> {
+export async function snapPut(s: Omit<Snapshot, "id" | "start">, opts: { coalesceMs: number; forceNew?: boolean; retention?: Retention }): Promise<void> {
   const db = await openDB();
-  const tx = db.transaction("snapshots", "readwrite");
+  const tx = db.transaction(["snapshots", "kv"], "readwrite");
   const store = tx.objectStore("snapshots");
-  // Yalnızca anahtarları ve en yeni kaydı oku (tüm sürümleri belleğe almadan).
-  const keys = ((await req(store.getAllKeys())) as number[]).sort((a, b) => b - a);
-  const latest = keys.length ? ((await req(store.get(keys[0]))) as Snapshot | undefined) : undefined;
-  if (!opts.forceNew && !s.locked && latest && !latest.locked && s.at - latest.start < opts.coalesceMs) {
-    store.put({ ...latest, ...s, id: latest.id, start: latest.start });
-  } else {
-    store.add({ ...s, start: s.at });
-    keys.unshift(Infinity);
+  const kv = tx.objectStore("kv");
+  // Sürümlerin verisini okumadan: anahtarlar ve küçük dizin. Dizinde olmayan (eski sürümün
+  // eklediği ya da dizinden önceki) kayıtlar bir kez okunup dizine eklenir.
+  const keys = (await req(store.getAllKeys())) as number[];
+  const have = new Set(keys);
+  let index = (((await req(kv.get(INDEX_KEY))) as SnapMeta[] | undefined) || []).filter((x) => have.has(x.id));
+  const known = new Set(index.map((x) => x.id));
+  for (const k of keys) {
+    if (known.has(k)) continue;
+    const x = (await req(store.get(k))) as Snapshot | undefined;
+    if (x) index.push(metaOf({ ...x, id: k }));
   }
-  // Fazla sürümleri sil (en eskiler)
-  keys.slice(opts.keep).forEach((k) => {
-    if (Number.isFinite(k)) store.delete(k);
-  });
+  index.sort((a, b) => b.id - a.id);
+  const latest = index[0];
+  const cur = !opts.forceNew && !s.locked && latest && !latest.locked && s.at - latest.start < opts.coalesceMs ? ((await req(store.get(latest.id))) as Snapshot | undefined) : undefined;
+  if (cur) {
+    store.put({ ...cur, ...s, id: latest.id, start: latest.start });
+    latest.at = s.at;
+  } else {
+    const id = (await req(store.add({ ...s, start: s.at }))) as number;
+    index.unshift(metaOf({ ...s, id, start: s.at }));
+  }
+  const drop = new Set(pruneSnapshots(index, s.at, opts.retention));
+  drop.forEach((id) => store.delete(id));
+  index = index.filter((x) => !drop.has(x.id));
+  kv.put(index, INDEX_KEY);
   await done(tx);
 }
 

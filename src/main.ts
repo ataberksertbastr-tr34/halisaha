@@ -2,15 +2,16 @@
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
 import { applyExternal, commit, replaceState, setChangeHook, setLockHook, setPersister, setRenderer, store, storeVersion, ui } from "./app/store";
-import { ensureUpcoming, needsReservation } from "./domain/schedule";
+import { ensureUpcoming, needsReservation, unfinished } from "./domain/schedule";
 import { fieldOf, telHref } from "./domain/fields";
 import { dayName } from "./domain/messages";
 import { ddmm } from "./domain/dates";
+import { eventTitle, isFootball } from "./domain/kinds";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
-import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
+import { guestPrefill, importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
 import { bindPitchDrag } from "./ui/pitchDrag";
-import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
+import { flush, getMeta, listenOtherTabs, loadIssue, loadState, lockedSnapshot, onSaveError, onStorageBlocked, requestPersistence, saveState, storageMode } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
 import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
 import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/views/sync";
@@ -22,7 +23,7 @@ import { addBanner, bannerHTML, renderBanners } from "./ui/banner";
 import { refreshHeroStatus } from "./ui/shell";
 import { IC } from "./ui/icons";
 import { registerActions } from "./app/actions";
-import { applyUpdate, initPWA, isIOS, isStandalone, promptInstall, pwa } from "./pwa/register";
+import { applyUpdate, forceUpdate, initPWA, isIOS, isStandalone, promptInstall, pwa } from "./pwa/register";
 import { esc } from "./domain/text";
 import { applyFilter } from "./ui/components";
 import { updateTemplatePreview } from "./ui/views/templates";
@@ -47,6 +48,12 @@ async function boot(): Promise<void> {
   const s = await loadState();
   replaceState(s);
   setLang(store.s.settings.lang);
+  // Veri uygulamanın daha yeni bir sürümüyle kaydedilmiş: güncellemeden hiçbir şey açılmaz, yazılmaz
+  if (loadIssue() === "future") {
+    initPWA();
+    return showFuture();
+  }
+  onStorageBlocked(showFuture);
   setPersister((st) => {
     saveState(st);
     if (!getMeta().persisted && hasData(st)) requestPersistence();
@@ -62,10 +69,12 @@ async function boot(): Promise<void> {
   setRenderer(renderApp);
   syncFromLocation();
   bindEvents();
+  setupStorageWarning();
   setupSync();
   setupPWA();
   setupBackupReminder();
   setupReservationReminder();
+  setupResultReminder();
   // Eşitleme daveti en sonda: yeni sürüm, yedek ve saha hatırlatmalarını ekranın dışına itmesin.
   addBanner(syncInviteBanner);
   autoSchedule();
@@ -78,6 +87,36 @@ async function boot(): Promise<void> {
     }
   });
   if (hasData(store.s)) requestPersistence().then(() => undefined);
+  // Asıl depo açılamadığı bir oturumda girilenler geri yüklendi
+  if (loadIssue() === "recovered") toast(t("storageRecovered"), undefined, 8000);
+}
+
+/**
+ * Veri uygulamanın daha yeni bir sürümüyle kaydedilmiş (başka pencere ya da cihaz güncellendi):
+ * eski kod veriyi bozmasın diye hiçbir şey yazılmaz; tek yol güncellemek.
+ */
+function showFuture(): void {
+  closeModal(false);
+  for (const id of ["banner", "tabs"]) document.getElementById(id)!.innerHTML = "";
+  document.getElementById("hero")!.innerHTML = '<div class="hero-in"><div class="brand"><span class="brand-name">Predators<small>' + esc(t("organizer")) + "</small></span></div></div>";
+  document.getElementById("view")!.innerHTML = '<section class="section" role="alert" aria-labelledby="h-future"><h2 id="h-future">' + esc(t("futureTitle")) + "</h2>" +
+    '<p class="muted">' + esc(t("futureText")) + '</p><button type="button" class="btn primary block" id="future-update">' + IC.download + esc(t("update")) + "</button></section>";
+  document.getElementById("future-update")!.addEventListener("click", () => {
+    toast(t("updating"));
+    forceUpdate(flush);
+  });
+}
+
+/** Asıl depo (IndexedDB) açılamadı: değişiklikler acil kopyaya yazılıyor; kapatıp açmak ve yedek almak önerilir. */
+function setupStorageWarning(): void {
+  addBanner(() =>
+    storageMode() === "local"
+      ? bannerHTML({
+          icon: IC.alert, tone: "warn", title: esc(t("storageLocalTitle")), text: esc(t("storageLocalText")),
+          actions: '<button type="button" class="btn sm primary" data-a="reloadPage">' + esc(t("retry")) + '</button><button type="button" class="btn sm" data-a="shareBackup">' + esc(t("shareBackup")) + "</button>",
+        })
+      : "",
+  );
 }
 
 /** Ekranda yazılıp henüz kaydedilmemiş (değeri ilk hâlinden farklı) bir metin alanı var mı. */
@@ -133,6 +172,18 @@ function setupReservationReminder(): void {
   });
 }
 
+/** Saati geçmiş ama bitirilmemiş maç: sonucu, kalıcı sıra cezasını (1.6) ve kesin ödeme listesini bekler. */
+function setupResultReminder(): void {
+  addBanner(() => {
+    const m = unfinished(store.s, new Date())[0];
+    if (!m) return "";
+    return bannerHTML({
+      icon: IC.scoreboard, tone: "warn", title: esc(t("unfinishedTitle")), text: esc(t("unfinishedText", { d: (isFootball(m) ? "" : eventTitle(m) + " · ") + dayName(m.date) + " " + ddmm(m.date) + " " + m.time })),
+      actions: '<button type="button" class="btn sm primary" data-a="openResult" data-id="' + esc(m.id) + '">' + esc(t("unfinishedGo")) + "</button>",
+    });
+  });
+}
+
 function setupBackupReminder(): void {
   addBanner(() => {
     const meta = getMeta();
@@ -150,13 +201,18 @@ function setupBackupReminder(): void {
 }
 
 function setupPWA(): void {
-  addBanner(() =>
-    pwa.updateReady()
-      ? bannerHTML({ icon: IC.download, title: esc(t("updateReady")), text: esc(t("updateText")), actions: '<button type="button" class="btn sm primary" data-a="applyUpdate">' + esc(t("update")) + "</button>" })
-      : "",
-  );
+  addBanner(() => {
+    // Başka pencerede güncellendi: bu pencere eski kodla kaydetmesin diye yenilenmeli
+    if (pwa.updatedElsewhere()) return bannerHTML({ icon: IC.download, tone: "warn", title: esc(t("updatedElsewhere")), text: esc(t("updatedElsewhereText")), actions: '<button type="button" class="btn sm primary" data-a="reloadPage">' + esc(t("reloadPage")) + "</button>" });
+    // Eşitleme zaten "güncelle" diyorsa aynı işi gören ikinci şerit çıkmaz
+    if (!pwa.updateReady() || syncView().status.state === "needsUpdate") return "";
+    return bannerHTML({ icon: IC.download, title: esc(t("updateReady")), text: esc(t("updateText")), actions: '<button type="button" class="btn sm primary" data-a="applyUpdate">' + esc(t("update")) + "</button>" });
+  });
   registerActions({
     applyUpdate: () => applyUpdate(flush),
+    reloadPage: () => {
+      flush().finally(() => location.reload());
+    },
     install: () => {
       promptInstall().catch(() => toast(t("installHint")));
     },
@@ -193,6 +249,7 @@ function bindEvents(): void {
   document.addEventListener("input", (e) => {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
+    if (el.id === "guestName") return guestPrefill(el.value);
     if (el.id === "q-rules") return liveSearch("q-rules", (q) => (ui.ruleQ = q), el.value);
     if (el.id === "q-disc") return liveSearch("q-disc", (q) => (ui.discQ = q), el.value);
     if (el.dataset && el.dataset.f === "ann.ruleText") return void onEventField(el);

@@ -175,6 +175,69 @@ export function debtMap(s: State, today: string): Record<string, number> {
   return d;
 }
 
+export interface GuestDebt {
+  /** Misafirin kimliği */
+  id: string;
+  name: string;
+  amount: number;
+}
+
+/**
+ * Kural 1.8: misafirin vadesi gelmiş, ödenmemiş payları onu getirenin sorumluluğundadır.
+ * Her pay, o maçta misafiri kimin getirdiğine yazılır (maça bağlı olmayan ek borçta misafir
+ * kaydındaki getiren). Getireni olmayan ya da silinmiş oyuncunun misafiri sayılmaz.
+ * Döner: getiren → misafirlerinin borçları.
+ */
+export function guestDebts(s: State, today: string, acc: Map<string, Account> = accounts(s, today)): Map<string, GuestDebt[]> {
+  const out = new Map<string, GuestDebt[]>();
+  for (const a of acc.values()) {
+    if (!a.guest) continue;
+    for (const c of a.charges) {
+      const left = r2(c.amount - c.paid);
+      if (!c.due || left <= EPS) continue;
+      const m = c.mid ? s.matches.find((x) => x.id === c.mid) : undefined;
+      const host = m?.guests.find((g) => g.id === a.id)?.host || a.host;
+      if (!host || !s.players.some((p) => p.id === host)) continue;
+      let list = out.get(host);
+      if (!list) out.set(host, (list = []));
+      const x = list.find((d) => d.id === a.id);
+      if (x) x.amount = r2(x.amount + left);
+      else list.push({ id: a.id, name: a.name, amount: left });
+    }
+  }
+  return out;
+}
+
+export interface Liability {
+  /** Kendi borcu + misafirlerinin borcu */
+  total: number;
+  own: number;
+  guests: GuestDebt[];
+}
+
+/**
+ * Borç engeli (Kural 2.4) için sorumlu olunan borç: kişinin kendi borcu ve getirdiği
+ * misafirlerin ödenmemiş payları (1.8). Yalnızca borcu olanlar listelenir.
+ */
+export function liabilities(s: State, today: string): Record<string, Liability> {
+  const acc = accounts(s, today);
+  const out: Record<string, Liability> = {};
+  for (const a of acc.values()) if (a.owed > EPS) out[a.id] = { total: a.owed, own: a.owed, guests: [] };
+  for (const [host, list] of guestDebts(s, today, acc)) {
+    const x = (out[host] ??= { total: 0, own: 0, guests: [] });
+    x.guests = list;
+    x.total = r2(x.own + list.reduce((t, g) => t + g.amount, 0));
+  }
+  return out;
+}
+
+/** Kişi → sorumlu olunan toplam borç (kendi + misafirleri). */
+export function liabilityMap(s: State, today: string): Record<string, number> {
+  const d: Record<string, number> = {};
+  for (const [id, x] of Object.entries(liabilities(s, today))) d[id] = x.total;
+  return d;
+}
+
 /** Bir maçtaki bir kişinin pay durumu. */
 export function chargeOf(s: State, m: Match, id: string, today: string, acc?: Map<string, Account>): Charge | null {
   const a = (acc || accounts(s, today)).get(id);

@@ -31,7 +31,10 @@ diğerleri) organize etmek için telefonun ana ekranına kurulan, **internetsiz 
 
 Kurduktan sonra uygulama tam ekran açılır ve internet olmadan da çalışır.
 Yeni sürüm yayınlandığında üstte **"Yeni sürüm hazır → Güncelle"** şeridi
-çıkar; dokununca güncellenir, verilerin aynen kalır.
+çıkar; dokununca güncellenir, verilerin aynen kalır. Eşitleme "başka bir cihaz
+daha yeni bir sürüm kullanıyor" derse oradaki **Güncelle** yeni sürümü hemen
+indirip açar. Uygulama başka bir pencerede güncellenirse açık kalan pencerede
+"Uygulama güncellendi → Yenile" şeridi çıkar.
 
 ---
 
@@ -119,9 +122,17 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Dosya olarak indir** ve **Yedeği kopyala** (metin) seçenekleri de var.
 - **Hatırlatma:** 7 gün yedek almazsan üstte "Yedek alma zamanı" şeridi
   çıkar (eşitleme çalışıyorsa 30 günde bir).
-- **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir,
-  son 10 sürüm saklanır; silme, iptal, yedek yükleme gibi işlemlerden önce ayrıca
-  sürüm alınır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
+- **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir.
+  Son 10 sürüm, son 14 günün her günü için o günün son sürümü ve silme, iptal,
+  yedek yükleme, eşitleme gibi işlemlerden önce alınan sürümler (30 gün, en çok
+  20) saklanır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
+- **Depolama açılamazsa:** Telefonun depolaması (IndexedDB) açılışta geçici
+  olarak açılamazsa uygulama birkaç kez yeniden dener. Yine açılamazsa üstte
+  "Veriler asıl depoya yazılamıyor" şeridi çıkar; o sırada girilenler yedek
+  alana yazılır ve bir sonraki açılışta asıl veriyle birleştirilerek geri
+  yüklenir (çakışmada asıl veri kazanır; önceki hâl otomatik sürümlerde
+  "Kurtarma öncesi" olarak durur). Veriler uygulamanın daha yeni bir
+  sürümüyle kaydedilmişse uygulama hiçbir şeyi değiştirmeden "Önce güncelle" der.
 
 **Geri yükleme:** Ayarlar → Yedekleme → **Yedekten yükle** → **Dosya seç**
 (yedek dosyasını seç) ya da metni yapıştır → **Yükle**.
@@ -150,19 +161,34 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   (okey, 101, batak, king, pişti, tavla).
 - **Disiplin (Bölüm 9, Ek tablo):** ihlal kaydı; yönetmeliğin öngördüğü yaptırım
   önerilir (1. uyarı → 2. bir maç ceza → 3. davet edilmez; kavga, replika,
-  maske, alkol, zarar bedeli…). Cezalı, uzaklaştırılmış ya da borçlu kişi
+  maske, alkol, zarar bedeli…). Bir maç ceza, o maç iptal edilir ya da silinirse
+  sıradaki maça kayar. Etkinlik seçilmeden kaydedilen kavgada kişi o gün oynadığı
+  maçtan silinmez, oyundan alınır (payını öder). Cezalı, uzaklaştırılmış ya da borçlu kişi
   listeye yazılırken sorulur; son söz organizatörün (Kural 12.1).
-- **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9), kural değişikliği
-  (12.2) ve grup kuralları hatırlatması için hazır, düzenlenebilir metinler.
+- **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9; iptal edilmiş maçlar
+  da seçilebilir), kural değişikliği (12.2) ve grup kuralları hatırlatması için
+  hazır, düzenlenebilir metinler.
 - **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
-  "Geçen haftayı kopyala", sabit oyuncular, saha haritası/yol tarifi/arama,
+  "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
+  listesinden katılım tek seferde; önce önizlenir), sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler.
-- **Kurallarla uyum:** maça 24 saatten az kala "Yok" diyen geç iptal sayılır
-  (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
-  borçlu oyuncu yazılırken sorulur (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
+- **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
+  uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
+  açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
+  iddiası) ve günü gelmemiş iptal edilmiş maçın duyurusu paylaşılır.
+- **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
+  ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı
+  o öder (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
+  borçlu oyuncu yazılırken sorulur, toplu yazmada atlanır (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
   pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2). İkisi de Ayarlar'dan kapatılabilir.
+- **Misafir (Kural 1.8):** getiren, misafirinin ödemesinden ve davranışından
+  sorumludur. Misafirin ödenmemiş payı getirenin borç engeline sayılır; hatırlatma
+  getirene misafirin adıyla gider ("Misafir ödeme hatırlatması" şablonu). Önceki
+  misafirler adıyla önerilir, getireni/seviyesi/mevkii gelir; eski gelişinden
+  ödenmemiş payı ya da cezası varsa eklemeden önce sorulur. Misafire ihlal
+  yazılınca getirene de kademeli 1.8 kaydı önerilir.
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans
@@ -171,7 +197,7 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   ödeme, avans, iade), biriken borçlar, kişiye özel WhatsApp hatırlatma, aylık
   özet, organizatör giderleri (top, yelek, su) ve kasa durumu. Etkinliklerde
   kişiye ya da herkese eşit bölünen ek harcamalar (boya, mermi, masa; Kural 15.4).
-- **Paylaşım:** davet, kadro, takım, brifing, araç, iptal ve ödeme mesajları
+- **Paylaşım:** davet, kadro, takım, brifing, maç sonucu, araç, iptal ve ödeme mesajları
   tek dokunuşla WhatsApp'a. Halı saha şablonları Ayarlar'dan düzenlenebilir;
   diğer etkinliklerin mesajları türüne göre hazır gelir. Takım adları ve yelek
   renkleri Ayarlar'dan seçilir.

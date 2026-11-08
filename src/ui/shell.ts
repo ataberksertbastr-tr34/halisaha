@@ -16,6 +16,7 @@ import { viewAnnounce } from "./views/announce";
 import type { IconKey } from "./icons";
 import { applyFilter } from "./components";
 import { renderBanners } from "./banner";
+import { storageMode } from "../data/persist";
 import { pwa } from "../pwa/register";
 import { IC } from "./icons";
 import { viewMatch } from "./views/match";
@@ -58,6 +59,8 @@ export function applyTheme(): void {
 }
 
 export function renderApp(): void {
+  // Veri daha yeni bir sürümle kaydedilmiş: "Önce güncelle" ekranı kalır (main.ts showFuture)
+  if (storageMode() === "blocked") return;
   document.documentElement.lang = store.s.settings.lang;
   document.title = t("appName");
   applyTheme();

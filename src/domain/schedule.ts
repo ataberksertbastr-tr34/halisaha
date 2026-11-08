@@ -150,6 +150,18 @@ export function rememberSkip(s: State, m: Match, now: Date = new Date()): void {
 }
 
 /** Saha/tesis rezerve edilmemiş ve yaklaşan etkinlikler (hatırlatma için). */
+/**
+ * Saati geçtiği hâlde sonucu girilmemiş (hâlâ açık) maç ve etkinlikler, en eskisi önce.
+ * Halı saha başlangıçtan 3, diğer etkinlikler 6 saat sonra bitmiş sayılır. Bitirilmeyen maçta
+ * sıra cezası (Kural 1.6) kalıcı olmaz ve ödeme listesi kesinleşmez.
+ */
+export function unfinished(s: State, now: Date): Match[] {
+  const H = 60 * 60 * 1000;
+  return s.matches
+    .filter((m) => m.status === "open" && matchStart(m.date, m.time).getTime() + (isFootball(m) ? 3 : 6) * H <= now.getTime())
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
 export function needsReservation(s: State, now: Date): Match[] {
   const days = s.settings.reserveDays;
   if (!days) return [];

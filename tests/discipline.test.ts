@@ -2,7 +2,10 @@
  * Disiplin (Bölüm 9, Ek tablosu) ve ek borçlar (Kural 15.4, 10.5). İsimler uydurmadır.
  */
 import { describe, expect, it } from "vitest";
-import { addInfraction, joinBlock, removeInfraction, statusOf, suggest } from "../src/domain/discipline";
+import { addInfraction, benchMatch, joinBlock, removeInfraction, retireMatch, statusOf, suggest } from "../src/domain/discipline";
+import { payersOf } from "../src/domain/money";
+import { ensureUpcoming } from "../src/domain/schedule";
+import { player } from "./helpers/factory";
 import { accounts, cashAt, debtMap, extraStatus, newExtra, toggleExtraPaid } from "../src/domain/ledger";
 import { lineup } from "../src/domain/lineup";
 import { allIn, match, roster, state } from "./helpers/factory";
@@ -33,6 +36,51 @@ describe("Kural 9.3 kademesi", () => {
     expect(statusOf(s, "p0").bench).toEqual(["m1"]);
     expect(joinBlock(s, next, "p0", 0)).toEqual({ why: "bench", rule: "9.3" });
     expect(suggest(s, "p0", "late")).toEqual({ sanction: "ban", step: 3, rule: "1.7" });
+  });
+  it("bir maç ceza: hedef maç iptal edilirse sıradaki maça kayar, kişi oradan çıkar; iptal geri alınırsa geri döner", () => {
+    const { s, next, later } = setup();
+    addInfraction(s, { pid: "p0", type: "tackle", at: TODAY, sanction: "bench", step: 2, rule: "7.1", mid: "m0" }, TODAY);
+    const r = s.discipline[0];
+    expect(benchMatch(s, r)?.id).toBe("m1");
+    expect(later.att.p0).toBe("in");
+    expect(retireMatch(s, next)).toEqual(["p0"]); // yağmur: 13 Ekim iptal
+    expect(next.status).toBe("cancelled");
+    expect(statusOf(s, "p0").bench).toEqual(["m2"]);
+    expect(later.att.p0).toBe("out");
+    expect(joinBlock(s, later, "p0", 0)?.why).toBe("bench");
+    next.status = "open"; // iptal geri alındı
+    expect(statusOf(s, "p0").bench).toEqual(["m1"]);
+  });
+  it("bir maç ceza: hedef maç silinirse hedef sıradaki maça yazılır", () => {
+    const { s, next } = setup();
+    addInfraction(s, { pid: "p0", type: "tackle", at: TODAY, sanction: "bench", step: 2, rule: "7.1", mid: "m0" }, TODAY);
+    retireMatch(s, next, true);
+    s.matches = s.matches.filter((m) => m !== next);
+    expect(s.discipline[0].target).toBe("m2");
+    expect(statusOf(s, "p0").bench).toEqual(["m2"]);
+  });
+  it("bir maç ceza: kayıtta açık maç yoksa açılacak ilk maçta uygulanır; otomatik planlama o sabit oyuncuyu yazmaz", () => {
+    const ps = [player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Sabit Sinan", 3, "", { fixed: true })];
+    const s = state(ps, [allIn(match("m0", { date: "2026-10-06", status: "played" }), ["a", "b"])]);
+    addInfraction(s, { pid: "a", type: "tackle", at: "2026-10-06", sanction: "bench", step: 2, rule: "7.1", mid: "m0" }, "2026-10-08");
+    expect(s.discipline[0].target).toBeUndefined();
+    expect(statusOf(s, "a").bench).toEqual([]); // henüz maç yok
+    const made = ensureUpcoming(s, new Date(2026, 9, 9, 12, 0));
+    expect(made[0].order).toEqual(["b"]); // ilk maçta cezalı
+    expect(made[1].order).toEqual(["a", "b"]); // sonrakilerde değil
+    expect(statusOf(s, "a").bench).toEqual([made[0].id]);
+  });
+  it("etkinlik seçilmeden kaydedilen kavgada o gün oynadığı maçtan silinmez, oyundan alınır ve payını öder (Kural 9.1, 15.7)", () => {
+    const { s, next, later } = setup();
+    const day = "2026-10-13"; // maç günü
+    addInfraction(s, { pid: "p1", type: "fight", at: day, sanction: "expel", rule: "9.1" }, day);
+    const r = s.discipline[0];
+    expect(r.mid).toBe("m1");
+    expect(next.att.p1).toBe("in");
+    expect(next.removed.p1).toBe("9.1");
+    expect(payersOf(s, next)).toContain("p1");
+    expect(later.att.p1).toBeUndefined(); // sonraki maçlardan çıkar
+    expect(statusOf(s, "p1").expelled).toBe(true);
   });
   it("3. kademe ve ihraç: açık etkinliklerdeki yanıtlar silinir, yazılması engellenir", () => {
     const { s, later, air } = setup();

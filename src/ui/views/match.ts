@@ -11,11 +11,12 @@ import { ddmm } from "../../domain/dates";
 import { dirUrl, fieldOf, mapsUrl, telHref } from "../../domain/fields";
 import { capOf, currentMatch, isGuest, lineup, penalized } from "../../domain/lineup";
 import { estShare } from "../../domain/money";
-import { debtMap } from "../../domain/ledger";
+import { liabilityMap } from "../../domain/ledger";
 import { dayName } from "../../domain/messages";
 import { copyCandidates, isLocked, lockAt, lockHours, noShowLastTime, reliability } from "../../domain/roster";
 import { checkProgress, eventTitle, isFootball, kindOf, L, pendingAgreements } from "../../domain/kinds";
 import { joinBlock, statusMap } from "../../domain/discipline";
+import { pastGuests } from "../../domain/guests";
 import { teamName } from "../../domain/teamstyle";
 import { emptyState, fieldOptions, filterBar, kindIcon, matchChips, posBadge, posOptions, ruleChip, shareButtons } from "../components";
 import { IC } from "../icons";
@@ -96,7 +97,8 @@ function attendanceBlock(m: Match): string {
   const fb = isFootball(m);
   const { playing, wait } = lineup(S, m);
   const st = (id: string) => m.att[id] || "";
-  const dm = debtMap(S, today());
+  // Borç etiketi ve engeli: kendi borcu ve getirdiği misafirlerin ödenmemiş payı (Kural 2.4, 1.8)
+  const dm = liabilityMap(S, today());
   const rel = reliability(S);
   const disc = statusMap(S);
   const noShowPrev = noShowLastTime(S, m);
@@ -127,6 +129,7 @@ function attendanceBlock(m: Match): string {
   h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(kindOf(m).teams === "tables" ? t("drawTables") : t("buildTeams")) + "</button></div>";
   const cands = copyCandidates(S, m).length;
   if (cands) h += '<button type="button" class="btn block ghost mt-s" data-a="copyLastWeek">' + IC.copy + esc(fb ? t("copyLastWeek") : t("copyLastEvent")) + " (" + cands + ")</button>";
+  h += '<button type="button" class="btn block ghost mt-s" data-a="pasteList">' + IC.whatsapp + esc(t("pasteList")) + "</button>";
   h += filterBar("att", true, fb);
   h += '<ul class="plist" id="list-att">';
   people.forEach((p) => {
@@ -154,7 +157,12 @@ function attendanceBlock(m: Match): string {
   h += '</ul><p class="none-msg" id="none-att" hidden>' + esc(t("noResults")) + "</p>";
   h += '<p class="legend">' + esc(t("legend")) + "<br>" + esc(t("enterHint")) + "</p>";
   const hosts = S.players.filter((p) => p.active !== false).slice().sort(trSort);
-  h += "<h3>" + esc(t("addGuest")) + " " + ruleChip("1.8") + '</h3><div class="row guest-row"><input type="text" id="guestName" placeholder="' + esc(t("guestName")) + '" aria-label="' + esc(t("guestName")) + '" autocomplete="off" enterkeyhint="done">' +
+  // Daha önce getirilmiş misafirler adıyla önerilir; seçilince getiren, seviye ve mevki gelir (Kural 1.8)
+  const here = new Set(m.guests.map((g) => norm(g.name)));
+  const prev = pastGuests(S, m.id).filter((g) => !here.has(norm(g.name))).slice(0, 40);
+  const hostOf = (id?: string) => (id ? S.players.find((p) => p.id === id)?.name || "" : "");
+  h += "<h3>" + esc(t("addGuest")) + " " + ruleChip("1.8") + '</h3><div class="row guest-row"><input type="text" id="guestName" placeholder="' + esc(t("guestName")) + '" aria-label="' + esc(t("guestName")) + '" autocomplete="off" enterkeyhint="done"' + (prev.length ? ' list="guestPrev"' : "") + ">" +
+    (prev.length ? '<datalist id="guestPrev">' + prev.map((g) => '<option value="' + esc(g.name) + '" label="' + esc([hostOf(g.host) ? t("guestOf", { n: hostOf(g.host) }) : "", ddmm(g.last)].filter(Boolean).join(" · ")) + '"></option>').join("") + "</datalist>" : "") +
     (fb ? '<select id="guestPos" aria-label="' + esc(t("position")) + '">' + posOptions("") + "</select>" : "") +
     '<select id="guestRate" aria-label="' + esc(t("rating")) + '">' + [1, 2, 3, 4, 5].map((r) => '<option value="' + r + '"' + (r === 3 ? " selected" : "") + ">" + r + "/5</option>").join("") + "</select>" +
     '<select id="guestHost" aria-label="' + esc(t("host")) + '"><option value="">' + esc(t("hostNone")) + "</option>" + hosts.map((p) => '<option value="' + esc(p.id) + '">' + esc(t("host") + ": " + p.name) + "</option>").join("") + "</select>" +
@@ -166,6 +174,14 @@ function attendanceBlock(m: Match): string {
 function blockedHard(m: Match, id: string, disc: ReturnType<typeof statusMap>): boolean {
   const ds = disc[id];
   return !!ds && (ds.expelled || ds.banned || ds.kinds.includes(m.kind));
+}
+
+/** Geçmişteki maçın mesajı: oynanan maçın sonucu, günü gelmemiş iptal edilmiş maçın duyurusu (önizlemeyle açılır). */
+function histShare(m: Match): string {
+  const k = m.status === "played" ? "result" : m.status === "cancelled" && m.date >= today() ? "cancel" : "";
+  if (!k) return "";
+  const label = t(k === "result" ? "shareResult" : "announceCancel") + ": " + dayName(m.date) + " " + ddmm(m.date);
+  return '<button type="button" class="iconbtn" data-a="msgPreview" data-k="' + k + '" data-id="' + esc(m.id) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' + (k === "result" ? IC.share : IC.megaphone) + "</button>";
 }
 
 export function historyBlock(): string {
@@ -182,7 +198,7 @@ export function historyBlock(): string {
     else if (m.status === "played" && !fb && m.games.length) sub = t("gamesPlayed", { n: m.games.filter((g) => g.done).length });
     const f = fieldOf(S, m);
     h += '<div class="hist"><div class="minw0"><strong>' + (fb ? "" : kindIcon(m).replace("<svg", '<svg class="kic"')) + esc(dayName(m.date)) + " " + esc(ddmm(m.date)) + '</strong> <span class="muted small">' + esc(m.time) + (fb ? "" : " · " + esc(eventTitle(m))) + (f ? ", " + esc(f.name) : "") + "</span>" + (sub ? '<div class="small muted">' + esc(sub) + "</div>" : "") +
-      '</div><div class="row nowrap">' + res + '<button type="button" class="btn xs ghost" data-a="reopen" data-id="' + esc(m.id) + '">' + esc(t("reopen")) + "</button></div></div>";
+      '</div><div class="row nowrap">' + res + histShare(m) + '<button type="button" class="btn xs ghost" data-a="reopen" data-id="' + esc(m.id) + '">' + esc(t("reopen")) + "</button></div></div>";
   });
   return h + "</section>";
 }

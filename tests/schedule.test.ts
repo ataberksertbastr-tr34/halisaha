@@ -1,6 +1,6 @@
 /** Maç planlama, rezervasyon hatırlatması ve takvim (.ics). */
 import { describe, expect, it } from "vitest";
-import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, upcomingSlots } from "../src/domain/schedule";
+import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, unfinished, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
 import { allIn, match, player, state } from "./helpers/factory";
 import { addInfraction } from "../src/domain/discipline";
@@ -132,6 +132,20 @@ describe("saha rezervasyonu hatırlatması", () => {
     expect(needsReservation(s, NOW).map((m) => m.id)).toEqual(["a"]);
     s.settings.reserveDays = 0;
     expect(needsReservation(s, NOW)).toEqual([]);
+  });
+});
+
+describe("sonucu girilmemiş maç", () => {
+  it("halı saha başlangıçtan 3, etkinlik 6 saat sonra; oynanan ve iptal edilen sayılmaz; en eskisi önce", () => {
+    const a = match("a", { date: "2026-10-09", time: "09:00" });
+    const b = match("b", { date: "2026-10-09", time: "09:01" });
+    const c = match("c", { date: "2026-10-08", time: "21:00", status: "played" });
+    const d = match("d", { date: "2026-10-07", time: "21:00", status: "cancelled" });
+    const e = match("e", { date: "2026-10-09", time: "07:00", kind: "paintball" });
+    const f = match("f", { date: "2026-10-09", time: "05:59", kind: "paintball" });
+    const g = match("g", { date: "2026-10-06", time: "21:00" });
+    const s = state([], [a, b, c, d, e, f, g]);
+    expect(unfinished(s, NOW).map((m) => m.id)).toEqual(["g", "f", "a"]);
   });
 });
 

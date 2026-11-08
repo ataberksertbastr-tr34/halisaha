@@ -1,10 +1,10 @@
 /** Kadro yardımcıları: geçen haftayı kopyalama, sabit oyuncular, 24 saat kuralı, güvenilirlik. */
-import type { Match, State } from "./types";
+import type { Att, Match, State } from "./types";
 import { lineup, setAtt } from "./lineup";
 import { matchStart, weekday } from "./dates";
 import { isFootball } from "./kinds";
 import { joinBlock } from "./discipline";
-import { debtMap } from "./ledger";
+import { liabilityMap } from "./ledger";
 
 const when = (m: Match) => m.date + " " + m.time;
 
@@ -44,7 +44,8 @@ export interface Added {
  */
 export function blockedFor(s: State, today: string): Skip {
   let debts: Record<string, number> | null = null;
-  return (m, id) => !!joinBlock(s, m, id, (debts ??= debtMap(s, today))[id] || 0);
+  // Borçta getirdiği misafirlerin ödenmemiş payı da sayılır (Kural 1.8)
+  return (m, id) => !!joinBlock(s, m, id, (debts ??= liabilityMap(s, today))[id] || 0);
 }
 
 /**
@@ -96,6 +97,15 @@ export function isLocked(m: Match, now: Date): boolean {
   if (m.status !== "open") return false;
   const at = lockAt(m);
   return !!at && now.getTime() >= at.getTime();
+}
+
+/**
+ * Kural 1.4, 1.5, 15.3: kadro kesinleştikten sonra oynayan kadrodan çıkan geç iptal sayılır;
+ * "Yok", "Belki" ya da "Var"ı kaldırmak (aynı yanıta yeniden dokunmak onu siler) fark etmez.
+ * st: dokunulan yanıt; wasPlaying: dokunmadan önce oynayan kadroda mıydı (yani "Var").
+ */
+export function lateCancel(m: Match, st: Att, wasPlaying: boolean, now: Date): boolean {
+  return wasPlaying && st !== "late" && isLocked(m, now);
 }
 
 export interface Reliability {
