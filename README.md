@@ -281,7 +281,11 @@ uygulamanın Kurallar sayfası bir sonraki yayında güncellenir.
 
 **Yayın:** `main`'e her merge'de `.github/workflows/ci.yml` testleri çalıştırır
 ve geçerse GitHub Pages'e yayınlar. İlk seferde depo ayarlarında
-**Settings → Pages → Source: GitHub Actions** seçilmelidir.
+**Settings → Pages → Source: GitHub Actions** seçilmelidir. Yayın yalnızca dış
+ağa bağlı olmayan testleri bekler. Gerçek Google'a bağlanan "Google ile giriş"
+testleri ayrı bir işte çalışır (bir kez yeniden denenir); kırmızıysa PR'da
+görünür ama yayını durdurmaz. Testler her pazartesi de kendiliğinden çalışır;
+bozulan bir şey varsa GitHub e-postayla haber verir.
 
 **Arma ve ikonlar:** `brand/predators-crest.png` kaynak; ikonlar
 `scripts/make-icons.ts` ile üretilir, üst bölümdeki arma `public/brand/crest.webp`.
