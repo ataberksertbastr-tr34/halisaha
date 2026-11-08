@@ -506,3 +506,67 @@ test("dokunma alanları en az 44 px: hiçbir ekranda boşa giden dokunuş yok", 
   found.push(...(await dead("toast")));
   expect(found).toEqual([]);
 });
+
+const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+
+test("iPhone Safari'de veri varken ana ekrana eklemeden önce yedek ya da eşitleme hatırlatılır; bir kez kapatılır", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: IPHONE });
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await page.goto("/#/match");
+  // Veri yokken hatırlatma yok
+  await expect(page.locator("#banner")).not.toContainText("Ana ekrana eklemeden önce");
+  await importBackupText(page, V2);
+  await page.goto("/#/match");
+  const banner = page.locator("#banner .banner", { hasText: "Ana ekrana eklemeden önce" });
+  await expect(banner).toContainText("Safari'deki verileri görmez");
+  await expect(banner.locator('[data-a="shareBackup"]')).toBeVisible();
+  await expect(banner.locator('[data-a="nav"][data-v="settings"]')).toBeVisible();
+  // Eşitleme daveti ayrıca çıkmaz (bu şerit giriş yapmayı da önerir)
+  await expect(page.locator("#banner")).not.toContainText("Verilerin her cihazında olsun");
+  await noHorizontalScroll(page);
+  // Kurulum anlatımı da uyarır
+  await page.goto("/#/settings");
+  await expect(page.locator('section[aria-labelledby="h-app"]')).toContainText("önce yedeği paylaş ya da eşitlemeye giriş yap");
+  await page.goto("/#/match");
+  await banner.locator('[data-a="iosMoveDismiss"]').click();
+  await expect(page.locator("#banner")).not.toContainText("Ana ekrana eklemeden önce");
+  // Kapatınca eşitleme daveti yerine gelir
+  await expect(page.locator("#banner")).toContainText("Verilerin her cihazında olsun");
+  await page.reload();
+  await expect(page.locator("#view")).not.toBeEmpty();
+  await expect(page.locator("#banner")).not.toContainText("Ana ekrana eklemeden önce");
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test("iPhone ana ekrandaki boş uygulama Safari'deki yedeği yüklemeyi önerir; eşitleme daveti ikinci şerit olarak çıkmaz", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: IPHONE });
+  await ctx.addInitScript(() => Object.defineProperty(navigator, "standalone", { get: () => true }));
+  const page = await ctx.newPage();
+  const errors = watchErrors(page);
+  await page.goto("/#/match");
+  const banner = page.locator("#banner .banner", { hasText: "Safari'deki verilerin buraya gelmez" });
+  await expect(banner).toBeVisible();
+  await expect(banner.locator('[data-a="nav"][data-v="settings"]')).toBeVisible();
+  await expect(page.locator("#banner")).not.toContainText("Verilerin başka bir cihazda mı?");
+  await noHorizontalScroll(page);
+  await banner.locator('[data-a="importOpen"]').click();
+  await expect(page.locator("#mtext")).toBeVisible();
+  await page.locator("#mtext").fill(V2);
+  await page.locator('[data-a="doImport"]').click();
+  await page.locator('[data-a="confirmImport"]').click();
+  await expect(page.locator("#toast")).toContainText("Yedek yüklendi");
+  // Veri geldi: şerit kalkar
+  await expect(page.locator("#banner")).not.toContainText("Safari'deki verilerin buraya gelmez");
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test("iPhone dışında Safari/ana ekran hatırlatması çıkmaz", async ({ page }) => {
+  await importBackupText(page, V2);
+  await page.goto("/#/match");
+  await expect(page.locator("#view")).not.toBeEmpty();
+  await expect(page.locator("#banner")).not.toContainText("Ana ekrana eklemeden önce");
+  await expect(page.locator("#banner")).not.toContainText("Safari'deki verilerin buraya gelmez");
+});

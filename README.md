@@ -29,6 +29,13 @@ diğerleri) organize etmek için telefonun ana ekranına kurulan, **internetsiz 
 2. Alttaki **Paylaş** düğmesine (kare ve yukarı ok) dokun.
 3. **Ana Ekrana Ekle** → **Ekle**.
 
+> iPhone'da ana ekrandaki uygulama Safari'deki verileri **görmez** (depolamaları
+> ayrı). Uygulamayı önce Safari'de kullandıysan kurmadan önce Ayarlar →
+> **Yedeği paylaş** de, sonra ana ekrandaki uygulamada **Yedekten yükle**. Ya da
+> eşitlemeye giriş yap; ana ekrandaki uygulamada aynı e-posta ve şifreyle girince
+> veriler gelir. Uygulama bunu Safari'de ve ana ekrandaki boş uygulamada da
+> hatırlatır.
+
 Kurduktan sonra uygulama tam ekran açılır ve internet olmadan da çalışır.
 Yeni sürüm yayınlandığında üstte **"Yeni sürüm hazır → Güncelle"** şeridi
 çıkar; dokununca güncellenir, verilerin aynen kalır. Eşitleme "başka bir cihaz
