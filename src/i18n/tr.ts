@@ -205,7 +205,7 @@ export const tr = {
   syncErr_corrupt: "Buluttaki veri okunamadı.", syncErr_conflict: "Diğer cihazla aynı anda yazıldı; tekrar denenecek.", syncErr_unknown: "Beklenmeyen bir hata oldu; tekrar denenecek.",
   syncBannerEmpty: "Verilerin başka bir cihazda mı?", syncBannerEmptyText: "Giriş yap, aynı veriler bu cihaza da gelsin.",
   syncBannerData: "Verilerin her cihazında olsun", syncBannerDataText: "Bir kez giriş yap; telefonda ve bilgisayarda aynı veriler kendiliğinden güncel kalır.",
-  syncProject: "Firebase projesi: {p}", syncReload: "Yenile",
+  syncProject: "Firebase projesi: {p}", syncReload: "Güncelle",
   syncBannerUpdate: "Eşitleme için güncelleme gerekiyor", syncBannerAuth: "Eşitleme durdu", syncBannerAuthText: "Buluta erişilemedi. Çıkış yapıp yeniden gir; düzelmezse Firebase'deki kuralları kontrol et.",
   syncBannerLost: "Eşitleme durdu: oturum kapandı", syncBannerLostText: "Verilerin bu cihazda duruyor. Yeniden giriş yap, eşitleme kaldığı yerden sürsün.",
   syncSt_lost: "Oturum kapandı; eşitleme için yeniden giriş yap",
@@ -214,6 +214,7 @@ export const tr = {
   unfinishedTitle: "Sonuç bekleniyor", unfinishedText: "{d}: saati geçti ama bitirilmedi. Sonucu gir; ödemeler kesinleşsin, sıra cezaları işlesin (Kural 1.6).",
   unfinishedGo: "Sonucu gir",
   tplGuestPay: "Misafir ödeme hatırlatması (getirene)", sampleGuest: "Mehmet", guestDebtIncl: "misafiri {g} dahil", guestPrevDebt: "önceki gelişinden {a} ödenmemiş",
+  updating: "Yeni sürüm indiriliyor…", updatedElsewhere: "Uygulama güncellendi", updatedElsewhereText: "Başka bir pencerede yeni sürüm açıldı. Bu pencereyi yenile; verilerin aynen kalır.", reloadPage: "Yenile",
   discHostToo: "Getireni de kaydet: {n} · {s} (Kural 1.8)", discSavedHost: "Kaydedildi; getiren {n} için de 1.8 kaydı yazıldı",
 } as const;
 

@@ -164,13 +164,18 @@ function setupBackupReminder(): void {
 }
 
 function setupPWA(): void {
-  addBanner(() =>
-    pwa.updateReady()
-      ? bannerHTML({ icon: IC.download, title: esc(t("updateReady")), text: esc(t("updateText")), actions: '<button type="button" class="btn sm primary" data-a="applyUpdate">' + esc(t("update")) + "</button>" })
-      : "",
-  );
+  addBanner(() => {
+    // Başka pencerede güncellendi: bu pencere eski kodla kaydetmesin diye yenilenmeli
+    if (pwa.updatedElsewhere()) return bannerHTML({ icon: IC.download, tone: "warn", title: esc(t("updatedElsewhere")), text: esc(t("updatedElsewhereText")), actions: '<button type="button" class="btn sm primary" data-a="reloadPage">' + esc(t("reloadPage")) + "</button>" });
+    // Eşitleme zaten "güncelle" diyorsa aynı işi gören ikinci şerit çıkmaz
+    if (!pwa.updateReady() || syncView().status.state === "needsUpdate") return "";
+    return bannerHTML({ icon: IC.download, title: esc(t("updateReady")), text: esc(t("updateText")), actions: '<button type="button" class="btn sm primary" data-a="applyUpdate">' + esc(t("update")) + "</button>" });
+  });
   registerActions({
     applyUpdate: () => applyUpdate(flush),
+    reloadPage: () => {
+      flush().finally(() => location.reload());
+    },
     install: () => {
       promptInstall().catch(() => toast(t("installHint")));
     },

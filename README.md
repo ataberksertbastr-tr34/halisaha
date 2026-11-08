@@ -31,7 +31,10 @@ diğerleri) organize etmek için telefonun ana ekranına kurulan, **internetsiz 
 
 Kurduktan sonra uygulama tam ekran açılır ve internet olmadan da çalışır.
 Yeni sürüm yayınlandığında üstte **"Yeni sürüm hazır → Güncelle"** şeridi
-çıkar; dokununca güncellenir, verilerin aynen kalır.
+çıkar; dokununca güncellenir, verilerin aynen kalır. Eşitleme "başka bir cihaz
+daha yeni bir sürüm kullanıyor" derse oradaki **Güncelle** yeni sürümü hemen
+indirip açar. Uygulama başka bir pencerede güncellenirse açık kalan pencerede
+"Uygulama güncellendi → Yenile" şeridi çıkar.
 
 ---
 

@@ -207,7 +207,7 @@ export const en: Record<MsgKey, string> = {
   syncErr_corrupt: "The cloud data couldn't be read.", syncErr_conflict: "Written at the same time as another device; retrying.", syncErr_unknown: "Something unexpected happened; retrying.",
   syncBannerEmpty: "Is your data on another device?", syncBannerEmptyText: "Sign in to bring the same data to this device.",
   syncBannerData: "Have your data on every device", syncBannerDataText: "Sign in once; your phone and computer stay up to date automatically.",
-  syncProject: "Firebase project: {p}", syncReload: "Reload",
+  syncProject: "Firebase project: {p}", syncReload: "Update",
   syncBannerUpdate: "Update needed to sync", syncBannerAuth: "Syncing stopped", syncBannerAuthText: "The cloud couldn't be reached. Sign out and sign in again; if that doesn't help, check the Firebase rules.",
   syncBannerLost: "Sync stopped: signed out", syncBannerLostText: "Your data is still on this device. Sign in again to resume syncing.",
   syncSt_lost: "Signed out; sign in again to sync",
@@ -216,5 +216,6 @@ export const en: Record<MsgKey, string> = {
   unfinishedTitle: "Result pending", unfinishedText: "{d}: its time has passed but it wasn't finished. Enter the result so payments are final and queue penalties apply (Rule 1.6).",
   unfinishedGo: "Enter result",
   tplGuestPay: "Guest payment reminder (to the host)", sampleGuest: "Sam", guestDebtIncl: "incl. guest {g}", guestPrevDebt: "{a} unpaid from a previous visit",
+  updating: "Downloading the new version…", updatedElsewhere: "App updated", updatedElsewhereText: "A new version was opened in another window. Reload this one; your data stays as it is.", reloadPage: "Reload",
   discHostToo: "Also record the host: {n} · {s} (Rule 1.8)", discSavedHost: "Saved; a Rule 1.8 record was added for the host {n}",
 };

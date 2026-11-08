@@ -3,6 +3,8 @@ import { registerActions } from "./actions";
 import { t, type MsgKey } from "../i18n";
 import { toast } from "../ui/toast";
 import { renderBanners } from "../ui/banner";
+import { forceUpdate } from "../pwa/register";
+import { flush } from "../data/persist";
 import { dismissSyncBanner } from "../ui/views/sync";
 import { clearConfig, dismissLost, resetPassword, saveConfigText, setPassword, signInEmail, signInGoogle, signOutSync, signUpEmail, syncNow } from "../sync";
 
@@ -80,7 +82,11 @@ registerActions({
         location.reload();
       });
   },
-  syncReload: () => location.reload(),
+  // "Başka cihaz daha yeni sürümde": yeni sürümü indirip uygular (yalnızca yeniden yüklemek eski sürümü açar)
+  syncReload: () => {
+    toast(t("updating"));
+    forceUpdate(flush);
+  },
   syncDismiss: () => {
     dismissSyncBanner();
     renderBanners();
