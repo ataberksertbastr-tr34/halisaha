@@ -33,7 +33,9 @@ test("IndexedDB açılamazsa uyarılır, girilenler kaybolmaz: sonraki açılı�
 
   await page.reload();
   await expect(page.locator("#toast")).toContainText("geri yüklendi");
+  // O oturumda ekranda boş bir kopya vardı: girilen asıl veriyle birleşir, asıl veri kaybolmaz
   await expect(page.locator("#list-roster")).toContainText("Acil Ayşe");
+  await expect(page.locator("#list-roster")).toContainText("Kalıcı Kerem");
   await expect(page.locator("#banner")).not.toContainText("Veriler asıl depoya yazılamıyor");
   // Önceki hâl kilitli sürüm olarak durur
   await page.goto("/#/settings");

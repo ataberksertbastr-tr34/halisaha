@@ -8,6 +8,13 @@ import type { State } from "../domain/types";
 
 export const LEGACY_KEY = "halisaha.v1";
 export const FALLBACK_KEY = "halisaha.fallback";
+/**
+ * Acil kopyanın türü: "local" asıl depo açılamadığı oturumda yazıldı (ekranda eski ya da boş bir
+ * kopya vardı; geri yüklerken asıl veriyle birleştirilir); "save" asıl depoya yazma bir kez
+ * başarısız oldu (asıl verinin en son hâli; olduğu gibi geri yüklenir).
+ */
+export const FALLBACK_KIND_KEY = "halisaha.fallback.kind";
+export type FallbackKind = "local" | "save";
 
 function readKey(key: string): unknown | null {
   try {
@@ -27,18 +34,28 @@ export function readFallback(): unknown | null {
 }
 
 /** Acil kopyayı yazar; depolama dolu ya da kapalıysa false. */
-export function writeFallback(s: State): boolean {
+export function writeFallback(s: State, kind: FallbackKind): boolean {
   try {
     localStorage.setItem(FALLBACK_KEY, JSON.stringify(s));
+    localStorage.setItem(FALLBACK_KIND_KEY, kind);
     return true;
   } catch {
     return false;
   }
 }
 
+export function readFallbackKind(): FallbackKind {
+  try {
+    return localStorage.getItem(FALLBACK_KIND_KEY) === "save" ? "save" : "local";
+  } catch {
+    return "local";
+  }
+}
+
 export function clearFallback(): void {
   try {
     localStorage.removeItem(FALLBACK_KEY);
+    localStorage.removeItem(FALLBACK_KIND_KEY);
   } catch {
     /* depolama kapalı */
   }

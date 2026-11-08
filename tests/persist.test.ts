@@ -164,16 +164,17 @@ describe("açılışta depolama hatası", () => {
     expect(P.loadIssue()).toBe("");
   });
 
-  it("hiç açılmazsa acil kopyaya yazılır ve uyarılır; sonraki açılışta daha yeni acil kopya geri yüklenir, önceki hâl kilitli sürüm olur", async () => {
+  it("hiç açılmazsa acil kopyaya yazılır ve uyarılır; sonraki açılışta o oturumda girilenler asıl veriyle birleşir, önceki hâl kilitli sürüm olur", async () => {
     await P.loadState();
-    await P.saveState(withStamp("Eski Ekrem", 100));
+    await P.saveState({ ...withStamp("Eski Ekrem", 100), settings: { ...state().settings, iban: "TR11" } });
     const real = globalThis.indexedDB;
     await reopen();
     globalThis.indexedDB = flaky(real, 99);
     await P.loadState();
     expect(P.storageMode()).toBe("local");
     expect(P.loadIssue()).toBe("local");
-    await P.saveState(withStamp("Yeni Yusuf", 200));
+    // Ekranda boş bir kopya var (asıl depo okunamadı); organizatör bir oyuncu ekler
+    await P.saveState({ ...state([player("y", "Yeni Yusuf")]), updatedAt: 200 });
     expect(JSON.parse(mem.get(P.FALLBACK_KEY)!).players[0].name).toBe("Yeni Yusuf");
     await reopen();
     globalThis.indexedDB = real;
@@ -181,13 +182,45 @@ describe("açılışta depolama hatası", () => {
     expect(((await D.kvGet("state")) as { players: { name: string }[] }).players[0].name).toBe("Eski Ekrem");
     await D.closeDB();
     const s = await P.loadState();
-    expect(s.players.map((p) => p.name)).toEqual(["Yeni Yusuf"]);
+    // Asıl veri kaybolmaz (oyuncusu da IBAN'ı da), o oturumda eklenen de gelir
+    expect(s.players.map((p) => p.name).sort()).toEqual(["Eski Ekrem", "Yeni Yusuf"]);
+    expect(s.settings.iban).toBe("TR11");
     expect(P.loadIssue()).toBe("recovered");
-    expect(((await D.kvGet("state")) as { players: { name: string }[] }).players[0].name).toBe("Yeni Yusuf");
+    expect(((await D.kvGet("state")) as { players: unknown[] }).players).toHaveLength(2);
     expect(mem.has(P.FALLBACK_KEY)).toBe(false);
     const snaps = await P.listSnapshots();
     expect(snaps[0]).toMatchObject({ locked: true, reason: "before-recovery" });
     expect(JSON.parse(snaps[0].data).players[0].name).toBe("Eski Ekrem");
+  });
+
+  it("asıl depoya yazma bir kez başarısız olduysa acil kopya (en son hâl) olduğu gibi geri yüklenir; silinen de silinmiş kalır", async () => {
+    await P.loadState();
+    await P.saveState({ ...state([player("a", "Kalan Kaan"), player("b", "Silinen Selin")]), updatedAt: 100 });
+    mem.set(P.FALLBACK_KEY, JSON.stringify({ ...state([player("a", "Kalan Kaan")]), updatedAt: 200 }));
+    mem.set("halisaha.fallback.kind", "save");
+    await reopen();
+    const s = await P.loadState();
+    expect(s.players.map((p) => p.name)).toEqual(["Kalan Kaan"]);
+    expect(P.loadIssue()).toBe("recovered");
+    expect(mem.size).toBe(0);
+  });
+
+  it("yerel oturum, yazılamamış en son hâlin üzerine kurulduysa onun gibi olduğu gibi geri yüklenir", async () => {
+    await P.loadState();
+    await P.saveState({ ...state([player("a", "Kalan Kaan"), player("b", "Silinen Selin")]), updatedAt: 100 });
+    mem.set(P.FALLBACK_KEY, JSON.stringify({ ...state([player("a", "Kalan Kaan")]), updatedAt: 200 }));
+    mem.set("halisaha.fallback.kind", "save");
+    const real = globalThis.indexedDB;
+    await reopen();
+    globalThis.indexedDB = flaky(real, 99);
+    const s0 = await P.loadState();
+    expect(s0.players.map((p) => p.name)).toEqual(["Kalan Kaan"]);
+    await P.saveState({ ...state([player("a", "Kalan Kaan"), player("c", "Yeni Can")]), updatedAt: 300 });
+    expect(mem.get("halisaha.fallback.kind")).toBe("save");
+    await reopen();
+    globalThis.indexedDB = real;
+    const s = await P.loadState();
+    expect(s.players.map((p) => p.name)).toEqual(["Kalan Kaan", "Yeni Can"]);
   });
 
   it("asıl depodakinden eski acil kopya yok sayılır ve silinir", async () => {

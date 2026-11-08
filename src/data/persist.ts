@@ -12,7 +12,8 @@ import type { State } from "../domain/types";
 import { BackupError, migrate } from "../domain/migrate";
 import { SCHEMA_VERSION } from "../domain/schema";
 import { closeDB, kvGet, kvSet, RETENTION, snapGet, snapList, snapPut, type Snapshot } from "./db";
-import { clearFallback, FALLBACK_KEY, LEGACY_KEY, newerThan, readFallback, readLocalBest, writeFallback } from "./local";
+import { clearFallback, FALLBACK_KEY, LEGACY_KEY, newerThan, readFallback, readFallbackKind, readLocalBest, writeFallback, type FallbackKind } from "./local";
+import { merge3 } from "../sync/merge";
 
 /** Her durumda tutulan en yeni sürüm sayısı (ayrıca son 14 günün her günü ve 30 güne kadar kilitli sürümler: db.ts RETENTION) */
 export const KEEP_SNAPSHOTS = RETENTION.keep;
@@ -33,6 +34,8 @@ let mode: Mode = "idb";
 export type LoadIssue = "" | "local" | "future" | "recovered";
 let issue: LoadIssue = "";
 let onBlocked: () => void = () => undefined;
+/** Yerel modda yazılan acil kopyanın türü: ekrandaki kopya asıl verinin en son hâliyse ("save") öyle kalır */
+let localKind: FallbackKind = "local";
 /** Açılışta asıl depoyu yeniden deneme aralıkları (ms) */
 export const RETRY_MS = [200, 800, 2000];
 let meta: Meta = { firstUseAt: Date.now(), lastExportAt: 0, reminderSnoozeUntil: 0 };
@@ -87,8 +90,10 @@ export async function loadState(): Promise<State> {
       console.warn("IndexedDB açılamadı; veriler acil kopyaya yazılacak", e);
       mode = "local";
       issue = "local";
+      const best = readLocalBest();
+      localKind = best?.key === FALLBACK_KEY && readFallbackKind() === "save" ? "save" : "local";
       try {
-        return migrate(readLocalBest()?.raw ?? null);
+        return migrate(best?.raw ?? null);
       } catch (e2) {
         if (isFuture(e2)) return blocked();
         return migrate(null);
@@ -120,7 +125,10 @@ async function loadFromIDB(): Promise<State> {
   } else if (fb && newerThan(fb, raw)) {
     // Acil kopya daha yeni: o oturumda girilenler geri gelir, asıl depodaki hâl kilitli sürüm olur
     await snapshotRaw(JSON.stringify(raw), "before-recovery");
-    raw = fb;
+    // Asıl depo açılamayan oturumda ekranda eski ya da boş bir kopya vardı: o oturumda girilenler
+    // asıl veriyle birleşir (eşitlemedeki birleştirme; çakışmada asıl veri kazanır, eklenenler kalır).
+    // Yazma bir kez başarısız olduysa acil kopya asıl verinin en son hâlidir: olduğu gibi alınır.
+    raw = readFallbackKind() === "local" ? merge3(null, migrate(fb), migrate(raw)) : fb;
     source = "fallback";
   }
   const rawObj = raw as { v?: number } | null;
@@ -145,7 +153,7 @@ async function snapshotRaw(data: string, reason: string): Promise<void> {
 async function writeNow(s: State): Promise<void> {
   if (mode === "blocked") return;
   if (mode === "local") {
-    if (!writeFallback(s)) throw new Error("localStorage");
+    if (!writeFallback(s, localKind)) throw new Error("localStorage");
     return;
   }
   // Uygulama başka pencerede güncellendiyse bu pencere yeni şemadaki veriyi eskisiyle ezmesin
@@ -181,7 +189,7 @@ function run(): Promise<void> {
           } catch (e) {
             onError(e);
             // Son çare: acil kopya (sonraki açılışta asıl depodakinden yeniyse geri yüklenir)
-            if (mode === "idb") writeFallback(s);
+            if (mode === "idb") writeFallback(s, "save");
           }
         }
       } catch (e) {

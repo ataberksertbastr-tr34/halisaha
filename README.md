@@ -129,8 +129,9 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Depolama açılamazsa:** Telefonun depolaması (IndexedDB) açılışta geçici
   olarak açılamazsa uygulama birkaç kez yeniden dener. Yine açılamazsa üstte
   "Veriler asıl depoya yazılamıyor" şeridi çıkar; o sırada girilenler yedek
-  alana yazılır ve bir sonraki açılışta geri yüklenir (önceki hâl otomatik
-  sürümlerde "Kurtarma öncesi" olarak durur). Veriler uygulamanın daha yeni bir
+  alana yazılır ve bir sonraki açılışta asıl veriyle birleştirilerek geri
+  yüklenir (çakışmada asıl veri kazanır; önceki hâl otomatik sürümlerde
+  "Kurtarma öncesi" olarak durur). Veriler uygulamanın daha yeni bir
   sürümüyle kaydedilmişse uygulama hiçbir şeyi değiştirmeden "Önce güncelle" der.
 
 **Geri yükleme:** Ayarlar → Yedekleme → **Yedekten yükle** → **Dosya seç**
