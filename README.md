@@ -125,6 +125,12 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir,
   son 10 sürüm saklanır; silme, iptal, yedek yükleme gibi işlemlerden önce ayrıca
   sürüm alınır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
+- **Depolama açılamazsa:** Telefonun depolaması (IndexedDB) açılışta geçici
+  olarak açılamazsa uygulama birkaç kez yeniden dener. Yine açılamazsa üstte
+  "Veriler asıl depoya yazılamıyor" şeridi çıkar; o sırada girilenler yedek
+  alana yazılır ve bir sonraki açılışta geri yüklenir (önceki hâl otomatik
+  sürümlerde "Kurtarma öncesi" olarak durur). Veriler uygulamanın daha yeni bir
+  sürümüyle kaydedilmişse uygulama hiçbir şeyi değiştirmeden "Önce güncelle" der.
 
 **Geri yükleme:** Ayarlar → Yedekleme → **Yedekten yükle** → **Dosya seç**
 (yedek dosyasını seç) ya da metni yapıştır → **Yükle**.

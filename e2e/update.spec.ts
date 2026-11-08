@@ -104,3 +104,54 @@ test("yeni sürüm yoksa 'Güncelle' sayfayı yeniden yükler", async ({ page })
   expect(await swVersion(page)).toBe(VERSION);
   expect(errors).toEqual([]);
 });
+
+test("'Önce güncelle' ekranındaki düğme yeni sürümü açar; yeni şemadaki veri ezilmez", async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page);
+  await page.locator("#newName").fill("Gelecek Gani");
+  await page.locator('[data-a="addPlayer"]').click();
+  await expect(page.locator("#list-roster li")).toHaveCount(1);
+  // Başka bir pencere yeni sürümle, yeni şemayla kaydetti
+  const v = await page.evaluate(
+    () =>
+      new Promise<number>((ok) => {
+        const q = indexedDB.open("halisaha");
+        q.onsuccess = () => {
+          const tx = q.result.transaction("kv", "readwrite");
+          const st = tx.objectStore("kv");
+          const g = st.get("state");
+          let next = 0;
+          g.onsuccess = () => {
+            next = g.result.v + 1;
+            st.put({ ...g.result, v: next }, "state");
+          };
+          tx.oncomplete = () => {
+            q.result.close();
+            ok(next);
+          };
+        };
+      }),
+  );
+  await page.reload();
+  await expect(page.locator("#view")).toContainText("Önce güncelle");
+  publish("e2e-next");
+  await Promise.all([page.waitForEvent("load"), page.locator("#future-update").click()]);
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  expect(await swVersion(page)).toBe("e2e-next");
+  const stored = await page.evaluate(
+    () =>
+      new Promise<{ v: number; players: { name: string }[] }>((ok) => {
+        const q = indexedDB.open("halisaha");
+        q.onsuccess = () => {
+          const g = q.result.transaction("kv").objectStore("kv").get("state");
+          g.onsuccess = () => {
+            ok(g.result);
+            q.result.close();
+          };
+        };
+      }),
+  );
+  expect(stored.v).toBe(v);
+  expect(stored.players.map((p) => p.name)).toEqual(["Gelecek Gani"]);
+  expect(errors).toEqual([]);
+});

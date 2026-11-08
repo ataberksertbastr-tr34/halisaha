@@ -61,7 +61,7 @@ export const tr = {
   persistOn: "Kalıcı depolama açık: tarayıcı verileri kendiliğinden silmez.", persistOff: "Tarayıcı yer açmak için verileri silebilir; düzenli yedek al.",
   saveFailed: "Kaydedilemedi! Hemen yedek al.", backupShared: "Yedek paylaşıldı", backupDownloaded: "Yedek indirildi", fileBad: "Dosya okunamadı.",
   cancel: "Vazgeç", backupTitle: "Halı Saha yedeği", otherTab: "Başka sekmedeki değişiklikler yüklendi", restoreSection: "Geri yükleme",
-  storageLocal: "Bu tarayıcıda IndexedDB kullanılamıyor; veriler daha sınırlı bir alanda tutuluyor. Sık yedek al.",
+  storageLocal: "Asıl depo açılamadı; veriler şimdilik tarayıcının yedek alanında. Uygulamayı kapatıp yeniden aç, sık yedek al.",
   undo: "Geri al", undone: "Geri alındı", playerDeleted: "{n} silindi", matchDeleted: "Maç silindi", matchCancelled: "Maç iptal edildi",
   guestRemoved: "{n} çıkarıldı", teamsCleared: "Takımlar temizlendi", movedTo: "{n} → {t}", unassigned: "{n} takımdan çıkarıldı",
   addedTo: "{n} → {t}", matchReopened: "Maç tekrar açıldı", fieldDeleted: "Saha silindi", allDeleted: "Tüm veriler silindi",
@@ -214,7 +214,10 @@ export const tr = {
   unfinishedTitle: "Sonuç bekleniyor", unfinishedText: "{d}: saati geçti ama bitirilmedi. Sonucu gir; ödemeler kesinleşsin, sıra cezaları işlesin (Kural 1.6).",
   unfinishedGo: "Sonucu gir",
   tplGuestPay: "Misafir ödeme hatırlatması (getirene)", sampleGuest: "Mehmet", guestDebtIncl: "misafiri {g} dahil", guestPrevDebt: "önceki gelişinden {a} ödenmemiş",
-  updating: "Yeni sürüm indiriliyor…", updatedElsewhere: "Uygulama güncellendi", updatedElsewhereText: "Başka bir pencerede yeni sürüm açıldı. Bu pencereyi yenile; verilerin aynen kalır.", reloadPage: "Yenile",
+  updating: "Yeni sürüm indiriliyor…", retry: "Yeniden dene", reasonBeforeRecovery: "Kurtarma öncesi",
+  storageLocalTitle: "Veriler asıl depoya yazılamıyor", storageLocalText: "Telefonun depolaması açılamadı; değişiklikler şimdilik yedek alana yazılıyor. Uygulamayı kapatıp yeniden aç; sürerse yedeğini paylaş.",
+  storageRecovered: "Depolama açılamadığında girilen değişiklikler geri yüklendi. Önceki hâl otomatik sürümlerde.",
+  futureTitle: "Önce güncelle", futureText: "Bu cihazdaki veriler uygulamanın daha yeni bir sürümüyle kaydedilmiş. Bozulmasın diye bu sürüm hiçbir şeyi değiştirmiyor. Güncelle'ye dokun; verilerin aynen kalır.", updatedElsewhere: "Uygulama güncellendi", updatedElsewhereText: "Başka bir pencerede yeni sürüm açıldı. Bu pencereyi yenile; verilerin aynen kalır.", reloadPage: "Yenile",
   discHostToo: "Getireni de kaydet: {n} · {s} (Kural 1.8)", discSavedHost: "Kaydedildi; getiren {n} için de 1.8 kaydı yazıldı",
 } as const;
 
