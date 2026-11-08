@@ -11,10 +11,11 @@
 import type { State } from "../domain/types";
 import { BackupError, migrate } from "../domain/migrate";
 import { SCHEMA_VERSION } from "../domain/schema";
-import { closeDB, kvGet, kvSet, snapGet, snapList, snapPut, type Snapshot } from "./db";
+import { closeDB, kvGet, kvSet, RETENTION, snapGet, snapList, snapPut, type Snapshot } from "./db";
 import { clearFallback, FALLBACK_KEY, LEGACY_KEY, newerThan, readFallback, readLocalBest, writeFallback } from "./local";
 
-export const KEEP_SNAPSHOTS = 10;
+/** Her durumda tutulan en yeni sürüm sayısı (ayrıca son 14 günün her günü ve 30 güne kadar kilitli sürümler: db.ts RETENTION) */
+export const KEEP_SNAPSHOTS = RETENTION.keep;
 /** Bir sürüm açıldıktan sonraki bu süre içindeki değişiklikler aynı sürümde birleşir. */
 export const COALESCE_MS = 5 * 60 * 1000;
 
@@ -138,7 +139,7 @@ async function loadFromIDB(): Promise<State> {
 
 async function snapshotRaw(data: string, reason: string): Promise<void> {
   const sm = summary(JSON.parse(data));
-  await snapPut({ at: Date.now(), data, ...sm, locked: true, reason }, { coalesceMs: COALESCE_MS, keep: KEEP_SNAPSHOTS, forceNew: true });
+  await snapPut({ at: Date.now(), data, ...sm, locked: true, reason }, { coalesceMs: COALESCE_MS, forceNew: true });
 }
 
 async function writeNow(s: State): Promise<void> {
@@ -152,7 +153,7 @@ async function writeNow(s: State): Promise<void> {
   if (cur && Number(cur.v || 1) > SCHEMA_VERSION) return block();
   const data = JSON.stringify(s);
   await kvSet("state", JSON.parse(data));
-  await snapPut({ at: Date.now(), data, ...summary(s) }, { coalesceMs: COALESCE_MS, keep: KEEP_SNAPSHOTS });
+  await snapPut({ at: Date.now(), data, ...summary(s) }, { coalesceMs: COALESCE_MS });
   channel?.postMessage({ type: "saved", from: tabId, updatedAt: s.updatedAt });
 }
 
@@ -172,7 +173,7 @@ function run(): Promise<void> {
       const op = queue.shift()!;
       try {
         if (op.kind === "lock") {
-          if (mode === "idb") await snapPut({ at: Date.now(), data: op.data, ...summary(JSON.parse(op.data)), locked: true, reason: op.reason }, { coalesceMs: COALESCE_MS, keep: KEEP_SNAPSHOTS, forceNew: true });
+          if (mode === "idb") await snapPut({ at: Date.now(), data: op.data, ...summary(JSON.parse(op.data)), locked: true, reason: op.reason }, { coalesceMs: COALESCE_MS, forceNew: true });
         } else if (latest) {
           const s = latest;
           try {

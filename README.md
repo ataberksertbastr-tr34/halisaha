@@ -122,9 +122,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Dosya olarak indir** ve **Yedeği kopyala** (metin) seçenekleri de var.
 - **Hatırlatma:** 7 gün yedek almazsan üstte "Yedek alma zamanı" şeridi
   çıkar (eşitleme çalışıyorsa 30 günde bir).
-- **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir,
-  son 10 sürüm saklanır; silme, iptal, yedek yükleme gibi işlemlerden önce ayrıca
-  sürüm alınır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
+- **Otomatik yerel sürümler:** Her değişiklik telefonda otomatik kaydedilir.
+  Son 10 sürüm, son 14 günün her günü için o günün son sürümü ve silme, iptal,
+  yedek yükleme, eşitleme gibi işlemlerden önce alınan sürümler (30 gün, en çok
+  20) saklanır. Ayarlar → Yedekleme → **Otomatik yerel sürümler**.
 - **Depolama açılamazsa:** Telefonun depolaması (IndexedDB) açılışta geçici
   olarak açılamazsa uygulama birkaç kez yeniden dener. Yine açılamazsa üstte
   "Veriler asıl depoya yazılamıyor" şeridi çıkar; o sırada girilenler yedek

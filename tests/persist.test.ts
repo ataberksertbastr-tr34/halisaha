@@ -105,9 +105,10 @@ describe("IndexedDB kalıcılığı", () => {
     expect(((await D.kvGet("state")) as { players: unknown[] }).players).toHaveLength(5);
   });
 
-  it("en fazla 10 sürüm tutulur, en eskiler silinir", async () => {
+  it("aynı gün içinde en fazla 10 sürüm tutulur, en eskiler silinir", async () => {
     await P.loadState();
-    const t0 = Date.now();
+    // Gün ortası: sürümler gece yarısını aşmasın (gün başına sürüm kuralı devreye girmesin)
+    const t0 = new Date(2026, 9, 10, 12, 0).getTime();
     const spy = vi.spyOn(Date, "now");
     for (let i = 0; i < 14; i++) {
       spy.mockReturnValue(t0 + i * (P.COALESCE_MS + 1000));
@@ -245,5 +246,83 @@ describe("açılışta depolama hatası", () => {
     expect(P.loadIssue()).toBe("future");
     await P.saveState(withStamp("Eski Pencere", 700));
     expect(hit).toHaveBeenCalledOnce();
+  });
+});
+
+describe("otomatik sürümlerin saklanması", () => {
+  const H = 60 * 60 * 1000, DAY = 24 * H;
+  const NOW = new Date(2026, 9, 30, 20, 0).getTime();
+
+  it("son 10 sürüm, son 14 günün her günü için o günün son sürümü ve 30 gün içindeki kilitli sürümler kalır", () => {
+    // Kilitli: 35 gün önce (gider) ve 20 gün önce (kalır), kendi günlerinde alınmış
+    const l35 = NOW - 35 * DAY - 2 * H, l20 = NOW - 20 * DAY - 2 * H;
+    const list: { id: number; at: number; start: number; locked?: boolean }[] = [];
+    let id = 0;
+    // 40 gün boyunca her gün öğlen ve akşam birer sürüm; kilitliler kendi günlerinde araya girer
+    for (let d = 40; d >= 0; d--) {
+      for (const h of [12, 19]) {
+        const at = NOW - d * DAY - (20 - h) * H;
+        list.push({ id: ++id, at, start: at });
+        if (d === 35 && h === 12) list.push({ id: ++id, at: l35, start: l35, locked: true });
+        if (d === 20 && h === 12) list.push({ id: ++id, at: l20, start: l20, locked: true });
+      }
+    }
+    const drop = new Set(D.pruneSnapshots(list, NOW));
+    const kept = list.filter((x) => !drop.has(x.id));
+    expect(kept.filter((x) => x.locked).map((x) => x.at)).toEqual([l20]);
+    // En yeni 10 = son 5 günün öğlen ve akşamı; önceki 9 gün için o günün akşamı
+    const unlocked = kept.filter((x) => !x.locked);
+    expect(unlocked).toHaveLength(10 + 9);
+    const days = new Set(unlocked.map((x) => new Date(x.at).toDateString()));
+    for (let d = 0; d < 14; d++) expect(days.has(new Date(NOW - d * DAY).toDateString())).toBe(true);
+    expect(days.has(new Date(NOW - 14 * DAY).toDateString())).toBe(false);
+  });
+
+  it("kilitli sürüm 10 sınırının dışında da 30 gün korunur; en çok 20 tanesi", () => {
+    const list: { id: number; at: number; start: number; locked?: boolean }[] = [];
+    let id = 0;
+    for (let i = 25; i >= 1; i--) list.push({ id: ++id, at: NOW - i * DAY, start: NOW - i * DAY, locked: true });
+    // Bugün yoğun bir saat: 30 kilitsiz sürüm
+    for (let i = 30; i >= 1; i--) list.push({ id: ++id, at: NOW - i * 60_000, start: NOW - i * 60_000 });
+    const drop = new Set(D.pruneSnapshots(list, NOW));
+    const lockedKept = list.filter((x) => x.locked && !drop.has(x.id));
+    expect(lockedKept).toHaveLength(20);
+    expect(lockedKept.map((x) => Math.round((NOW - x.at) / DAY))).toEqual(Array.from({ length: 20 }, (_, i) => 20 - i));
+    expect(list.filter((x) => !x.locked && !drop.has(x.id))).toHaveLength(10);
+  });
+
+  it("kayıt sırasında uygulanır: yedek yükleme öncesi sürüm, sonraki günlerin onlarca kaydından sonra da durur", async () => {
+    await P.loadState();
+    const spy = vi.spyOn(Date, "now");
+    const t0 = new Date(2026, 9, 1, 10, 0).getTime();
+    spy.mockReturnValue(t0);
+    const before = state([player("a", "Yükleme Öncesi")]);
+    await P.saveState(before);
+    P.lockedSnapshot(before, "before-import");
+    await P.flush();
+    // Sonraki 5 günde her gün 8 kayıt (her biri ayrı sürüm)
+    for (let d = 1; d <= 5; d++) {
+      for (let k = 0; k < 8; k++) {
+        spy.mockReturnValue(t0 + d * DAY + k * (P.COALESCE_MS + 1000));
+        await P.saveState(state([player("p" + d + k, "Gün " + d + " Kayıt " + k)]));
+      }
+    }
+    spy.mockRestore();
+    const snaps = await P.listSnapshots();
+    expect(snaps.some((x) => x.locked && x.reason === "before-import")).toBe(true);
+    // En yeni 10 + önceki her günün son sürümü (ilk gün kilitli sürümle temsil edilir)
+    const days = new Set(snaps.map((x) => new Date(x.at).toDateString()));
+    expect(days.size).toBe(6);
+    expect(snaps.length).toBeLessThan(20);
+  });
+
+  it("dizini olmayan eski veritabanında sürümler bir kez okunup dizine alınır", async () => {
+    await P.loadState();
+    for (let i = 0; i < 12; i++) await D.snapPut({ at: 1000 + i, data: "{}", players: i, matches: 0 }, { coalesceMs: 0, forceNew: true });
+    // Dizini silip (eski sürümün veritabanı) yeni kayıt
+    await D.kvSet("snapIndex", undefined);
+    await D.snapPut({ at: 2000, data: "{}", players: 99, matches: 0 }, { coalesceMs: 0, forceNew: true });
+    const snaps = await P.listSnapshots();
+    expect(snaps.map((x) => x.players)).toEqual([99, 11, 10, 9, 8, 7, 6, 5, 4, 3]);
   });
 });
