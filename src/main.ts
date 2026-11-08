@@ -9,7 +9,7 @@ import { ddmm } from "./domain/dates";
 import { eventTitle, isFootball } from "./domain/kinds";
 import { syncFromLocation } from "./app/router";
 import { dispatch, needsConfirm } from "./app/actions";
-import { importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
+import { guestPrefill, importFromFile, onEnter, onField, pitchHandlers } from "./app/handlers";
 import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadState, lockedSnapshot, onSaveError, requestPersistence, saveState } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
@@ -207,6 +207,7 @@ function bindEvents(): void {
   document.addEventListener("input", (e) => {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
+    if (el.id === "guestName") return guestPrefill(el.value);
     if (el.id === "q-rules") return liveSearch("q-rules", (q) => (ui.ruleQ = q), el.value);
     if (el.id === "q-disc") return liveSearch("q-disc", (q) => (ui.discQ = q), el.value);
     if (el.dataset && el.dataset.f === "ann.ruleText") return void onEventField(el);

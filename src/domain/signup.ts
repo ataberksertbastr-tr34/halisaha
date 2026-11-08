@@ -8,7 +8,8 @@ import type { Guest, Match, Person, State } from "./types";
 import { getP, setAtt } from "./lineup";
 import { cleanBulkLine, cleanName, norm, uid } from "./text";
 import { joinBlock, type Block } from "./discipline";
-import { debtMap } from "./ledger";
+import { liabilityMap } from "./ledger";
+import { guestHistory, pastGuests } from "./guests";
 
 export interface Entry {
   name: string;
@@ -93,9 +94,11 @@ export interface PlanRow {
   cands: string[];
   /** Önerilen iş (organizatör değiştirebilir) */
   act: Act;
-  /** Neden: zaten aynı yanıt, geç iptal etmiş, engelli, listede iki kez, kayıtlı değil, belirsiz */
-  note: "" | "already" | "late" | "blocked" | "dup" | "none" | "ambiguous";
+  /** Neden: zaten aynı yanıt, geç iptal etmiş, engelli, listede iki kez, kayıtlı değil, belirsiz, önceki misafirliğinden borç/ceza */
+  note: "" | "already" | "late" | "blocked" | "dup" | "none" | "ambiguous" | "guestPrev";
   block?: Block;
+  /** Aynı adla gelmiş önceki misafirin ödenmemiş borcu (Kural 1.8) */
+  prevDebt?: number;
 }
 
 /**
@@ -105,13 +108,22 @@ export interface PlanRow {
  */
 export function planList(s: State, m: Match, entries: Entry[], today: string): PlanRow[] {
   const pool: Person[] = [...s.players.filter((p) => p.active !== false), ...m.guests];
-  const debts = debtMap(s, today);
+  // Borç: kendi borcu ve getirdiği misafirlerin ödenmemiş payı (Kural 2.4, 1.8)
+  const debts = liabilityMap(s, today);
   const used = new Set<string>();
   return entries.map((e) => {
     const cands = candidates(pool, e.name);
     const row: PlanRow = { name: e.name, st: e.st, id: cands.length === 1 ? cands[0] : null, cands: cands.length > 1 ? cands : [], act: e.st, note: "" };
     if (!row.id) {
       if (row.cands.length) return { ...row, act: "skip", note: "ambiguous" };
+      // Kural 1.8: aynı adla daha önce gelmiş misafirin borcu ya da cezası varsa varsayılan olarak atlanır (12.1)
+      const hist = guestHistory(s, m, e.name, today);
+      if (hist) {
+        const out: PlanRow = { ...row, act: "skip", note: "guestPrev" };
+        if (hist.block) out.block = hist.block;
+        if (hist.debt) out.prevDebt = hist.debt;
+        return out;
+      }
       return { ...row, act: "guest", note: "none" };
     }
     if (used.has(row.id)) return { ...row, act: "skip", note: "dup" };
@@ -146,7 +158,10 @@ export function applyPlan(s: State, m: Match, rows: PlanRow[]): number {
     if (r.act === "skip") continue;
     let id = r.id;
     if (r.act === "guest") {
-      const g: Guest = { id: "g" + uid(), name: r.name, rating: 3, pos: "" };
+      // Daha önce gelmiş misafirin getireni, seviyesi ve mevkii korunur (Kural 1.8)
+      const past = pastGuests(s, m.id).find((x) => norm(x.name) === norm(r.name));
+      const g: Guest = { id: "g" + uid(), name: r.name, rating: past?.rating || 3, pos: past?.pos || "" };
+      if (past?.host && s.players.some((p) => p.id === past.host)) g.host = past.host;
       m.guests.push(g);
       id = g.id;
     } else if (r.act === "player") {

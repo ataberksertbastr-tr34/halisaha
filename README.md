@@ -172,6 +172,12 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   o öder (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
   borçlu oyuncu yazılırken sorulur, toplu yazmada atlanır (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
   pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2). İkisi de Ayarlar'dan kapatılabilir.
+- **Misafir (Kural 1.8):** getiren, misafirinin ödemesinden ve davranışından
+  sorumludur. Misafirin ödenmemiş payı getirenin borç engeline sayılır; hatırlatma
+  getirene misafirin adıyla gider ("Misafir ödeme hatırlatması" şablonu). Önceki
+  misafirler adıyla önerilir, getireni/seviyesi/mevkii gelir; eski gelişinden
+  ödenmemiş payı ya da cezası varsa eklemeden önce sorulur. Misafire ihlal
+  yazılınca getirene de kademeli 1.8 kaydı önerilir.
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans

@@ -3,10 +3,11 @@ import { money, t, type MsgKey } from "../../i18n";
 import type { Match, State } from "../../domain/types";
 import { esc, norm, trSort } from "../../domain/text";
 import { getP } from "../../domain/lineup";
-import { debtMap } from "../../domain/ledger";
+import { liabilities, type Liability } from "../../domain/ledger";
 import type { Act, PlanRow } from "../../domain/signup";
 import { showModal, updateModal } from "../modal";
 import { sheetHead } from "../sheets";
+import { blockReason } from "../components";
 
 /** Yapıştırma alanı (önceki metin "Metni düzenle" ile geri gelir). */
 export function openPasteSheet(text: string): void {
@@ -18,24 +19,24 @@ export function openPasteSheet(text: string): void {
 
 const ACT_LABEL: Record<Act, MsgKey> = { in: "pasteIn", maybe: "pasteMaybe", skip: "pasteSkip", guest: "pasteGuest", player: "pastePlayer" };
 
-function note(m: Match, r: PlanRow, debts: Record<string, number>): string {
+function note(m: Match, r: PlanRow, debts: Record<string, Liability>): string {
   switch (r.note) {
     case "already": return t("pasteNoteAlready", { s: t(m.att[r.id!] === "in" ? "in" : "maybe") });
     case "late": return t("pasteNoteLate");
     case "dup": return t("pasteNoteDup");
     case "none": return t("pasteNoteNone");
     case "ambiguous": return t("pasteNoteAmbiguous");
-    case "blocked": {
-      const b = r.block!;
-      return t(("block_" + b.why) as MsgKey) + (b.why === "debt" ? " " + money(debts[r.id!] || 0) : "") + " · " + t("ruleN", { n: b.rule });
-    }
+    case "blocked":
+      return blockReason(r.block!, debts[r.id!]);
+    case "guestPrev":
+      return [r.block ? blockReason(r.block) : "", r.prevDebt ? t("guestPrevDebt", { a: money(r.prevDebt) }) + " · " + t("ruleN", { n: "1.8, 2.4" }) : ""].filter(Boolean).join("; ");
     default: return "";
   }
 }
 
 /** Önizleme: her satırda listede yazılan ad, eşleşen kişi, neden ve seçilebilir iş. */
 export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string): void {
-  const debts = debtMap(s, today);
+  const debts = liabilities(s, today);
   const opt = (v: string, label: string, sel: boolean) => '<option value="' + esc(v) + '"' + (sel ? " selected" : "") + ">" + esc(label) + "</option>";
   const players = s.players.filter((p) => p.active !== false).slice().sort(trSort);
   let h = sheetHead(t("pasteTitle")) + '<p class="small muted tight">' + esc(t("pasteCheck", { n: rows.length })) + '</p><div class="stackf">';

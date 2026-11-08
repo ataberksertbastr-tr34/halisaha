@@ -213,6 +213,8 @@ export const tr = {
   tplResult: "Maç sonucu", resultThanks: "Herkese teşekkürler, haftaya görüşürüz!", shareResult: "Sonucu paylaş", announceCancel: "İptali duyur",
   unfinishedTitle: "Sonuç bekleniyor", unfinishedText: "{d}: saati geçti ama bitirilmedi. Sonucu gir; ödemeler kesinleşsin, sıra cezaları işlesin (Kural 1.6).",
   unfinishedGo: "Sonucu gir",
+  tplGuestPay: "Misafir ödeme hatırlatması (getirene)", sampleGuest: "Mehmet", guestDebtIncl: "misafiri {g} dahil", guestPrevDebt: "önceki gelişinden {a} ödenmemiş",
+  discHostToo: "Getireni de kaydet: {n} · {s} (Kural 1.8)", discSavedHost: "Kaydedildi; getiren {n} için de 1.8 kaydı yazıldı",
 } as const;
 
 export type MsgKey = keyof typeof tr;

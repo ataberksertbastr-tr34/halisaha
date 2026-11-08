@@ -215,4 +215,6 @@ export const en: Record<MsgKey, string> = {
   tplResult: "Final score", resultThanks: "Thanks everyone, see you next week!", shareResult: "Share the result", announceCancel: "Announce cancellation",
   unfinishedTitle: "Result pending", unfinishedText: "{d}: its time has passed but it wasn't finished. Enter the result so payments are final and queue penalties apply (Rule 1.6).",
   unfinishedGo: "Enter result",
+  tplGuestPay: "Guest payment reminder (to the host)", sampleGuest: "Sam", guestDebtIncl: "incl. guest {g}", guestPrevDebt: "{a} unpaid from a previous visit",
+  discHostToo: "Also record the host: {n} · {s} (Rule 1.8)", discSavedHost: "Saved; a Rule 1.8 record was added for the host {n}",
 };

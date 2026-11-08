@@ -4,7 +4,7 @@ import { lineup, setAtt } from "./lineup";
 import { matchStart, weekday } from "./dates";
 import { isFootball } from "./kinds";
 import { joinBlock } from "./discipline";
-import { debtMap } from "./ledger";
+import { liabilityMap } from "./ledger";
 
 const when = (m: Match) => m.date + " " + m.time;
 
@@ -44,7 +44,8 @@ export interface Added {
  */
 export function blockedFor(s: State, today: string): Skip {
   let debts: Record<string, number> | null = null;
-  return (m, id) => !!joinBlock(s, m, id, (debts ??= debtMap(s, today))[id] || 0);
+  // Borçta getirdiği misafirlerin ödenmemiş payı da sayılır (Kural 1.8)
+  return (m, id) => !!joinBlock(s, m, id, (debts ??= liabilityMap(s, today))[id] || 0);
 }
 
 /**

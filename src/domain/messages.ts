@@ -11,7 +11,7 @@ import { ddmm, weekday } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
 import { capOf, cleanTeams, getP, isGK, lineup } from "./lineup";
 import { billOf, estShare } from "./money";
-import { accounts } from "./ledger";
+import { accounts, type Liability } from "./ledger";
 import { phoneDigits } from "./text";
 import { agreeLabel, agreeValue, eventTitle, isFootball, kindOf, L } from "./kinds";
 import { lockAt, lockHours } from "./roster";
@@ -188,6 +188,21 @@ export function msgResult(s: State, m: Match): string {
 
 export function personalPayText(s: State, name: string, amt: number): string {
   return render(tpl(s, "personalPay"), { ad: name, tutar: money(amt), iban: ibanLine(s) });
+}
+
+/** Getirene, misafirinin ödenmemiş payı için hatırlatma (Kural 1.8). */
+export function guestPayText(s: State, host: string, guest: string, amt: number): string {
+  return render(tpl(s, "guestPay"), { ad: host, misafir: guest, tutar: money(amt), iban: ibanLine(s) });
+}
+
+/**
+ * Sorumlu olunan borç için kişisel hatırlatma: yalnız kendi borcuysa kişisel şablon, yalnız
+ * misafirlerinin borcuysa misafir şablonu; ikisi birdeyse toplam kişisel şablonla (Kural 1.8: getiren sorumlu).
+ */
+export function debtReminderText(s: State, name: string, l: Liability): string {
+  if (!l.guests.length) return personalPayText(s, name, l.own);
+  if (l.own <= 0.004) return guestPayText(s, name, l.guests.map((g) => g.name).join(", "), l.total);
+  return personalPayText(s, name, l.total);
 }
 
 /** Yedekten kadroya giren oyuncuya hazır mesaj. */

@@ -10,19 +10,18 @@ import type { State } from "../domain/types";
 import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, shareBackup } from "../data/backup";
 import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
-import { cleanBulkLine, cleanName, uid } from "../domain/text";
+import { cleanBulkLine, cleanName, norm, uid } from "../domain/text";
 import { currentMatch, getMatch, getP, lineup, materializeOrder, promoted, setAtt } from "../domain/lineup";
 import { joinBlock, retireMatch } from "../domain/discipline";
 import { isFootball, kindOf } from "../domain/kinds";
 import { gamesTally } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
-import type { MsgKey } from "../i18n";
 import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
 import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
-import { debtMap } from "../domain/ledger";
-import { promotedText, waLink, waPersonal } from "../domain/messages";
+import { liabilities } from "../domain/ledger";
+import { debtReminderText, promotedText, waLink } from "../domain/messages";
 import { money } from "../i18n";
 import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
 import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
@@ -38,7 +37,8 @@ import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
 import { shareText } from "../ui/share";
 import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
-import { applyFilter } from "../ui/components";
+import { applyFilter, blockReason } from "../ui/components";
+import { guestHistory, pastGuests } from "../domain/guests";
 import { closeModal } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
 import { toast } from "../ui/toast";
@@ -246,11 +246,12 @@ registerActions({
     let st = ds.s as Att;
     // Kural 2.4, 9.3, 17.4: engelli kişi yazılmadan önce sorulur; son söz organizatörün (12.1).
     if ((st === "in" || st === "maybe") && m.att[id] !== "in" && m.att[id] !== "maybe" && !ds.force) {
-      const debt = debtMap(store.s, today())[id] || 0;
-      const block = joinBlock(store.s, m, id, debt);
+      // Borçta getirdiği misafirlerin ödenmemiş payı da sayılır (Kural 1.8)
+      const owe = liabilities(store.s, today())[id];
+      const block = joinBlock(store.s, m, id, owe?.total || 0);
       if (block) {
         const who = getP(store.s, m, id)?.name || "";
-        const why = t(("block_" + block.why) as MsgKey) + (block.why === "debt" ? " " + money(debt) : "") + " · " + t("ruleN", { n: block.rule });
+        const why = blockReason(block, owe);
         return toast(t("blockedAsk", { n: who, r: why }), { label: t("blockedOverride"), run: () => dispatch("att", { id, s: st, force: "1" } as unknown as DOMStringMap, document.body) }, 9000);
       }
     }
@@ -288,11 +289,12 @@ registerActions({
     }
     if (cover) return coverToast(m, id, cover);
     if (m.att[id] === "in" && !ds.force) {
-      const debt = debtMap(store.s, today())[id];
-      if (debt) {
+      const owe = liabilities(store.s, today())[id];
+      if (owe) {
         const phone = store.s.players.find((p) => p.id === id)?.phone;
-        const u = phone ? waPersonal(store.s, phone, name, debt) : "";
-        toast(t("debtWarn", { n: name, a: money(debt) }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
+        const u = waLink(phone, debtReminderText(store.s, name, owe));
+        const g = owe.guests.map((x) => x.name + " " + money(x.amount)).join(", ");
+        toast(t("debtWarn", { n: name, a: money(owe.total) + (g ? " (" + t("guestDebtIncl", { g }) + ")" : "") }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
       }
     }
   },
@@ -398,13 +400,29 @@ registerActions({
     commit();
     toast(p.fixed ? t("fixedOn", { n: p.name }) : t("fixedOff", { n: p.name }));
   },
-  addGuest: () => {
+  addGuest: (ds) => {
     const m = cur();
     if (!m) return;
-    const n = cleanName(val("#guestName"));
+    // "Yine de yaz" ile gelindiğinde alanlar soruyu soran çağrıdan gelir (arada ekran yenilenmiş olabilir)
+    const n = cleanName(ds.force ? ds.n : val("#guestName"));
     if (!n) return toast(t("needName"));
-    const g: Guest = { id: "g" + uid(), name: n, rating: Number(val("#guestRate")) || 3, pos: (val("#guestPos") || "") as Pos };
-    const host = val("#guestHost");
+    const rating = Number(ds.force ? ds.r : val("#guestRate")) || 3;
+    const pos = ((ds.force ? ds.p : val("#guestPos")) || "") as Pos;
+    const host = (ds.force ? ds.h : val("#guestHost")) || "";
+    // Kural 1.8: aynı adla daha önce gelmiş misafirin ödenmemiş borcu ya da disiplin engeli varsa önce sorulur (12.1)
+    const hist = ds.force ? null : guestHistory(store.s, m, n, today());
+    if (hist) {
+      const hostName = hist.past.host ? store.s.players.find((p) => p.id === hist.past.host)?.name : "";
+      const why = [
+        hist.block ? blockReason(hist.block) : "",
+        hist.debt ? t("guestPrevDebt", { a: money(hist.debt) }) + (hostName ? " (" + t("guestOf", { n: hostName }) + ")" : "") + " · " + t("ruleN", { n: "1.8, 2.4" }) : "",
+      ].filter(Boolean).join("; ");
+      return toast(t("blockedAsk", { n, r: why }), {
+        label: t("blockedOverride"),
+        run: () => dispatch("addGuest", { force: "1", n, r: String(rating), p: pos, h: host } as unknown as DOMStringMap, document.body),
+      }, 9000);
+    }
+    const g: Guest = { id: "g" + uid(), name: n, rating, pos };
     if (host) g.host = host;
     const before = lineup(store.s, m).playing;
     m.guests.push(g);
@@ -991,6 +1009,25 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
     commit();
     toast(t("saved"));
   }
+}
+
+/**
+ * Misafir adı yazılınca (öneriden seçilince) önceki gelişindeki getiren, seviye ve mevki
+ * gelir; organizatörün değiştirdiği alana dokunulmaz (Kural 1.8).
+ */
+export function guestPrefill(name: string): void {
+  const m = cur();
+  if (!m) return;
+  const k = norm(cleanName(name));
+  const g = k ? pastGuests(store.s, m.id).find((x) => norm(x.name) === k) : undefined;
+  if (!g) return;
+  const set = (id: string, v: string, def: string) => {
+    const el = $<HTMLSelectElement>("#" + id);
+    if (el && el.value === def && Array.from(el.options).some((o) => o.value === v)) el.value = v;
+  };
+  if (g.host) set("guestHost", g.host, "");
+  set("guestRate", String(g.rating), "3");
+  if (g.pos) set("guestPos", g.pos, "");
 }
 
 /** Enter kısayolları: oyuncu/misafir ekleme, aramada ilk sonucu seçme. */

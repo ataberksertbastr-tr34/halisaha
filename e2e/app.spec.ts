@@ -384,3 +384,79 @@ test("maç sonu: sonucu girilmemiş maç uyarısı, Ödemeler'de biten maç, son
   expect(errors).toEqual([]);
   await ctx.close();
 });
+
+test("misafir: getiren sorumlu; borcu getirenin engeline sayılır, hatırlatma misafirin adıyla, ihlalde getirene 1.8 kaydı (Kural 1.8)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="match"]').click();
+  const rows = page.locator("#list-att li");
+  // Önceki misafir adıyla önerilir; yazılınca önceki mevkii gelir (borcu yok, sorulmaz)
+  await expect(page.locator('#guestPrev option[value="Misafir Mert"]')).toHaveCount(1);
+  await page.locator("#guestName").fill("misafir mert");
+  await expect(page.locator("#guestPos")).toHaveValue("MID");
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(rows.filter({ hasText: "misafir mert" })).toHaveCount(1);
+  await expect(page.locator("#guestPrev option")).toHaveCount(0);
+  // Getireniyle yeni misafir
+  await page.locator("#guestName").fill("Konuk Kaan");
+  await page.locator("#guestHost").selectOption({ label: "Getiren: Zeki Zorlu" });
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(rows.filter({ hasText: "Konuk Kaan" })).toHaveCount(1);
+  await noHorizontalScroll(page);
+  // Maç oynandı, misafir payını ödemedi
+  await page.clock.setSystemTime(new Date("2026-10-16T10:00:00+03:00"));
+  await page.locator('#tabs [data-v="players"]').click();
+  await page.locator('#banner [data-a="openResult"]').click();
+  await page.locator("#scA").fill("1");
+  await page.locator("#scB").fill("0");
+  await page.locator('[data-a="finish"]').click();
+  await expect(page.locator(".chip.on")).toContainText("22.10");
+  // Getiren sıradaki maça yazılırken sorulur (Kural 2.4, 1.8)
+  await rows.filter({ hasText: "Zeki Zorlu" }).locator('[data-s="in"]').click();
+  await expect(page.locator("#toast")).toContainText("Zeki Zorlu: borçlu");
+  await expect(page.locator("#toast")).toContainText("misafiri Konuk Kaan");
+  await expect(page.locator("#toast")).toContainText("Kural 2.4, 1.8");
+  await expect(rows.filter({ hasText: "Zeki Zorlu" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(rows.filter({ hasText: "Zeki Zorlu" })).toContainText("borçlu");
+  // Aynı misafir yeniden getirilirken getireni kendiliğinden gelir; ödenmemiş payı sorulur (12.1)
+  await page.locator("#guestName").fill("Konuk Kaan");
+  await expect(page.locator("#guestHost option:checked")).toHaveText("Getiren: Zeki Zorlu");
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(page.locator("#toast")).toContainText("Konuk Kaan: önceki gelişinden");
+  await expect(page.locator("#toast")).toContainText("(Zeki Zorlu misafiri) · Kural 1.8, 2.4");
+  await expect(rows.filter({ hasText: "Konuk Kaan" })).toHaveCount(0);
+  await page.locator("[data-toast-act]").click();
+  await expect(rows.filter({ hasText: "Konuk Kaan" })).toHaveCount(1);
+  // Hatırlatma getirene, misafirin adıyla
+  await page.locator('#tabs [data-v="players"]').click();
+  await page.locator(".prow", { hasText: "Zeki Zorlu" }).locator('[data-a="editP"]').click();
+  await page.locator('[data-f="p.phone"]').fill("0555 000 00 00");
+  await page.locator('[data-f="p.phone"]').press("Tab");
+  await page.locator('#tabs [data-v="pay"]').click();
+  // Hem maçın ödeme listesinde hem biriken borçlarda
+  for (const where of ["#view section:not([aria-labelledby])", 'section[aria-labelledby="h-debts"]']) {
+    const remind = page.locator(where).locator(".payrow", { hasText: "Konuk Kaan" }).locator("a.linkbtn", { hasText: "Hatırlat" });
+    await expect(remind).toHaveAttribute("href", /^https:\/\/wa\.me\/90555/);
+    const href = decodeURIComponent((await remind.getAttribute("href")) || "");
+    expect(href).toContain("Selam Zeki Zorlu, getirdiğin misafir Konuk Kaan için");
+    expect(href).toContain("(Kural 1.8)");
+  }
+  // Misafire ihlal yazılınca getirene de 1.8 kaydı önerilir; tek kayıtla ikisi yazılır
+  await page.goto("/#/discipline");
+  await page.locator('[data-a="discNew"]').first().click();
+  const mid = await page.locator('[data-f="disc.mid"] option', { hasText: "15.10" }).first().getAttribute("value");
+  await page.locator('[data-f="disc.mid"]').selectOption(mid!);
+  await page.locator('[data-f="disc.pid"]').selectOption({ label: "Konuk Kaan (misafir)" });
+  const hostToggle = page.locator('[data-a="discHost"]');
+  await expect(hostToggle).toHaveText("Getireni de kaydet: Zeki Zorlu · Uyarı (Kural 1.8)");
+  await expect(hostToggle).toHaveAttribute("aria-pressed", "true");
+  await noHorizontalScroll(page);
+  await page.locator('[data-a="discSave"]').click();
+  await expect(page.locator("#toast")).toContainText("getiren Zeki Zorlu için de 1.8 kaydı yazıldı");
+  await expect(page.locator("#list-disc li")).toHaveCount(2);
+  await expect(page.locator("#list-disc li", { hasText: "Zeki Zorlu" })).toContainText("Getirdiği misafirin ihlali");
+  // Geri al: ikisi birden
+  await page.locator("[data-toast-act]").click();
+  await expect(page.locator("#list-disc li")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
