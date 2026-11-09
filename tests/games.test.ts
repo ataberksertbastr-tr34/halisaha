@@ -3,7 +3,7 @@
  * tavla 21.4), kura (19.1, 21.1), kazanan kalır (20.7) ve araç paylaşımı (15.8).
  */
 import { describe, expect, it } from "vitest";
-import { addPoint, gamesTally, newGame, presetFor, replay, resultGame, scoreLine, undoPoint, winnerOf } from "../src/domain/scoring";
+import { addPoint, gamesTally, newGame, presetFor, replay, resultGame, scoreLine, undoPoint, winnerOf, keeperRotation } from "../src/domain/scoring";
 import { drawTables, drawTeams, partners, queueResult, startQueue, syncQueue } from "../src/domain/draw";
 import { cleanCars, newCar, perHead, seatsLeft, unassigned } from "../src/domain/cars";
 import { gameRecord, eventTable } from "../src/domain/stats";
@@ -216,5 +216,24 @@ describe("araç paylaşımı (Kural 15.8)", () => {
     expect(m.cars).toHaveLength(1);
     expect(m.cars[0].pax).toEqual(["p1"]);
     expect(unassigned(s, m)).toEqual(["p2", "p3"]);
+  });
+});
+
+describe("Kural 3.5: 2 golde bir kaleci değişimi", () => {
+  const mk = (goals: Record<string, number>, gk = "2g", teams = { a: ["a1", "a2"], b: ["b1", "b2"] }) => match("m", { agree: { gk }, goals, teams });
+
+  it("gol yiyen takımın yediği gol 2'nin katına ulaşınca o takımın kalecisi döner", () => {
+    expect(keeperRotation(mk({ a1: 1 }), "a1")).toBeNull();
+    expect(keeperRotation(mk({ a1: 1, a2: 1 }), "a2")).toBe("b");
+    expect(keeperRotation(mk({ a1: 2, b1: 1 }), "b1")).toBeNull();
+    expect(keeperRotation(mk({ a1: 2, b1: 2 }), "b1")).toBe("a");
+    expect(keeperRotation(mk({ a1: 3, b1: 2 }), "a1")).toBeNull();
+    expect(keeperRotation(mk({ a1: 4, b1: 2 }), "a1")).toBe("b");
+  });
+
+  it("takımlar kurulmadıysa toplam gole bakılır; anlaşma başkaysa hatırlatma yok", () => {
+    expect(keeperRotation(mk({ x: 1, y: 1 }, "2g", { a: [], b: [] }), "y")).toBe("both");
+    expect(keeperRotation(mk({ a1: 2 }, "10m"), "a1")).toBeNull();
+    expect(keeperRotation(mk({ a1: 2 }, "fixed"), "a1")).toBeNull();
   });
 });

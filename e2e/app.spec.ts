@@ -149,6 +149,8 @@ test("katılım, misafir, takım kurma ve maçı bitirme akışı", async ({ pag
   const a = await page.locator(".team.a .tprow").count();
   const b = await page.locator(".team.b .tprow").count();
   expect(a + b).toBe(11);
+  // Kural 4.2: 11 kişide takımlar 6–5; sahada eşit sayıda olmadığı söylenir
+  await expect(page.locator(".warnline", { hasText: "Takımlar eşit değil" })).toContainText("6–5");
   await page.locator('#tabs [data-v="match"]').click();
   await page.locator("#scA").fill("3");
   await page.locator("#scB").fill("2");
@@ -546,4 +548,46 @@ test("iPhone dışında Safari/ana ekran hatırlatması çıkmaz", async ({ page
   await expect(page.locator("#view")).not.toBeEmpty();
   await expect(page.locator("#banner")).not.toContainText("Ana ekrana eklemeden önce");
   await expect(page.locator("#banner")).not.toContainText("Safari'deki verilerin buraya gelmez");
+});
+
+test("Kural 3.5: '2 golde bir' kaleci değişimi, gol yiyen takıma hatırlatılır", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  // Sıradaki maçta 4 kişi "Var": takımları kur, kaleci değişimini "2 golde bir" anlaş
+  await page.locator('#tabs [data-v="teams"]').click();
+  await page.locator('[data-a="gen"]').click();
+  await expect(page.locator(".team.a .tprow")).toHaveCount(2);
+  const scorer = (await page.locator(".team.a .tp .nm").first().textContent())!.trim();
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator(".prep summary").click();
+  await page.locator('select[data-f="m.agree"][data-k="gk"]').selectOption("2g");
+  await page.locator("summary", { hasText: "Goller ve maçın oyuncusu" }).click();
+  const plus = page.locator(`[data-a="goal"][data-d="1"][aria-label*="${scorer}"]`);
+  await plus.click();
+  await expect(page.locator("#toast")).not.toContainText("kaleci değişimi");
+  await plus.click();
+  await expect(page.locator("#toast")).toContainText("2 gol yedi: kaleci değişimi (Kural 3.5)");
+  expect(errors).toEqual([]);
+});
+
+test("Kural 2.4: oyuncu kartında ve 'ödemeyi sürekli geciktirme' kaydında son 3 ayın ödeme düzeni", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  // 13 Ekim maçının üzerinden bir hafta geçti; Golcü Gökhan payını ödemedi
+  await page.clock.setSystemTime(new Date("2026-10-20T10:00:00+03:00"));
+  await page.locator('#tabs [data-v="players"]').click();
+  await page.locator(".prow", { hasText: "Golcü Gökhan" }).locator('[data-a="nav"]').click();
+  await expect(page.locator(".pcard")).toContainText("Son 3 ayda geç ödenen maç: 1/1 · hâlâ ödenmeyen: 1");
+  // Kaleci ücretsiz (Kural 2.1): ödeme düzeni satırı yok
+  await page.goto("/#/players");
+  await page.locator(".prow", { hasText: "Kaleci Kemal" }).locator('[data-a="nav"]').click();
+  await expect(page.locator(".pcard")).not.toContainText("geç ödenen");
+  // Disiplin: "Ödemeyi sürekli geciktirme" seçilince aynı bilgi karar için görünür
+  await page.goto("/#/discipline");
+  await page.locator('[data-a="discNew"]').first().click();
+  const gokhan = await page.locator('[data-f="disc.pid"] option', { hasText: "Golcü Gökhan" }).getAttribute("value");
+  await page.locator('[data-f="disc.pid"]').selectOption(gokhan!);
+  await page.locator('[data-f="disc.type"]').selectOption("chronic");
+  await expect(page.locator("#modal")).toContainText("Son 3 ayda geç ödenen maç: 1/1");
+  expect(errors).toEqual([]);
 });

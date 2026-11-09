@@ -12,7 +12,7 @@ import type { Match } from "../../domain/types";
 import { POSITIONS } from "../../domain/types";
 import { esc, norm, pips, trSort } from "../../domain/text";
 import { active, cleanTeams, currentMatch, getP } from "../../domain/lineup";
-import { teamSum } from "../../domain/teams";
+import { teamSum, unevenTeams } from "../../domain/teams";
 import { strengthFn } from "../../domain/elo";
 import { agreeValue, isCup, isFootball, kindOf, L } from "../../domain/kinds";
 import { champion, entrants, playable, resolveBracket, roundKey, type BMatch } from "../../domain/bracket";
@@ -88,6 +88,8 @@ function twoTeamsView(m: Match): string {
     return c + "</div>";
   };
   h += '<div class="teams">' + col(m.teams.a, "a", A) + col(m.teams.b, "b", B) + "</div>";
+  // Kural 4.2: sahada iki takım eşit sayıda (tek sayılı kadroda 8–7 olmaz)
+  if (unevenTeams(m)) h += '<p class="small warnline mt-s">' + esc(t("unevenTeams", { a: m.teams.a.length, b: m.teams.b.length })) + " " + ruleChip("4.2") + "</p>";
   h += '<p class="diff">' + esc(t("strengthDiff")) + ": " + esc(fmt1(Math.abs(teamSum(S, m, m.teams.a) - teamSum(S, m, m.teams.b)))) + '</p><p class="small muted center mt-s">' + esc(fb ? t("dragHint") : t("tapHint")) + "</p></section>";
   return h + rulesSection(m);
 }

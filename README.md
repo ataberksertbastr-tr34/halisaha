@@ -159,7 +159,8 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   mesajı ve araç paylaşımı
   (yakıt/geçiş kişi başı, Kural 15.8) var.
 - **Sonuçlar türe göre:** halı sahada maç saati (60 dk / 2×30, devre arası ve
-  kaleci değişimi hatırlatması), gol ve maçın oyuncusu; paintball/airsoft'ta
+  kaleci değişimi hatırlatması; "2 golde bir" anlaşıldıysa gol yiyen takıma
+  kaleci değişimi hatırlatması, Kural 3.5), gol ve maçın oyuncusu; paintball/airsoft'ta
   raunt sayacı; voleybol, ayak tenisi ve masa tenisinde servis takipli
   skorbord (25-25-15, 2 fark, 11'lik oyunlar, 10-10 sonrası servis); kıraathanede
   masa sonuçları ve tavla (mars 2 sayı).
@@ -202,7 +203,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
   ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı
   o öder (Kural 1.5), habersiz gelmeyen sonraki maçta sıranın sonuna (Kural 1.6),
-  borçlu oyuncu yazılırken sorulur, toplu yazmada atlanır (Kural 2.4), kaleciler ücretsiz (Kural 2.1),
+  borçlu oyuncu yazılırken sorulur, toplu yazmada atlanır (Kural 2.4); ödemeyi
+  sürekli geciktirme kararı için oyuncu kartında ve disiplin penceresinde son 3
+  ayın ödeme düzeni (geç ödenen / hâlâ ödenmeyen maç; maçtan 2 gün sonrası geç
+  sayılır, Kural 2.4), kaleciler ücretsiz (Kural 2.1),
   pay 5 ₺'ye yukarı yuvarlanır (Kural 2.2). İkisi de Ayarlar'dan kapatılabilir.
 - **Misafir (Kural 1.8):** getiren, misafirinin ödemesinden ve davranışından
   sorumludur. Misafirin ödenmemiş payı getirenin borç engeline sayılır; hatırlatma
@@ -213,7 +217,8 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans
-  puanı (Elo, senin verdiğin seviyeyle harmanlanır, kapatılabilir).
+  puanı (Elo, senin verdiğin seviyeyle harmanlanır, kapatılabilir). Halı sahada
+  iki takım eşit sayıda değilse (ör. 8–7) uyarı çıkar (Kural 4.2).
 - **Ödemeler:** maç bazlı takip, muafiyet, kişi bazlı hesap defteri (kısmi
   ödeme, avans, iade), biriken borçlar, kişiye özel WhatsApp hatırlatma, aylık
   özet, organizatör giderleri (top, yelek, su) ve kasa durumu. Etkinliklerde

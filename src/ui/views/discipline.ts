@@ -10,6 +10,7 @@ import { esc, norm, trSort } from "../../domain/text";
 import { ddmm } from "../../domain/dates";
 import { getMatch, getP, openMatches } from "../../domain/lineup";
 import { L } from "../../domain/kinds";
+import { payHistory } from "../../domain/ledger";
 import { SANCTION_TXT, VIOLATIONS, benchMatch, benchTarget, sanctionText, statusMap, suggest, violation } from "../../domain/discipline";
 import { eventOption, ruleChip, subHeader } from "../components";
 import { showModal, updateModal } from "../modal";
@@ -95,6 +96,17 @@ export function guestHost(m: Match | null, pid: string): { id: string; name: str
   return p ? { id: p.id, name: p.name } : null;
 }
 
+/**
+ * Kural 2.4: son 3 aydaki oynanmış maçlardan kaçının payı geç ödendi (maç gününden 2 günden sonra)
+ * ya da hâlâ ödenmedi. Kaydı yoksa boş.
+ */
+export function payLine(pid: string, cls: string): string {
+  const rec = payHistory(store.s, pid, today());
+  if (!rec.length) return "";
+  const late = rec.filter((r) => r.late).length, unpaid = rec.filter((r) => r.late && !r.paidAt).length;
+  return '<p class="' + cls + '">' + esc(t("payLateLine", { l: late, n: rec.length }) + (unpaid ? " · " + t("payUnpaidN", { n: unpaid }) : "")) + " " + ruleChip("2.4") + "</p>";
+}
+
 export function discDraft(): Draft {
   return draft;
 }
@@ -121,6 +133,8 @@ function body(): string {
   h += '<label class="fld">' + esc(t("discWhat")) + '<select data-f="disc.type">' + VIOLATIONS.map((x) => '<option value="' + x.key + '"' + (x.key === draft.type ? " selected" : "") + ">" + esc((x.ruleByKind?.[m?.kind || "football"] || x.rule) + " · " + L(x)) + "</option>").join("") + "</select></label>";
   h += '<label class="fld">' + esc(t("discWhere")) + '<select data-f="disc.mid"><option value="">' + esc(t("discNoEvent")) + "</option>" + events.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === draft.mid ? " selected" : "") + ">" + esc(eventOption(x)) + "</option>").join("") + "</select></label>";
   if (v.event && !m) h += '<p class="small warnline">' + esc(t("discNeedsEvent")) + "</p>";
+  // Kural 2.4 "ödemeyi sürekli geciktiren": karar için son 3 ayın ödeme düzeni
+  if (draft.type === "chronic" && draft.pid) h += payLine(draft.pid, "small muted m0");
   if (sug) {
     h += '<div class="dsug"><span class="small muted">' + esc(t("discSuggested")) + " " + ruleChip(sug.rule) + "</span><strong>" + esc(sanctionText({ sanction: sug.sanction, kind: v.kind }) + (sug.step && sug.sanction !== "warn" && sug.sanction !== "bench" && sug.sanction !== "ban" ? " + " + L(SANCTION_TXT[sug.step === 1 ? "warn" : sug.step === 2 ? "bench" : "ban"]) : "")) + "</strong>" +
       (sug.step ? '<span class="small muted">' + esc(t("discStep", { n: sug.step })) + "</span>" : "") + "</div>";

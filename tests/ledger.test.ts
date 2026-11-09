@@ -1,6 +1,6 @@
 /** Hesap defteri: kısmi ödeme, FIFO dağıtım, avans, dondurulmuş pay, aylık özet ve kasa. */
 import { describe, expect, it } from "vitest";
-import { accounts, cashAt, chargeOf, debts, markPaid, monthSummary, newPayment, settleAll, settleId, unmarkPaid } from "../src/domain/ledger";
+import { accounts, cashAt, chargeOf, debts, markPaid, monthSummary, newPayment, payHistory, settleAll, settleId, unmarkPaid } from "../src/domain/ledger";
 import { billOf, freezeBill } from "../src/domain/money";
 import { allIn, match, roster, state } from "./helpers/factory";
 
@@ -167,5 +167,51 @@ describe("aylık özet ve kasa", () => {
     expect(billOf(s, m).share).toBe(335);
     ps.forEach((p) => markPaid(s, m, p.id, "2026-10-01"));
     expect(cashAt(s)).toBe(5);
+  });
+});
+
+describe("ödeme düzeni (Kural 2.4: ödemeyi sürekli geciktiren)", () => {
+  // m1 1 Ekim, m2 8 Ekim (oynandı), m3 27 Ekim (açık); kişi başı 100 ₺; bugün 20 Ekim
+  const late = (s: ReturnType<typeof setup>["s"], pid = "p0") => payHistory(s, pid, TODAY).map((r) => [r.mid, r.paidAt, r.late]);
+
+  it("maç günü ya da ertesi gün işaretlenen ödeme zamanında; günler sonra ödenen ve hâlâ ödenmeyen geç", () => {
+    const { s, m1, m2 } = setup();
+    markPaid(s, m1, "p0", "2026-10-02");
+    expect(late(s)).toEqual([["m1", "2026-10-02", false], ["m2", null, true]]);
+    markPaid(s, m2, "p0", "2026-10-15");
+    expect(late(s)).toEqual([["m1", "2026-10-02", false], ["m2", "2026-10-15", true]]);
+  });
+
+  it("kısmi ödemede pay kalanı ödendiği gün kapanmış sayılır", () => {
+    const { s } = setup();
+    s.payments.push(newPayment("p0", 50, "2026-10-01", "m1"), newPayment("p0", 50, "2026-10-09", "m1"));
+    expect(late(s)[0]).toEqual(["m1", "2026-10-09", true]);
+  });
+
+  it("genel ödeme en eski borçtan başlar; maçtan önce yapılan ödeme (avans) zamanında", () => {
+    const { s } = setup();
+    s.payments.push(newPayment("p0", 150, "2026-09-28"), newPayment("p0", 50, "2026-10-09"));
+    // 150 ₺ avans: m1 tamamen (1 Ekim'de), m2'nin yarısı; kalan 50 ₺ 9 Ekim'de → m2 zamanında
+    expect(late(s)).toEqual([["m1", "2026-10-01", false], ["m2", "2026-10-09", false]]);
+  });
+
+  it("yalnızca son 90 gün, yalnızca ödeyenler; muaf ve ödemeyen listesinde olmayan sayılmaz", () => {
+    const { s, m1 } = setup();
+    expect(payHistory(s, "p0", "2027-01-05").map((r) => r.mid)).toEqual(["m2"]);
+    m1.bill = { payers: ["p1", "p2", "p3"], share: 100 };
+    expect(payHistory(s, "p0", TODAY).map((r) => r.mid)).toEqual(["m2"]);
+  });
+
+  it("henüz oynanmamış maça yazılan ödeme o maça sayılır, eski borcu kapatmaz", () => {
+    const { s } = setup();
+    s.payments.push(newPayment("p0", 100, "2026-10-15", "m3"));
+    expect(late(s)).toEqual([["m1", null, true], ["m2", null, true]]);
+  });
+
+  it("ek borca yazılan ödeme maç payını kapatmaz", () => {
+    const { s } = setup();
+    s.charges.push({ id: "x1", pid: "p0", amount: 80, at: "2026-10-02", note: "Zarar" });
+    s.payments.push(newPayment("p0", 80, "2026-10-02", undefined, undefined, "x1"));
+    expect(late(s)).toEqual([["m1", null, true], ["m2", null, true]]);
   });
 });
