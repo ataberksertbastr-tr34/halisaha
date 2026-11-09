@@ -233,6 +233,7 @@ export const tr = {
   updating: "Yeni sürüm indiriliyor…", gotIt: "Tamam",
   unevenTeams: "Takımlar eşit değil ({a}–{b}). Sahada iki takım eşit sayıda olmalı; fazla kişi değişimli oynar.",
   keeper2g: "{t} 2 gol yedi: kaleci değişimi (Kural 3.5)", keeper2gAny: "2 gol oldu: kaleci değişimi (Kural 3.5)",
+  payLateLine: "Son 3 ayda geç ödenen maç: {l}/{n}", payUnpaidN: "hâlâ ödenmeyen: {n}",
   iosMoveTitle: "Ana ekrana eklemeden önce",
   iosMoveText: "iPhone'da ana ekrana eklenen uygulama Safari'deki verileri görmez. Önce yedeği paylaş; sonra ana ekrandaki uygulamada Ayarlar → Yedekten yükle. Eşitlemeye giriş yaparsan veriler kendiliğinden gelir.",
   iosMoveSynced: "iPhone'da ana ekrana eklenen uygulama Safari'deki verileri görmez. Eşitleme açık: ana ekrandaki uygulamada aynı e-posta ve şifreyle giriş yap, veriler gelir (Google ile girdiysen önce Ayarlar'da şifre belirle).",

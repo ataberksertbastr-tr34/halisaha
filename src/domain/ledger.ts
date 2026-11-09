@@ -410,3 +410,65 @@ export function months(s: State, today: string): string[] {
   s.charges.forEach((x) => set.add(monthKey(x.at)));
   return [...set].filter((x) => /^\d{4}-\d{2}$/.test(x)).sort().reverse();
 }
+
+/* ---------- ödeme düzeni (Kural 2.4) ---------- */
+
+export interface PayRecord {
+  mid: string;
+  /** Maçın tarihi */
+  date: string;
+  /** Payın tamamen ödendiği gün; hâlâ ödenmediyse null */
+  paidAt: string | null;
+  /** Maç gününden "grace" günden sonra ödendi ya da hâlâ ödenmedi */
+  late: boolean;
+}
+
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 86400000);
+
+/**
+ * Kural 2.4 "Ödemeyi sürekli geciktiren oyuncu organizasyona davet edilmez": kişinin son
+ * "days" gündeki oynanmış maç paylarının ne zaman tamamen ödendiği. Ödemeler tarih sırasıyla
+ * hesap defterindeki gibi dağıtılır (maça yazılan önce o maça, kalanı en eski borca). Kayıt
+ * günüyle ödeme günü arasındaki farkı (ödemeyi ertesi gün işaretleme) "grace" gün karşılar.
+ */
+export function payHistory(s: State, pid: string, today: string, days = 90, grace = 2): PayRecord[] {
+  type Due = { mid: string; date: string; left: number; paidAt: string | null; played: boolean };
+  // Hesap defterindeki gibi tüm paylar (henüz oynanmamış maçınki de): maça yazılan ödeme o maça sayılır
+  const dues: Due[] = [];
+  for (const m of s.matches) {
+    const { payers, share } = billOf(s, m);
+    if (share > 0 && payers.includes(pid)) dues.push({ mid: m.id, date: m.date, left: share, paidAt: null, played: m.status === "played" });
+  }
+  dues.sort((a, b) => a.date.localeCompare(b.date) || a.mid.localeCompare(b.mid));
+  const extra = new Map(s.charges.filter((c) => c.pid === pid).map((c) => [c.id, c.amount]));
+  const pays = s.payments.filter((p) => p.pid === pid).slice().sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+  let pool = 0;
+  const pay = (d: Due, amt: number, at: string): number => {
+    const take = Math.min(d.left, amt);
+    d.left = r2(d.left - take);
+    if (d.left <= EPS && !d.paidAt) d.paidAt = at;
+    return r2(amt - take);
+  };
+  for (const p of pays) {
+    let amt = p.amount;
+    if (p.cid && extra.has(p.cid)) {
+      // Ek borca (zarar bedeli, kişisel harcama) yazılan ödeme önce onu kapatır
+      const need = extra.get(p.cid)!;
+      const take = Math.min(need, amt);
+      extra.set(p.cid, r2(need - take));
+      amt = r2(amt - take);
+    } else if (p.mid) {
+      const d = dues.find((x) => x.mid === p.mid);
+      if (d) amt = pay(d, amt, p.at);
+    }
+    pool = r2(pool + amt);
+    // Havuz: önce o güne kadar oynanmış en eski borçlar, sonra sonrakiler (avans)
+    for (const d of [...dues.filter((x) => x.date <= p.at), ...dues.filter((x) => x.date > p.at)]) {
+      if (pool <= EPS) break;
+      if (d.left > EPS) pool = pay(d, pool, p.at < d.date ? d.date : p.at);
+    }
+  }
+  return dues
+    .filter((d) => d.played && dayDiff(today, d.date) <= days)
+    .map((d) => ({ mid: d.mid, date: d.date, paidAt: d.paidAt, late: d.paidAt ? dayDiff(d.paidAt, d.date) > grace : dayDiff(today, d.date) > grace }));
+}

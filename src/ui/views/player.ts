@@ -8,6 +8,7 @@ import { playerCard } from "../../domain/stats";
 import { reliability } from "../../domain/roster";
 import { perfRatings } from "../../domain/elo";
 import { accounts } from "../../domain/ledger";
+import { payLine } from "./discipline";
 import { dayName } from "../../domain/messages";
 import { kindIcon, posBadge, subHeader } from "../components";
 import { eventTitle, isFootball } from "../../domain/kinds";
@@ -45,6 +46,7 @@ export function viewPlayer(): string {
     tile(t("cardBalance"), acc ? (acc.owed > 0 ? "−" + money(acc.owed) : acc.credit > 0 ? "+" + money(acc.credit) : money(0)) : money(0), acc && acc.owed > 0 ? "neg" : acc && acc.credit > 0 ? "pos" : "") +
     "</div>";
   if (rel && (rel.late || rel.noshow)) h += '<p class="small muted m0">' + esc(t("relMeta", { s: rel.score, l: rel.late, x: rel.noshow })) + "</p>";
+  h += payLine(id, "small muted m0 mt-s");
   const ev = eventTable(S).find((x) => x.id === id);
   if (ev) h += '<p class="small muted m0 mt-s">' + esc(t("eventsLine", { n: ev.events, w: ev.wins, g: ev.games })) + "</p>";
   h += "</section>";
