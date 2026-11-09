@@ -103,7 +103,7 @@ export function refreshSyncSection(): void {
 export function syncChip(): string {
   const v = syncView();
   if (navigator.onLine === false) return '<span class="sync off" id="sync">' + esc(t("offline")) + "</span>";
-  if (!v.user) return '<span class="sync" id="sync">' + esc(t("syncLocal")) + "</span>";
+  if (!v.user) return '<span class="sync local" id="sync">' + esc(t("syncLocal")) + "</span>";
   const st = v.status.state;
   if (st === "error" || st === "needsUpdate") return '<span class="sync warn" id="sync">' + IC.alert + esc(t("syncHeroErr")) + "</span>";
   if (st === "syncing" || v.status.pending) return '<span class="sync" id="sync">' + IC.cloud + esc(t("syncHeroBusy")) + "</span>";

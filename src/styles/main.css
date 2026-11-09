@@ -147,8 +147,9 @@ main:focus { outline: none; }
 #hero.compact::before { background: repeating-linear-gradient(115deg, transparent 0 22px, rgba(255, 255, 255, .014) 22px 23px); }
 #hero.compact .hero-in { padding-top: 8px; padding-bottom: 8px; }
 #hero.compact .brand { min-height: 40px; }
-/* "Bu cihazda kayıtlı" bilgisi Daha > Yedekleme'de; üst bölümde yalnızca çevrimdışı uyarısı görünür */
-#hero .sync:not(.off) { display: none; }
+/* "Bu cihazda kayıtlı" bilgisi Daha > Yedekleme'de; üst bölümde çevrimdışı uyarısı ve eşitleme durumu
+   (Eşitlendi / Eşitleniyor / Eşitlenemedi) görünür */
+#hero .sync.local { display: none; }
 #hero.compact .brand-name small { display: none; }
 #hero.compact .brand-name { flex: 0 0 auto; overflow: visible; letter-spacing: .34em; }
 @media (max-width: 374px) { #hero.compact .brand-name { letter-spacing: .2em; font-size: 13px; } }

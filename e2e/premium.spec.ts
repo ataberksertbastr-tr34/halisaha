@@ -33,6 +33,8 @@ test("üst bölüm: Etkinlik'te maç günü başlığı, diğer sayfalarda kulü
   await expect(page.locator("#hero")).not.toHaveClass(/compact/);
   await expect(page.locator("#hero .hero-day")).toBeVisible();
   await expect(page.locator("#hero .hm-bar")).toHaveAttribute("role", "progressbar");
+  // Giriş yapılmamışken "Bu cihazda kayıtlı" üstte görünmez (Daha → Yedekleme'de)
+  await expect(page.locator("#hero #sync")).toBeHidden();
   for (const tab of ["teams", "pay", "players", "more"]) {
     await page.locator(`#tabs [data-v="${tab}"]`).click();
     await expect(page.locator("#hero")).toHaveClass(/compact/);
