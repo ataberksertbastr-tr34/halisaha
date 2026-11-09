@@ -6,7 +6,7 @@
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
+import { deadZones, importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const CLEAN = ["Kaleci Kemal", "Orta Ömer", "Defans Doğan", "Eldiven Ercan"];
@@ -66,9 +66,12 @@ test("masa tenisi turnuvası: kura, skor tabelası, tur atlama ve şampiyon (Kur
   await expect(page.locator(".cup-r")).toHaveCount(2);
   await expect(page.locator(".cmatch .cm-st", { hasText: "Bay geçti" })).toHaveCount(1);
   await noHorizontalScroll(page);
+  expect(await deadZones(page, "turnuva tablosu")).toEqual([]);
   // Yarı finali skor tabelasında oyna: 3 oyun 11-0
   await page.locator('[data-a="cupPlay"]').first().click();
   const a = page.locator(".sb-side.a");
+  await expect(a).toBeVisible();
+  expect(await deadZones(page, "skor tabelası")).toEqual([]);
   for (let i = 0; i < 33; i++) await a.click();
   await expect(a).toHaveClass(/win/);
   await page.locator('#modal [data-a="closeModal"]').last().click();
@@ -117,6 +120,7 @@ test("kıraathane puan cetveli: el el puan, önde olan ve masa sonucu (Kural 21.
   await expect(page.locator(".sht tfoot td.lead")).toHaveText("7");
   await expect(page.locator('[data-a="sheetLow"]').first()).toBeDisabled();
   await noHorizontalScroll(page);
+  expect(await deadZones(page, "puan cetveli")).toEqual([]);
   await page.locator('[data-a="sheetFinish"]').click();
   await expect(page.locator(".sh-lead")).toContainText("Kazanan");
   await page.locator('#modal .sheet-head [data-a="closeModal"]').click();
@@ -154,6 +158,7 @@ test("halı saha: korner serisi, sakatlık ve kapanış listesi (Kural 7.6, 8.3,
   await expect(closing.locator('[data-k="post.bibs"]')).toHaveAttribute("aria-checked", "true");
   await expect(closing.locator(".meta")).toContainText("1/4");
   await noHorizontalScroll(page);
+  expect(await deadZones(page, "korner, sakatlık, kapanış")).toEqual([]);
   await page.locator('[data-a="finish"]').click();
   await expect(page.locator(".hist", { hasText: "1 sakatlık" })).toHaveCount(1);
   expect(errors).toEqual([]);
