@@ -58,3 +58,37 @@ export async function noHorizontalScroll(page: Page): Promise<void> {
   const [sw, cw] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(sw, "yatay kaydırma olmamalı").toBeLessThanOrEqual(cw);
 }
+
+/**
+ * Önce mobil (CLAUDE.md): her dokunulabilir öğe en az 44 × 44 px alan sunmalı. Bir boyutu 44 px'ten
+ * küçük olan öğenin merkezinden 20 px öteye dokunulunca o öğeye ya da bitişik başka bir dokunulabilir
+ * öğeye denk gelinmeli; boşa giden dokunuşu olan öğeler döner. Kural metnindeki satır içi bağlantılar
+ * (.rref) ve kapalı açılır bölümlerin içi sayılmaz; pencere açıksa yalnızca pencerenin içi ölçülür.
+ */
+export async function deadZones(page: Page, where: string): Promise<string[]> {
+  return (await page.evaluate(() => {
+    const sel = "button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button], [data-a]";
+    const out = new Set<string>();
+    // Pencere (alt sayfa) açıksa yalnızca onun içi: arkadaki sayfaya dokunulamaz
+    const root: ParentNode = document.querySelector("#modal:not([hidden])") || document;
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>(sel))) {
+      if (el.matches(".rref") || el.closest("details:not([open]) > :not(summary)")) continue;
+      const r0 = el.getBoundingClientRect();
+      if (!r0.width || !r0.height || (r0.width >= 44 && r0.height >= 44)) continue;
+      el.scrollIntoView({ block: "center", inline: "center" });
+      const q = el.getBoundingClientRect();
+      const cx = q.left + q.width / 2, cy = q.top + q.height / 2;
+      const pts: [number, number][] = [];
+      if (q.width < 44) pts.push([cx - 20, cy], [cx + 20, cy]);
+      if (q.height < 44) pts.push([cx, cy - 20], [cx, cy + 20]);
+      for (const [x, y] of pts) {
+        const h = document.elementFromPoint(x, y) as HTMLElement | null;
+        if (h && h !== el && !el.contains(h) && !h.closest(sel)) {
+          out.add(el.tagName.toLowerCase() + "." + String(el.className).trim().replace(/\s+/g, ".") + ' "' + (el.innerText || el.getAttribute("aria-label") || "").trim().slice(0, 20) + '" ' + Math.round(q.width) + "×" + Math.round(q.height));
+          break;
+        }
+      }
+    }
+    return [...out];
+  })).map((x) => where + ": " + x);
+}

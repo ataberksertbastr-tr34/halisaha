@@ -55,7 +55,7 @@ function itemHTML(it: RuleItem, q: string, focus: string): string {
   const label = golden ? t("goldenRule") + " " + it.id.slice(1) : t("ruleN", { n: it.id });
   const text = rich(it.text, q);
   return '<li class="rule' + (focus === it.id ? " focus" : "") + (it.flag ? " flag" : "") + '" id="rule-' + esc(it.id) + '" data-n="' + esc(norm(it.id + " " + it.title + " " + it.text)) + '">' +
-    '<div class="rule-tx"><span class="rnum">' + esc(golden ? it.id.slice(1) : it.id) + "</span><div>" + (it.flag ? '<span class="rflag">' + IC.alert + esc(it.flag.toLocaleUpperCase("tr")) + "</span>" : "") +
+    '<div class="rule-tx"><span class="rnum">' + esc(golden ? it.id.slice(1).padStart(2, "0") : it.id) + "</span><div>" + (it.flag ? '<span class="rflag">' + IC.alert + esc(it.flag.toLocaleUpperCase("tr")) + "</span>" : "") +
     (it.title ? "<strong>" + rich(it.title, q) + "</strong> " : "") + "<span>" + (q ? text : linkRefs(text)) + "</span></div></div>" +
     '<button type="button" class="iconbtn" data-a="shareRule" data-id="' + esc(it.id) + '" aria-label="' + esc(t("shareRule", { n: label })) + '">' + IC.share + "</button></li>";
 }
@@ -91,7 +91,7 @@ export function viewRules(): string {
   if (groups.length) {
     shown += groups.reduce((n, g) => n + g.items.length, 0);
     h += '<section class="section goldsec" id="rule-sA"><div class="row nowrap"><h2 class="grow">★ ' + esc(b.goldenTitle) + "</h2>" + (q ? "" : '<button type="button" class="btn sm" data-a="shareGolden">' + IC.share + esc(t("share")) + "</button>") + "</div>" +
-      groups.map((g, i) => (g.title ? '<h3 class="ggroup' + (i ? " alt" : "") + '">' + esc(g.title) + "</h3>" : "") + '<ul class="rules golden">' + g.items.map((x) => itemHTML(x, q, focus)).join("") + "</ul>").join("") + "</section>";
+      groups.map((g, i) => (g.title ? '<h3 class="ggroup' + (i ? " alt" : "") + '">' + esc(g.title) + "</h3>" : "") + '<ul class="rules golden' + (i ? " alt" : "") + '">' + g.items.map((x) => itemHTML(x, q, focus)).join("") + "</ul>").join("") + "</section>";
   }
   if (!q && b.notes.length) h += '<div class="callout" role="note"><ul>' + b.notes.map((n) => "<li>" + linkRefs(rich(n, "")) + "</li>").join("") + "</ul></div>";
   // Kısımlar ve bölümler

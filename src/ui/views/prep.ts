@@ -41,7 +41,7 @@ export function prepBlock(m: Match): string {
   return h + "</details></section>";
 }
 
-function checkRow(key: string, on: boolean, label: string, rule: string, action: string, mid: string): string {
+export function checkRow(key: string, on: boolean, label: string, rule: string, action: string, mid: string): string {
   return '<li class="crow"><button type="button" class="cbox' + (on ? " on" : "") + '" data-a="' + action + '" data-id="' + esc(mid) + '" data-k="' + esc(key) + '" role="checkbox" aria-checked="' + on + '">' +
     '<span class="tick" aria-hidden="true">' + (on ? IC.check : "") + '</span><span class="cl">' + esc(label) + "</span></button>" + ruleChip(rule) + "</li>";
 }

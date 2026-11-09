@@ -41,6 +41,9 @@ async function emailAuth(page: Page, email: string, mode: "in" | "up"): Promise<
 async function synced(page: Page): Promise<void> {
   await expect(page.locator("#sync-status")).toContainText("Eşitlendi", { timeout: 20_000 });
   await expect(page.locator("#sync-status")).not.toContainText("bekleyen", { timeout: 20_000 });
+  // Eşitleme durumu üst bölümde de görünür (Eşitlenemedi olursa organizatör hemen görsün)
+  await expect(page.locator("#hero #sync")).toBeVisible();
+  await expect(page.locator("#hero #sync")).toContainText("Eşitlendi");
 }
 
 async function syncNow(page: Page): Promise<void> {

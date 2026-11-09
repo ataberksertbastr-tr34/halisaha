@@ -14,13 +14,15 @@ import { esc, norm, pips, trSort } from "../../domain/text";
 import { active, cleanTeams, currentMatch, getP } from "../../domain/lineup";
 import { teamSum } from "../../domain/teams";
 import { strengthFn } from "../../domain/elo";
-import { agreeValue, isFootball, kindOf, L } from "../../domain/kinds";
+import { agreeValue, isCup, isFootball, kindOf, L } from "../../domain/kinds";
+import { champion, entrants, playable, resolveBracket, roundKey, type BMatch } from "../../domain/bracket";
 import { TABLE_GAMES, partners, syncQueue, tableGame } from "../../domain/draw";
 import { teamName } from "../../domain/teamstyle";
 import { emptyState, filterBar, kindIcon, matchChips, posBadge, posShort, ruleChip, shareButtons } from "../components";
 import { pitchSVG } from "../pitch";
 import { IC } from "../icons";
 import { gameRow } from "./results";
+import { scoreLine } from "../../domain/scoring";
 
 function posCounts(m: Match, ids: string[]): string {
   const c: Record<string, number> = {};
@@ -42,8 +44,9 @@ export function viewTeams(): string {
   const ids = active(S, m);
   if (ids.length < 2) return h + emptyState(t("needPlayers"), { a: "tab", v: "match", label: t("tabMatch") }) + (k.teams === "pitch" || k.teams === "two" ? rulesSection(m) : "");
   if (k.teams === "tables") return h + tablesView(m);
-  if (k.teams === "queue" && agreeValue(m, "mode") !== "double") return h + queueView(m);
-  if (k.teams === "draw" || k.teams === "queue") return h + drawView(m);
+  const cup = isCup(m);
+  if (k.teams === "queue" && agreeValue(m, "mode") !== "double") return h + (cup ? cupView(m) : queueView(m));
+  if (k.teams === "draw" || k.teams === "queue") return h + drawView(m, cup) + (cup ? cupView(m) : "");
   return h + twoTeamsView(m);
 }
 
@@ -115,7 +118,7 @@ function rulesSection(m: Match): string {
 }
 
 /* ---------- takım kurası (ayak tenisi, masa tenisi çiftleri) ---------- */
-function drawView(m: Match): string {
+function drawView(m: Match, cup = false): string {
   const S = store.s;
   const name = (id: string) => getP(S, m, id)?.name || "?";
   const size = m.kind === "tabletennis" ? 2 : Number(agreeValue(m, "fmt")) || 2;
@@ -132,11 +135,83 @@ function drawView(m: Match): string {
       h += '<div class="dgroup' + (isFull ? "" : " rest") + '"><span class="dg-n">' + esc(isFull ? t("teamN", { n: i + 1 }) : t("waitlist")) + '</span><span class="dg-m">' + esc(g.map(name).join(" · ")) + "</span></div>";
     });
     h += "</div>";
-    if (full.length >= 2) h += '<button type="button" class="btn primary block mt" data-a="newGamePick">' + IC.scoreboard + esc(t("newGame")) + "</button>";
+    if (full.length >= 2 && !cup) h += '<button type="button" class="btn primary block mt" data-a="newGamePick">' + IC.scoreboard + esc(t("newGame")) + "</button>";
   }
   h += "</section>";
-  if (m.games.length) h += '<section class="section"><h2>' + esc(t("results")) + '</h2><ul class="games">' + m.games.slice().reverse().map((g) => gameRow(m, g)).join("") + "</ul></section>";
+  if (m.games.length && !cup) h += '<section class="section"><h2>' + esc(t("results")) + '</h2><ul class="games">' + m.games.slice().reverse().map((g) => gameRow(m, g)).join("") + "</ul></section>";
   return h;
+}
+
+/* ---------- turnuva: eleme tablosu (Kural 20.1) ---------- */
+
+/** Turnuvaya girecek taraflar: teklerde katılımcılar, çiftlerde/ayak tenisinde kura takımları. */
+export function cupSides(m: Match): string[][] {
+  const singles = m.kind === "tabletennis" && agreeValue(m, "mode") !== "double";
+  if (singles) return active(store.s, m).map((id) => [id]);
+  const d = m.draw && m.draw.game === "teams" ? m.draw : null;
+  return d ? d.groups.filter((g) => g.length === d.size) : [];
+}
+
+function sideTxt(m: Match, ids: string[] | null): string {
+  if (!ids) return "";
+  return ids.map((id) => (getP(store.s, m, id)?.name || "?").split(" ")[0]).join(" & ");
+}
+
+export function roundLabel(total: number, r: number): string {
+  const k = roundKey(total, r);
+  return k.k === "final" ? t("rFinal") : k.k === "semi" ? t("rSemi") : k.k === "quarter" ? t("rQuarter") : k.k === "last16" ? t("rLast16") : t("rN", { n: k.n });
+}
+
+function cupMatch(m: Match, bm: BMatch, total: number): string {
+  const gm = bm.gid ? m.games.find((g) => g.id === bm.gid) : null;
+  const score = gm ? scoreLine(gm) : "";
+  const side = (x: "a" | "b") => {
+    const ids = x === "a" ? bm.a : bm.b;
+    const won = bm.win === x;
+    const lost = !!bm.win && !won;
+    return '<span class="cm-side' + (won ? " won" : "") + (lost ? " lost" : "") + '">' + (ids ? esc(sideTxt(m, ids)) : '<i class="muted">' + esc(bm.bye ? t("cupBye") : t("cupTbd")) + "</i>") + (won ? IC.check : "") + "</span>";
+  };
+  const ready = !!bm.a && !!bm.b;
+  let status = "";
+  if (bm.bye) status = t("cupByeLine");
+  else if (bm.win) status = score ? score : t("cupDecided");
+  else if (gm) status = t("live") + (score ? " · " + score : "");
+  else if (ready) status = t("cupPlay");
+  else status = t("cupWaiting");
+  const label = roundLabel(total, bm.r) + (total - bm.r > 1 ? " · " + (bm.i + 1) : "");
+  const cls = "cmatch" + (bm.win ? " done" : ready ? " ready" : " wait") + (gm && !bm.win ? " live" : "");
+  if (ready && !bm.bye) {
+    return '<li class="' + cls + '"><button type="button" class="cm-btn" data-a="cupPlay" data-r="' + bm.r + '" data-i="' + bm.i + '" aria-label="' + esc(label + ": " + sideTxt(m, bm.a) + " – " + sideTxt(m, bm.b)) + '"><span class="cm-l">' + esc(label) + "</span>" + side("a") + side("b") + '<span class="cm-st">' + esc(status) + "</span></button></li>";
+  }
+  return '<li class="' + cls + '"><div class="cm-btn"><span class="cm-l">' + esc(label) + "</span>" + side("a") + side("b") + '<span class="cm-st">' + esc(status) + "</span></div></li>";
+}
+
+function cupView(m: Match): string {
+  const sides = cupSides(m);
+  const bo = Number(agreeValue(m, "bo")) || 3;
+  let h = '<section class="section cup" aria-labelledby="h-cup"><div class="sec-head">' + IC.trophy.replace("<svg", '<svg class="h2i"') + '<h2 id="h-cup">' + esc(t("cupTitle")) + "</h2>" + ruleChip("20.1") + "</div>";
+  h += '<p class="small muted tight">' + esc(m.kind === "tabletennis" ? t("cupHintTT", { bo }) : t("cupHint")) + "</p>";
+  if (!m.bracket || !m.bracket.seeds.length) {
+    if (sides.length < 2) return h + '<p class="muted small m0">' + esc(m.kind === "tabletennis" && agreeValue(m, "mode") !== "double" ? t("needPlayers") : t("cupNeedDraw")) + "</p></section>";
+    return h + '<button type="button" class="btn primary block" data-a="cupStart">' + IC.shuffle + esc(t("cupStart", { n: sides.length })) + "</button></section>";
+  }
+  const rounds = resolveBracket(m.bracket, m.games);
+  const champ = champion(rounds);
+  const total = rounds.length;
+  if (champ) {
+    h += '<div class="champ"><span class="champ-ic">' + IC.trophy + '</span><div class="minw0"><span class="champ-k">' + esc(t("cupChampion")) + '</span><b class="champ-n">' + esc(sideTxt(m, champ)) + "</b></div></div>";
+  } else {
+    const next = playable(rounds);
+    h += '<p class="cup-meta">' + esc(t("cupMeta", { n: entrants(m.bracket), r: total, p: next.length })) + "</p>";
+  }
+  rounds.forEach((ms, r) => {
+    h += '<h3 class="cup-r">' + esc(roundLabel(total, r)) + '</h3><ul class="cmatches">' + ms.map((bm) => cupMatch(m, bm, total)).join("") + "</ul>";
+  });
+  const stale = sides.length !== entrants(m.bracket);
+  if (stale) h += '<p class="warnline small mt-s">' + esc(t("cupStale")) + "</p>";
+  h += '<div class="row nowrap mt">' + '<button type="button" class="btn primary grow" data-a="cupShare">' + IC.share + esc(t("cupShare")) + "</button>" +
+    '<button type="button" class="btn side" data-a="cupStart" data-confirm="1">' + IC.shuffle + esc(t("cupRedraw")) + "</button></div>";
+  return h + "</section>";
 }
 
 /* ---------- masa sırası: kazanan kalır (masa tenisi) ---------- */

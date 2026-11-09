@@ -1,7 +1,8 @@
 /**
  * Maç saati (Kural 4.1): toplam 60 dk; 2 × 30 anlaşmasında 30. dakikada devre
  * arası (en fazla 5 dk) hatırlatılır ve saat durur. Kaleci değişimi 10
- * dakikada bir anlaşıldıysa (Kural 3.5) her 10 dakikada hatırlatır.
+ * dakikada bir anlaşıldıysa (Kural 3.5) her 10 dakikada hatırlatır. İlk
+ * 15–20 dakikada skor farkı 3 ve üstüyse takas hatırlatılır (Kural 3.4).
  * Saat maç kaydında tutulur (başlangıç anı + birikmiş süre), uygulama kapanıp
  * açılsa da doğru süreyi gösterir.
  */
@@ -74,6 +75,19 @@ export function tickClock(onAutoPause: (m: Match) => void): void {
     toast(t("clockEnd"), undefined, 8000);
     onAutoPause(m);
     return;
+  }
+  // Kural 3.4: ilk 15–20 dakikada bariz güç farkı (3+ gol) → oyuncu takası hatırlatılır
+  const minNow = Math.floor(ms / 60000);
+  if (minNow >= 15 && minNow <= 20 && !fired.has(m.id + ":swap")) {
+    const inp = (id: string) => Number((document.getElementById(id) as HTMLInputElement | null)?.value || NaN);
+    const goals = (ids: string[]) => ids.reduce((x, id) => x + (m.goals[id] || 0), 0);
+    const a = Number.isFinite(inp("scA")) ? inp("scA") : goals(m.teams.a);
+    const b = Number.isFinite(inp("scB")) ? inp("scB") : goals(m.teams.b);
+    if (Math.abs(a - b) >= 3) {
+      fired.add(m.id + ":swap");
+      buzz();
+      toast(t("swapHint"), undefined, 8000);
+    }
   }
   if (agreeValue(m, "gk") === "10m") {
     const min = Math.floor(ms / 60000);

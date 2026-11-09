@@ -157,6 +157,39 @@ export interface Queue {
   streak: number;
 }
 
+/**
+ * Turnuva (eleme) tablosu (Kural 20.1 "turnuvalarda 5 oyunda 3"; ayak tenisi,
+ * masa tenisi teklerde ve çiftlerde). Yalnızca ilk tur yuvaları ve maç
+ * kararları saklanır; sonraki turlar kararlardan her seferinde türetilir.
+ */
+export interface Bracket {
+  /** İlk tur yuvaları (2'nin kuvveti uzunluğunda, ardışık ikililer eşleşir); null = bay */
+  seeds: (string[] | null)[];
+  /** "tur-sıra" → karar. key tarafların imzasıdır; eşleşme değişirse karar geçersiz sayılır. */
+  picks: Record<string, { key: string; gid?: string; win?: Side }>;
+}
+
+/** Kıraathane puan cetveli (Kural 21.1–21.2): masa masa, el el puan. */
+export interface Sheet {
+  id: string;
+  /** Kuradaki masa sırası */
+  t: number;
+  /** Masadaki grubun imzası (kura yeniden çekilirse cetvel o masaya ait sayılmaz) */
+  key: string;
+  game: string;
+  /** Düşük toplam kazanır (101 gibi) */
+  low: boolean;
+  /** Başlangıç puanı (puanlı okeyde 20 gibi) */
+  start: number;
+  /** Taraflar: eşli oyunda iki eş, aksi halde tek tek oyuncular */
+  seats: string[][];
+  /** El el puanlar: rows[el][taraf] */
+  rows: number[][];
+  done: boolean;
+  /** Bitince yazılan masa sonucu (oyun kaydı) */
+  gid?: string;
+}
+
 export interface Match {
   id: string;
   /** Etkinlik türü (eski veri: halı saha) */
@@ -211,6 +244,14 @@ export interface Match {
   queue?: Queue;
   /** Maç saati (Kural 4.1): çalışıyorsa başlangıç anı, birikmiş süre (ms) */
   clock?: { start: number; acc: number };
+  /** Sakatlananlar (Kural 8.3, 15.6) */
+  injured: Record<string, boolean>;
+  /** Turnuva tablosu (Kural 20.1) */
+  bracket?: Bracket;
+  /** Kıraathane puan cetvelleri (Kural 21.1–21.2) */
+  sheets: Sheet[];
+  /** Üç korner bir penaltı (Kural 7.6): tarafların üst üste korner serisi */
+  corners?: Score;
 }
 
 /** Hesap defteri: alınan her ödeme bir kayıttır. mid varsa o maçın payına sayılır, yoksa en eski borçlara. */

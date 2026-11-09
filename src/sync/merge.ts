@@ -43,10 +43,12 @@ const SET_PATHS = new Set(["skipped", "matches.*.order"]);
 
 /**
  * Çatışmada bütün olarak alınan nesneler: alanları birbirine bağlı anlık görüntüler
- * (iki takım listesi, donmuş ödeme listesi, kura, masa sırası, maç saati).
- * Yarısı bir cihazdan yarısı diğerinden gelirse tutarsız olurlar.
+ * (iki takım listesi, donmuş ödeme listesi, kura, masa sırası, maç saati, korner serisi,
+ * tek bir masanın puan cetveli). Yarısı bir cihazdan yarısı diğerinden gelirse tutarsız olurlar.
+ * Puan cetvelleri masa masa (id), turnuva kararları maç maç birleşir; turnuva kararı eşleşmenin
+ * imzasını taşıdığından tablo yeniden kurulduysa eski karar kendiliğinden geçersiz sayılır.
  */
-const UNIT_PATHS = new Set(["matches.*.teams", "matches.*.bill", "matches.*.draw", "matches.*.queue", "matches.*.clock"]);
+const UNIT_PATHS = new Set(["matches.*.teams", "matches.*.bill", "matches.*.draw", "matches.*.queue", "matches.*.clock", "matches.*.corners", "matches.*.sheets.*"]);
 
 const isObj = (x: unknown): x is Obj => !!x && typeof x === "object" && !Array.isArray(x);
 const isPrim = (x: unknown) => x === null || (typeof x !== "object" && typeof x !== "function");
