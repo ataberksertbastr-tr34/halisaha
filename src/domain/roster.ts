@@ -1,8 +1,10 @@
 /** Kadro yardımcıları: geçen haftayı kopyalama, sabit oyuncular, 24 saat kuralı, güvenilirlik. */
-import type { Match, State } from "./types";
+import type { Att, Match, State } from "./types";
 import { lineup, setAtt } from "./lineup";
 import { matchStart, weekday } from "./dates";
 import { isFootball } from "./kinds";
+import { joinBlock } from "./discipline";
+import { liabilityMap } from "./ledger";
 
 const when = (m: Match) => m.date + " " + m.time;
 
@@ -26,23 +28,55 @@ export function copyCandidates(s: State, m: Match): string[] {
   return lineup(s, src).playing.filter((id) => active.has(id) && !m.att[id]);
 }
 
-/** Kaynağın oynayan kadrosunu (misafirler hariç, aktif oyuncular) yanıt vermemiş olanlara "Var" olarak yazar. */
-export function copyLastWeek(s: State, m: Match): number {
-  const ids = copyCandidates(s, m);
-  ids.forEach((id) => setAtt(m, id, "in", true));
-  return ids.length;
+/** Toplu yazmada atlanacak kişi: (maç, kişi) → engelli mi. */
+export type Skip = (m: Match, id: string) => boolean;
+
+/** Toplu yazmanın sonucu: yazılan sayısı ve engel yüzünden atlananlar. */
+export interface Added {
+  n: number;
+  blocked: string[];
 }
 
-/** Sabit oyuncuları (aktif ve yanıtsız) "Var" yazar. Yalnızca halı saha maçlarında. */
-export function applyFixed(s: State, m: Match): number {
-  if (!isFootball(m)) return 0;
-  let n = 0;
-  for (const p of s.players) {
-    if (!p.fixed || p.active === false || m.att[p.id]) continue;
-    setAtt(m, p.id, "in", true);
-    n++;
+/**
+ * Yazılması engelli olanlar (Kural 2.4 borç, 9.1 ihraç, 9.3 uzaklaştırma/ceza, 17.4 tür yasağı).
+ * Organizatörün başlattığı toplu yazmada (yeni maç, geçen haftayı kopyala) atlanır ve ona
+ * söylenir; tek tek yazarken sorulur, istediğini yine de ekler (Kural 12.1).
+ */
+export function blockedFor(s: State, today: string): Skip {
+  let debts: Record<string, number> | null = null;
+  // Borçta getirdiği misafirlerin ödenmemiş payı da sayılır (Kural 1.8)
+  return (m, id) => !!joinBlock(s, m, id, (debts ??= liabilityMap(s, today))[id] || 0);
+}
+
+/**
+ * Yalnızca disiplin engelleri (9.1, 9.3, 17.4): borca ve saate bağlı değil. Otomatik planlama
+ * bunu kullanır; maçlar haftalar önce açılır, borç yazılma anında sorulur (Kural 2.4).
+ */
+export function sanctioned(s: State): Skip {
+  return (m, id) => !!joinBlock(s, m, id, 0);
+}
+
+function addAll(m: Match, ids: string[], skip?: Skip): Added {
+  const out: Added = { n: 0, blocked: [] };
+  for (const id of ids) {
+    if (skip?.(m, id)) out.blocked.push(id);
+    else {
+      setAtt(m, id, "in", true);
+      out.n++;
+    }
   }
-  return n;
+  return out;
+}
+
+/** Kaynağın oynayan kadrosunu (misafirler hariç, aktif oyuncular) yanıt vermemiş olanlara "Var" olarak yazar; engelliler atlanır. */
+export function copyLastWeek(s: State, m: Match, skip?: Skip): Added {
+  return addAll(m, copyCandidates(s, m), skip);
+}
+
+/** Sabit oyuncuları (aktif ve yanıtsız) "Var" yazar; engelliler atlanır. Yalnızca halı saha maçlarında. */
+export function applyFixed(s: State, m: Match, skip?: Skip): Added {
+  if (!isFootball(m)) return { n: 0, blocked: [] };
+  return addAll(m, s.players.filter((p) => p.fixed && p.active !== false && !m.att[p.id]).map((p) => p.id), skip);
 }
 
 /** Kesinleşme süresi (saat): halı saha 24 (Kural 1.4), etkinlik duyuruda belirtilen (Kural 15.3; 0 = yok). */
@@ -63,6 +97,15 @@ export function isLocked(m: Match, now: Date): boolean {
   if (m.status !== "open") return false;
   const at = lockAt(m);
   return !!at && now.getTime() >= at.getTime();
+}
+
+/**
+ * Kural 1.4, 1.5, 15.3: kadro kesinleştikten sonra oynayan kadrodan çıkan geç iptal sayılır;
+ * "Yok", "Belki" ya da "Var"ı kaldırmak (aynı yanıta yeniden dokunmak onu siler) fark etmez.
+ * st: dokunulan yanıt; wasPlaying: dokunmadan önce oynayan kadroda mıydı (yani "Var").
+ */
+export function lateCancel(m: Match, st: Att, wasPlaying: boolean, now: Date): boolean {
+  return wasPlaying && st !== "late" && isLocked(m, now);
 }
 
 export interface Reliability {

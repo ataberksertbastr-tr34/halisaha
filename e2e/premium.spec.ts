@@ -3,10 +3,10 @@
  * (Kural 20.1), kıraathane puan cetveli (21.1–21.2), korner serisi (7.6),
  * sakatlık (8.3) ve kapanış listesi (3.3, 10.1). 360 px, konsol hatası yok.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const CLEAN = ["Kaleci Kemal", "Orta Ömer", "Defans Doğan", "Eldiven Ercan"];

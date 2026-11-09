@@ -20,6 +20,8 @@ export default defineConfig({
   plugins: [swPlugin()],
   test: {
     include: ["tests/**/*.test.ts"],
+    // Emülatör testleri ayrı çalışır (npm run test:emu, Firebase emülatörleri açıkken).
+    exclude: ["tests/emulator/**", "node_modules/**"],
     environment: "node",
   },
 });

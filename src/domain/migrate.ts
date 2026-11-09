@@ -192,8 +192,11 @@ function normBracket(b: Raw): Bracket {
   return { seeds, picks };
 }
 
-/** Tip güvenliği için son temizlik: eksik alanları varsayılanla doldurur, hiçbir bilgiyi silmez. */
-function normalize(s: Raw): State {
+/**
+ * Tip güvenliği için son temizlik: eksik alanları varsayılanla doldurur, hiçbir bilgiyi silmez.
+ * Girdiyi yerinde değiştirir; güncel şemadaki (v5) durumlar için idempotenttir (eşitleme de kullanır).
+ */
+export function normalize(s: Raw): State {
   const d = defaults();
   const st = s.settings;
   st.price = num(st.price);

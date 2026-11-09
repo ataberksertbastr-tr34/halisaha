@@ -13,7 +13,7 @@ import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, isFree } from "../../domain/money";
 import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
 import { eventTitle, isFootball } from "../../domain/kinds";
-import { dayName, waPersonal } from "../../domain/messages";
+import { dayName, guestPayText, waLink, waPersonal } from "../../domain/messages";
 import { emptyState, eventOption, ruleChip, shareButtons } from "../components";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
@@ -77,14 +77,19 @@ function matchPayView(): string {
     if (!free || ex) links += '<button type="button" class="linkbtn" data-a="exempt" data-mid="' + esc(mm.id) + '" data-id="' + esc(id) + '">' + esc(ex ? t("unexempt") : t("makeExempt")) + "</button>";
     if (st === "partial" && c) links += '<span class="small muted">' + esc(t("paidPart", { p: money(c.paid), a: money(c.amount) })) + "</span>";
     const phone = (p as { phone?: string }).phone;
-    if (isPayer && st !== "paid" && phone) {
+    // Misafirin payı getirene, misafirin adıyla hatırlatılır (Kural 1.8)
+    const host = phone ? null : mm.guests.find((g) => g.id === id)?.host;
+    const hp = host ? S.players.find((x) => x.id === host) : null;
+    if (isPayer && st !== "paid" && (phone || hp?.phone)) {
       const owed = acc.get(id)?.owed || 0;
-      const u = waPersonal(S, phone, p.name, owed > 0 ? owed : sh - (c?.paid || 0));
+      const amt = owed > 0 ? owed : sh - (c?.paid || 0);
+      const u = phone ? waPersonal(S, phone, p.name, amt) : waLink(hp!.phone, guestPayText(S, hp!.name, p.name, amt));
       if (u) links += '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>";
     }
     h += '<div class="payrow"><div class="pname">' + personBtn(id, p.name) + (isLate ? ' <span class="tag wait">' + esc(t("late")) + "</span>" : "") + '<span class="sublinks">' + links + "</span></div>" + right + "</div>";
   });
-  if (late.length) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + "</p>";
+  // Kural 1.5: yerine yedekten giren varsa geç iptal eden kendiliğinden muaf olur; hâlâ ödeyen varsa organizatöre hatırlatılır.
+  if (late.some((id) => payers.includes(id))) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + " " + ruleChip(isFootball(mm) ? "1.5" : "15.3") + "</p>";
   h += "</section>";
   return h + extrasSection(mm, payers) + debtsSection();
 }
@@ -124,8 +129,8 @@ function debtsSection(): string {
   if (!dl.length) h += '<p class="muted m0">' + esc(t("noDebts")) + "</p>";
   dl.forEach((d) => {
     const host = d.host ? S.players.find((p) => p.id === d.host) : null;
-    const phone = d.phone || host?.phone || "";
-    const u = phone ? waPersonal(S, phone, host && !d.phone ? host.name : d.name, d.total) : "";
+    // Misafirin borcu getirene misafirin adıyla hatırlatılır (Kural 1.8)
+    const u = d.phone ? waPersonal(S, d.phone, d.name, d.total) : host ? waLink(host.phone, guestPayText(S, host.name, d.name, d.total)) : "";
     h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>" : "") +
       '</span></div><span class="amount">' + esc(money(d.total)) + '</span><button type="button" class="btn sm" data-a="settle" data-id="' + esc(d.id) + '">' + esc(t("settle")) + "</button></div>";
   });
@@ -163,8 +168,8 @@ export function openLedger(id: string): void {
   const a = accounts(S, today()).get(id);
   const name = a?.name || getP(S, null, id)?.name || "?";
   const b = a ? balanceLabel(a) : { text: t("settledAcc"), cls: "" };
-  const phone = a?.phone || (a?.host ? S.players.find((p) => p.id === a.host)?.phone : "") || "";
-  const u = a && a.owed > 0 && phone ? waPersonal(S, phone, name, a.owed) : "";
+  const host = a?.guest && a.host ? S.players.find((p) => p.id === a.host) : null;
+  const u = !a || a.owed <= 0 ? "" : a.phone ? waPersonal(S, a.phone, name, a.owed) : host ? waLink(host.phone, guestPayText(S, host.name, name, a.owed)) : "";
   let h = sheetHead(t("ledger") + ": " + name) + '<div class="ledger-bal ' + b.cls + '">' + esc(b.text) + "</div>";
   h += '<div class="paybox"><div class="grid2"><label class="fld">' + esc(t("amount")) + '<input type="number" id="lp-amount" inputmode="decimal" min="0" step="any" value="' + (a && a.owed > 0 ? a.owed : "") + '"></label>' +
     '<label class="fld">' + esc(t("date")) + '<input type="date" id="lp-date" value="' + today() + '"></label>' +

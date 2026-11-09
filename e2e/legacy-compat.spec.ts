@@ -3,12 +3,12 @@
  * girilir, "Yedeği kopyala" çıktısı alınır ve yeni uygulamada "Yedekten yükle"
  * ile içe aktarılır. Oyuncular, maç geçmişi ve borçlar birebir aynı olmalı.
  */
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { readFileSync } from "node:fs";
 import { buildLegacyBackup, FAKE_PLAYERS } from "./legacy-driver";
-import { importBackupText, watchErrors } from "./helpers";
+import { importBackupText, test, watchErrors } from "./helpers";
 
 const LEGACY_URL = pathToFileURL(resolve("legacy/index.html")).href;
 

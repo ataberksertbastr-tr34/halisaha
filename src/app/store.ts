@@ -59,6 +59,15 @@ export const ui: UIState = {
 type Fn = () => void;
 let renderFn: Fn = () => undefined;
 let persistFn: (s: State) => void = () => undefined;
+let changeFn: Fn = () => undefined;
+/** Her değişiklikte artan sayaç (eşitleme, araya giren değişikliği bununla anlar). */
+let version = 0;
+export const storeVersion = (): number => version;
+
+/** Kullanıcı bir değişiklik yaptığında çağrılır (eşitleme için). Dışarıdan gelen veri bunu tetiklemez. */
+export function setChangeHook(fn: Fn): void {
+  changeFn = fn;
+}
 
 export function setRenderer(fn: Fn): void {
   renderFn = fn;
@@ -74,13 +83,16 @@ export function render(): void {
 /** Değişikliği kaydeder ve (istenirse) ekranı yeniler. */
 export function commit(noRender?: boolean): void {
   store.s.updatedAt = Date.now();
+  version++;
   setLang(store.s.settings.lang);
   persistFn(store.s);
+  changeFn();
   if (!noRender) renderFn();
 }
 
 /** Tüm durumu değiştirir (yedekten yükleme, sıfırlama). */
 export function replaceState(next: State): void {
+  version++;
   store.s = next;
   setLang(next.settings.lang);
   ui.matchId = null;
@@ -88,10 +100,27 @@ export function replaceState(next: State): void {
   ui.editId = null;
 }
 
+/**
+ * Başka cihazdan (eşitleme) gelen veriyi uygular: kaydeder ve ekranı yeniler,
+ * ama updatedAt'e dokunmaz ve değişiklik bildirimi yapmaz (yankı olmasın).
+ * Arayüz seçimleri korunur. Bekleyen "Geri al" geçersiz olur: eski hâle dönmek
+ * diğer cihazın değişikliklerini de silerdi.
+ */
+export function applyExternal(next: State, note?: string): void {
+  version++;
+  store.s = next;
+  setLang(next.settings.lang);
+  ui.editId = null;
+  persistFn(next);
+  renderFn();
+  if (note) toast(note);
+}
+
 export const today = (): string => todayISO();
 
 /** Durumu değiştirir ama arayüz seçimlerini korur (Geri al için). */
 function restore(json: string): void {
+  version++;
   store.s = JSON.parse(json) as State;
   setLang(store.s.settings.lang);
   ui.editId = null;

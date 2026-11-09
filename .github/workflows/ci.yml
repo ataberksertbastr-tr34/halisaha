@@ -1,7 +1,12 @@
 # Test, derleme ve yayın. Telefonda hiçbir şey kurulmaz; her şey burada çalışır.
 #  - Her push ve pull request: tip kontrolü, birim testleri (Vitest),
-#    derleme ve uçtan uca testler (Playwright, Chromium, 360 px).
-#  - main'e merge edilince: aynı derleme GitHub Pages'e yayınlanır.
+#    derleme ve uçtan uca testler (Playwright, Chromium, 360 px),
+#    cihazlar arası eşitleme testleri (Firebase emülatörleri, iki tarayıcı).
+#  - main'e merge edilince: aynı derleme GitHub Pages'e yayınlanır. Yayın yalnızca
+#    dış ağa bağlı olmayan testleri bekler: Google ile giriş testleri (gerçek
+#    apis.google.com) ayrı işte çalışır, kırmızıysa görünür ama yayını durdurmaz.
+#  - Her pazartesi: aynı testler (yayın yok). Tarihe bağlı ya da dış bir değişiklikle
+#    bozulan bir şey acil bir düzeltme yayınlanmak istendiği gün değil, önceden görülür.
 name: Test ve yayın
 
 on:
@@ -9,19 +14,23 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Pazartesi 09:23 (Türkiye saati); tam saatlerdeki yoğunluktan kaçınmak için :23
+    - cron: "23 6 * * 1"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Olay türü de grupta: haftalık çalıştırma main'deki bir yayını iptal etmesin
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
     name: Test ve derleme
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +57,25 @@ jobs:
       - name: Uçtan uca testler
         run: npm run e2e
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Firebase emülatör önbelleği
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.30.2
+
+      - name: Eşitleme testleri (Firebase emülatörü)
+        env:
+          # Google betikleri boş yanıtlanır, Google ile giriş testleri atlanır (aşağıdaki ayrı işte çalışırlar)
+          NO_GOOGLE_APIS: "1"
+        run: |
+          npm run build:emu
+          npx -y firebase-tools@15.30.2 emulators:exec --only auth,firestore --project demo-halisaha "npm run test:emu && npm run e2e:sync"
+
       - name: Test raporu (hata olursa)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -55,6 +83,7 @@ jobs:
           name: playwright-report
           path: |
             playwright-report/
+            playwright-report-sync/
             test-results/
           retention-days: 7
 
@@ -63,6 +92,52 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  # Google ile giriş: gerçek apis.google.com'a bağlanır (dış ağ). Kırmızıysa PR'da görünür, yayını durdurmaz.
+  # Dış ağın anlık yavaşlığı için bir kez yeniden denenir; ikinci hata gerçektir.
+  google:
+    name: Google ile giriş (dış ağ)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Bağımlılıklar
+        run: npm ci
+
+      - name: Playwright tarayıcısı
+        run: npx playwright install --with-deps chromium
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Firebase emülatör önbelleği
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.30.2
+
+      - name: Google ile giriş testleri (Firebase emülatörü)
+        run: |
+          npm run build:emu
+          npx -y firebase-tools@15.30.2 emulators:exec --only auth,firestore --project demo-halisaha "npx playwright test -c playwright.sync.config.ts --grep 'Google ile giriş' --retries=1"
+
+      - name: Test raporu (hata olursa)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-google
+          path: |
+            playwright-report-sync/
+            test-results/
+          retention-days: 7
 
   deploy:
     name: GitHub Pages'e yayın

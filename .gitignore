@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-emu/
+playwright-report-sync/
 coverage/
 test-results/
 playwright-report/

@@ -12,6 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "build:emu": "VITE_FIREBASE_EMULATOR=1 vite build --outDir dist-emu",
+    "e2e:sync": "playwright test -c playwright.sync.config.ts",
+    "test:emu": "vitest run -c vitest.emulator.config.ts",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
@@ -24,5 +27,8 @@
   },
   "engines": {
     "node": ">=20.19"
+  },
+  "dependencies": {
+    "firebase": "12.19.0"
   }
 }

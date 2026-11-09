@@ -1,5 +1,5 @@
 /** Görünümlerin paylaştığı küçük HTML parçaları. */
-import { t, type MsgKey } from "../i18n";
+import { money, t, type MsgKey } from "../i18n";
 import { store, ui, type FilterKey } from "../app/store";
 import type { Field, Match, Person } from "../domain/types";
 import { POSITIONS } from "../domain/types";
@@ -10,6 +10,8 @@ import { dayName } from "../domain/messages";
 import { openMatches } from "../domain/lineup";
 import { eventTitle, isFootball, kindOf, L } from "../domain/kinds";
 import { IC, type IconKey } from "./icons";
+import type { Block } from "../domain/discipline";
+import type { Liability } from "../domain/ledger";
 
 /** Etkinlik türünün ikonu. */
 export function kindIcon(m: Pick<Match, "kind"> | null | undefined): string {
@@ -127,4 +129,14 @@ export function shareButtons(k: string, label: string, mid?: string): string {
 /** Alt sayfa başlığı: geri düğmesi + başlık. */
 export function subHeader(title: string, back: string): string {
   return '<div class="subhead"><button type="button" class="iconbtn" data-a="back" data-v="' + back + '" aria-label="' + esc(t("back")) + '">' + IC.back + '</button><h1 class="subtitle">' + esc(title) + "</h1></div>";
+}
+
+/**
+ * Yazılma engelinin açıklaması: "borçlu 500 ₺ (misafiri Mehmet 300 ₺ dahil) · Kural 2.4, 1.8".
+ * Borçta getirdiği misafirlerin ödenmemiş payları da sayılır (Kural 1.8).
+ */
+export function blockReason(b: Block, l?: Liability): string {
+  if (b.why !== "debt") return t(("block_" + b.why) as MsgKey) + " · " + t("ruleN", { n: b.rule });
+  const g = (l?.guests || []).map((x) => x.name + " " + money(x.amount)).join(", ");
+  return t("block_debt") + " " + money(l?.total || 0) + (g ? " (" + t("guestDebtIncl", { g }) + ")" : "") + " · " + t("ruleN", { n: g ? b.rule + ", 1.8" : b.rule });
 }

@@ -1,8 +1,9 @@
 /** Maç planlama, rezervasyon hatırlatması ve takvim (.ics). */
 import { describe, expect, it } from "vitest";
-import { ensureUpcoming, makeMatch, needsReservation, nextSlot, rememberSkip, upcomingSlots } from "../src/domain/schedule";
+import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, unfinished, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
-import { match, player, state } from "./helpers/factory";
+import { allIn, match, player, state } from "./helpers/factory";
+import { addInfraction } from "../src/domain/discipline";
 
 // Cuma 9 Ekim 2026, 12:00 (yerel)
 const NOW = new Date(2026, 9, 9, 12, 0);
@@ -40,15 +41,80 @@ describe("otomatik planlama", () => {
   it("silinen ya da taşınan otomatik maç geri gelmez; iptal edilen maç yerinde kalır", () => {
     const s = state();
     const made = ensureUpcoming(s, NOW);
-    rememberSkip(s, made[0]);
+    rememberSkip(s, made[0], NOW);
     s.matches = s.matches.filter((m) => m !== made[0]);
     made[1].status = "cancelled";
-    rememberSkip(s, made[2]);
+    rememberSkip(s, made[2], NOW);
     made[2].date = "2026-10-21";
     expect(ensureUpcoming(s, NOW)).toEqual([]);
     expect(s.matches.map((m) => m.date).sort()).toEqual(["2026-10-15", "2026-10-21", "2026-10-22"]);
     // Pencere ilerleyince yeni gün eklenir
     expect(ensureUpcoming(s, NOW, 5).map((m) => m.date)).toEqual(["2026-10-27"]);
+  });
+  it("atlanan zamanlar listesi büyümez: 60 günden eskiler atılır", () => {
+    const s = state();
+    s.skipped = ["2026-08-01 21:00", "2026-08-11 21:00", "2026-09-29 21:00"];
+    const [first] = ensureUpcoming(s, NOW);
+    rememberSkip(s, first, NOW);
+    expect(s.skipped).toEqual(["2026-08-11 21:00", "2026-09-29 21:00", "2026-10-13 21:00"]);
+  });
+  it("cezalı ya da gruptan çıkarılmış sabit oyuncu otomatik maça yazılmaz; borca bakılmaz (Kural 2.4 yazılırken sorulur)", () => {
+    const fixed = (id: string, name: string) => player(id, name, 3, "", { fixed: true });
+    const s = state([fixed("a", "Sabit Selim"), fixed("b", "Sabit Borçlu"), fixed("c", "Sabit Cezalı")], [], { debtBlock: true });
+    const unpaid = allIn(match("old", { date: "2026-10-06", status: "played", price: 500 }), ["b"]);
+    unpaid.bill = { payers: ["b"], share: 500 };
+    s.matches.push(unpaid);
+    addInfraction(s, { pid: "c", type: "other", at: "2026-10-01", sanction: "ban", step: 3, rule: "9.3" }, "2026-10-01");
+    const made = ensureUpcoming(s, NOW);
+    expect(made).toHaveLength(4);
+    for (const m of made) expect(m.order).toEqual(["a", "b"]);
+    // Eşitlemenin "oluşturulduğu gibi" hâli (engelsiz) her sürümde aynı kalır
+    expect(autoMatch(s, "2026-10-13", "21:00", "a202610132100").order).toEqual(["a", "b", "c"]);
+  });
+  it("maç başlayınca açılan yeni maça, o günün payını henüz ödememiş sabit oyuncular da yazılır", () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Sabit Sinan", 3, "", { fixed: true })], [], { debtBlock: true });
+    ensureUpcoming(s, NOW);
+    // 13 Ekim 21:30: maç başladı, paylar henüz alınmadı; pencere bir sonraki maç gününe kayar
+    const made = ensureUpcoming(s, new Date(2026, 9, 13, 21, 30));
+    expect(made.map((m) => [m.date, m.order])).toEqual([["2026-10-27", ["a", "b"]]]);
+  });
+  it("otomatik maçın kimliği zamanından türetilir; eski maçların kimliği değişmez", () => {
+    const s = state([], [match("x", { date: "2026-10-13", time: "21:00" })]);
+    const made = ensureUpcoming(s, NOW);
+    expect(made.map((m) => m.id)).toEqual(["a202610152100", "a202610202100", "a202610222100"]);
+    expect(s.matches[0].id).toBe("x");
+    expect(slotId("2026-10-15", "21:00")).toBe("a202610152100");
+  });
+  it("iki cihaz aynı maçı ayrı ayrı oluşturursa kimlikler aynıdır", () => {
+    const phone = state([player("a", "Sabit Selim", 3, "", { fixed: true })]);
+    const pc = state();
+    expect(ensureUpcoming(phone, NOW).map((m) => m.id)).toEqual(ensureUpcoming(pc, NOW).map((m) => m.id));
+  });
+  it("türetilen kimlik başka bir maçta kullanılıyorsa rastgele kimlik verilir", () => {
+    // Organizatör 15 Ekim maçını 20:00'ye almış (kimlik aynı kalır); 21:00 yeniden oluşturulursa çakışmamalı
+    const moved = match("a202610152100", { date: "2026-10-15", time: "20:00", auto: true });
+    const s = state([], [moved]);
+    const made = ensureUpcoming(s, NOW);
+    const again = made.find((m) => m.date === "2026-10-15" && m.time === "21:00")!;
+    expect(again.id).not.toBe("a202610152100");
+    expect(new Set(s.matches.map((m) => m.id)).size).toBe(s.matches.length);
+    expect(made.filter((m) => m !== again).map((m) => m.id)).toEqual(["a202610132100", "a202610202100", "a202610222100"]);
+  });
+  it("kimlikten zaman geri okunur; zamandan türetilmemiş kimlik null", () => {
+    expect(idSlot(slotId("2026-10-15", "21:00"))).toEqual({ date: "2026-10-15", time: "21:00" });
+    expect(idSlot("a202601050930")).toEqual({ date: "2026-01-05", time: "09:30" });
+    expect(idSlot("m1")).toBeNull();
+    expect(idSlot("a2026101521")).toBeNull();
+    expect(idSlot("xa202610152100")).toBeNull();
+  });
+  it("autoMatch: otomatik planlamanın oluşturacağı maçın aynısı; durumu değiştirmez", () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Pasif Polat", 3, "", { fixed: true, active: false })], [], { price: 3200 });
+    const snap = JSON.stringify(s);
+    const m = autoMatch(s, "2026-10-13", "21:00", "a202610132100");
+    expect(JSON.stringify(s)).toBe(snap);
+    expect(m).toMatchObject({ id: "a202610132100", auto: true, price: 3200, status: "open", att: { a: "in" }, order: ["a"] });
+    expect(ensureUpcoming(s, NOW)[0]).toEqual(m);
+    expect(autoMatch(s, "2026-10-13", "21:00").id).not.toBe("a202610132100");
   });
   it("ayar kapalıysa hiçbir şey oluşturmaz", () => {
     const s = state([], [], { autoSchedule: false });
@@ -66,6 +132,20 @@ describe("saha rezervasyonu hatırlatması", () => {
     expect(needsReservation(s, NOW).map((m) => m.id)).toEqual(["a"]);
     s.settings.reserveDays = 0;
     expect(needsReservation(s, NOW)).toEqual([]);
+  });
+});
+
+describe("sonucu girilmemiş maç", () => {
+  it("halı saha başlangıçtan 3, etkinlik 6 saat sonra; oynanan ve iptal edilen sayılmaz; en eskisi önce", () => {
+    const a = match("a", { date: "2026-10-09", time: "09:00" });
+    const b = match("b", { date: "2026-10-09", time: "09:01" });
+    const c = match("c", { date: "2026-10-08", time: "21:00", status: "played" });
+    const d = match("d", { date: "2026-10-07", time: "21:00", status: "cancelled" });
+    const e = match("e", { date: "2026-10-09", time: "07:00", kind: "paintball" });
+    const f = match("f", { date: "2026-10-09", time: "05:59", kind: "paintball" });
+    const g = match("g", { date: "2026-10-06", time: "21:00" });
+    const s = state([], [a, b, c, d, e, f, g]);
+    expect(unfinished(s, NOW).map((m) => m.id)).toEqual(["g", "f", "a"]);
   });
 });
 

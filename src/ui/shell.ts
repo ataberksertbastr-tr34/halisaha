@@ -16,6 +16,7 @@ import { viewAnnounce } from "./views/announce";
 import type { IconKey } from "./icons";
 import { applyFilter } from "./components";
 import { renderBanners } from "./banner";
+import { storageMode } from "../data/persist";
 import { pwa } from "../pwa/register";
 import { IC } from "./icons";
 import { viewMatch } from "./views/match";
@@ -27,6 +28,7 @@ import { viewMore } from "./views/more";
 import { viewStats } from "./views/stats";
 import { viewPlayer } from "./views/player";
 import { viewRules } from "./views/rules";
+import { syncChip } from "./views/sync";
 
 const VIEWS: Partial<Record<RouteName, () => string>> = {
   match: viewMatch, teams: viewTeams, pay: viewPay, players: viewPlayers, more: viewMore,
@@ -57,6 +59,8 @@ export function applyTheme(): void {
 }
 
 export function renderApp(): void {
+  // Veri daha yeni bir sürümle kaydedilmiş: "Önce güncelle" ekranı kalır (main.ts showFuture)
+  if (storageMode() === "blocked") return;
   document.documentElement.lang = store.s.settings.lang;
   document.title = t("appName");
   applyTheme();
@@ -126,7 +130,7 @@ function renderHero(): void {
 
 /** Sağ üst köşe: çevrimdışı durumu ve (destekleniyorsa) "Yükle" düğmesi. */
 export function heroStatus(): string {
-  let h = navigator.onLine === false ? '<span class="sync off" id="sync">' + esc(t("offline")) + "</span>" : '<span class="sync" id="sync">' + esc(t("syncLocal")) + "</span>";
+  let h = syncChip();
   if (pwa.canInstall()) h += '<button type="button" class="herobtn" data-a="install">' + IC.install + esc(t("install")) + "</button>";
   return h;
 }

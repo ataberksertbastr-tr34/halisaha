@@ -2,6 +2,8 @@
  * Ekranın üstündeki kalıcı uyarı şeritleri (yeni sürüm, yedek hatırlatması …).
  * Her sağlayıcı ya HTML ya da boş metin döndürür.
  */
+import { storageMode } from "../data/persist";
+
 type Provider = () => string;
 const providers: Provider[] = [];
 
@@ -10,6 +12,7 @@ export function addBanner(p: Provider): void {
 }
 
 export function renderBanners(): void {
+  if (storageMode() === "blocked") return;
   const el = document.getElementById("banner");
   if (!el) return;
   const html = providers.map((p) => p()).filter(Boolean).join("");

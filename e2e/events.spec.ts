@@ -3,10 +3,10 @@
  * raunt, araç, disiplin, bitirme), voleybol skorbordu, kıraathane masa kurası,
  * masa tenisi sırası, disiplin ve duyuru sayfaları. 360 px, konsol hatası yok.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { importBackupText, noHorizontalScroll, watchErrors } from "./helpers";
+import { importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const CLEAN = ["Kaleci Kemal", "Orta Ömer", "Defans Doğan", "Eldiven Ercan"];
@@ -205,5 +205,116 @@ test("disiplin ve duyuru sayfaları; oyuncu kartında sicil", async ({ page }) =
   await expect(page.locator("#rule-ek .sanctions tbody tr")).toHaveCount(16);
   await page.locator('#rule-ek a.rref[href="#/rules/9.1"]').click();
   await expect(page.locator("#rule-9\\.1")).toHaveClass(/flag/);
+  expect(errors).toEqual([]);
+});
+
+test("geç iptal: yerine yedekten giren payı öder, geç iptal eden kendiliğinden muaf olur (Kural 15.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await newEvent(page, "paintball");
+  await page.locator('input[data-f="m.cap"]').fill("3");
+  await page.locator('input[data-f="m.cap"]').press("Tab");
+  await page.locator('input[data-f="m.price"]').fill("900");
+  await page.locator('input[data-f="m.price"]').press("Tab");
+  await page.locator('[data-a="toggleDetails"]').click();
+  await signUp(page, CLEAN); // 3 kişi kadroda, Eldiven Ercan yedekte
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="late"]').click();
+  await expect(page.locator("#toast")).toContainText("Orta Ömer geç iptal etti; yerine Eldiven Ercan girdi. Payı Eldiven Ercan öder, Orta Ömer muaf (Kural 15.3)");
+  await page.locator('#tabs [data-v="pay"]').click();
+  const row = page.locator(".payrow", { hasText: "Orta Ömer" });
+  await expect(row.locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  await expect(page.locator(".money-sum .count").first()).toContainText("300");
+  await expect(page.locator("section.section").first()).not.toContainText("Muaf tut\" de");
+  // Geri dönen sıranın sonuna (yedeğe) yazılır; başkasının yerine kadroya girince muafiyeti kalkar ve payını öder
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]').click();
+  await page.locator("#list-att li", { hasText: "Defans Doğan" }).locator('[data-s="late"]').click();
+  await expect(page.locator("#toast")).toContainText("yerine Orta Ömer girdi");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(row.locator('[data-a="exempt"]')).toHaveText("Muaf tut");
+  await expect(row).toContainText("300");
+  await expect(page.locator(".payrow", { hasText: "Defans Doğan" }).locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  // Yedek yokken geç iptal eden öder; boşalan yere eklenen misafirin onun yerine gelip gelmediği sorulur
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator("#list-att li", { hasText: "Kaleci Kemal" }).locator('[data-s="late"]').click();
+  await page.locator("#guestName").fill("Misafir Mehmet");
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(page.locator("#toast")).toContainText("Misafir Mehmet kadroya girdi. Geç iptal eden Kaleci Kemal yerine mi geldi?");
+  await page.locator("[data-toast-act]").click();
+  await expect(page.locator("#toast")).toContainText("Payı Misafir Mehmet öder, Kaleci Kemal muaf");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(page.locator(".payrow", { hasText: "Kaleci Kemal" }).locator('[data-a="exempt"]')).toHaveText("Muafiyeti kaldır");
+  await expect(page.locator(".payrow", { hasText: "Misafir Mehmet" })).toContainText("300");
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test("borçlu sabit oyuncu yeni maça kendiliğinden yazılmaz, organizatöre söylenir (Kural 2.4, 12.1)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  await page.locator("#list-roster li", { hasText: "Bek Bülent" }).locator('[data-a="editP"]').click();
+  await page.locator('[data-a="fixed"]').click();
+  await expect(page.locator("#toast")).toContainText("Bek Bülent");
+  await newEvent(page, "football");
+  await expect(page.locator("#toast")).toContainText("Engel nedeniyle yazılmadı: Bek Bülent");
+  await expect(page.locator("#list-att li", { hasText: "Bek Bülent" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test("kesinleşen kadrodan 'Belki' ya da 'Var'ı kaldırarak çıkan da geç iptal sayılır (Kural 15.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await newEvent(page, "paintball");
+  // Test saati 11 Ekim 12:00; etkinlik ertesi sabah: 24 saat kuralıyla kadro kesinleşmiş
+  for (const [f, v] of [["m.date", "2026-10-12"], ["m.time", "10:00"], ["m.cap", "3"]]) {
+    await page.locator(`input[data-f="${f}"]`).fill(v);
+    await page.locator(`input[data-f="${f}"]`).press("Tab");
+  }
+  await page.locator('[data-a="toggleDetails"]').click();
+  await signUp(page, CLEAN); // Eldiven Ercan yedekte
+  const btn = (n: string, s: string) => page.locator("#list-att li", { hasText: n }).locator(`[data-s="${s}"]`);
+  // "Belki": yerine yedekten giren öder, çekilen muaf
+  await btn("Orta Ömer", "maybe").click();
+  await expect(page.locator("#toast")).toContainText("Orta Ömer geç iptal etti; yerine Eldiven Ercan girdi. Payı Eldiven Ercan öder, Orta Ömer muaf (Kural 15.3)");
+  await expect(btn("Orta Ömer", "late")).toHaveAttribute("aria-pressed", "true");
+  // "Var"ı kaldırmak: yedek kalmadı, geç iptal sayılır ve payını öder
+  await btn("Defans Doğan", "in").click();
+  await expect(page.locator("#toast")).toContainText("Kadro kesinleşti: Defans Doğan geç iptal sayıldı. Yerine kimse gelmezse payını öder (Kural 15.3)");
+  await expect(btn("Defans Doğan", "late")).toHaveAttribute("aria-pressed", "true");
+  // Organizatör "Geç iptal sayma" derse dokunulan yanıt (yanıtsız) geri gelir
+  await page.locator("[data-toast-act]").click();
+  await expect(btn("Defans Doğan", "late")).toHaveAttribute("aria-pressed", "false");
+  await expect(btn("Defans Doğan", "in")).toHaveAttribute("aria-pressed", "false");
+  await expect(btn("Defans Doğan", "out")).toHaveAttribute("aria-pressed", "false");
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test("bir maç ceza, hedef maç iptal edilince sıradaki maça kayar (Kural 9.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.goto("/#/discipline");
+  for (const type of ["swear", "tackle"]) {
+    await page.locator('[data-a="discNew"]').first().click();
+    await page.locator('select[data-f="disc.pid"]').selectOption({ label: "Orta Ömer" });
+    await page.locator('select[data-f="disc.type"]').selectOption(type);
+    await page.locator('[data-a="discSave"]').click();
+    await expect(page.locator("#modal")).toBeHidden();
+  }
+  // İkinci ihlal: bir maç kadroya alınmaz; ceza sıradaki maça (15.10) düşer
+  await expect(page.locator("#list-disc")).toContainText("15.10");
+  await page.locator('#tabs [data-v="match"]').click();
+  await page.locator('[data-a="selMatch"]', { hasText: "15.10" }).click();
+  await expect(page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "false");
+  // Yağmur: 15.10 iptal. Ceza 22.10'a kayar
+  await page.locator('[data-a="cancelMatch"]').click();
+  await expect(page.locator("#toast")).toContainText("bir maç cezası sonraki maça kaydı: Orta Ömer (Kural 9.3)");
+  await page.locator('[data-a="selMatch"]', { hasText: "22.10" }).click();
+  await page.locator("#list-att li", { hasText: "Orta Ömer" }).locator('[data-s="in"]').click();
+  await expect(page.locator("#toast")).toContainText("Orta Ömer: ceza: bu etkinlikte yok");
+  await page.goto("/#/discipline");
+  await expect(page.locator("#list-disc")).toContainText("22.10");
   expect(errors).toEqual([]);
 });

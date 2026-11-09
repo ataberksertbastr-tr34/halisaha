@@ -12,7 +12,7 @@
 import type { Infraction, Kind, Match, Sanction, State } from "./types";
 import type { Txt } from "./kinds";
 import { L, isFootball, kindDef } from "./kinds";
-import { getMatch, openMatches, setAtt } from "./lineup";
+import { getMatch, lineup, openMatches, setAtt } from "./lineup";
 import { newExtra } from "./ledger";
 import { uid } from "./text";
 
@@ -36,7 +36,7 @@ export interface Violation extends Txt {
 
 /** İhlal kataloğu: yönetmelikteki maddeler ve Ek tablosu. */
 export const VIOLATIONS: Violation[] = [
-  { key: "fight", rule: "9.1", mode: "fixed", sanction: "expel", tr: "Kavga ve fiziksel saldırı", en: "Fighting or physical assault" },
+  { key: "fight", rule: "9.1", mode: "fixed", sanction: "expel", event: true, tr: "Kavga ve fiziksel saldırı", en: "Fighting or physical assault" },
   { key: "swear", rule: "9.2", mode: "step", tr: "Küfür ve hakaret", en: "Swearing and insults" },
   { key: "dispute", rule: "8.2", mode: "step", tr: "Kararlara itiraz, oyunu durdurma", en: "Arguing calls, stopping play" },
   { key: "timewaste", rule: "8.4", mode: "step", tr: "Zaman geçirme", en: "Time-wasting" },
@@ -110,6 +110,53 @@ export function suggest(s: State, pid: string, type: string, m?: Match | null): 
   return { sanction: v.sanction!, rule };
 }
 
+const when = (m: Match) => m.date + " " + m.time;
+
+/**
+ * Kural 9.3 "bir maç kadroya alınmaz" cezasının uygulandığı maç: seçilen maç; o maç iptal
+ * edildiyse ondan sonraki ilk iptal edilmemiş maç (aynı tür, yoksa halı saha öncelikli);
+ * hedef yoksa (kayıtta açık maç yoktu ya da maç silindi) kayıt tarihinden sonraki ilk maç.
+ * Ceza böylece sessizce düşmez; o maç oynanınca tamamlanmış olur. İptal geri alınırsa eski
+ * maça döner. Yalnızca duruma bağlıdır (saate değil).
+ */
+export function benchMatch(s: State, r: Infraction, extra?: Match): Match | null {
+  if (r.sanction !== "bench" && r.step !== 2) return null;
+  const t = getMatch(s, r.target);
+  if (t && t.status !== "cancelled") return t;
+  // extra: oluşturulmakta olan (henüz listede olmayan) maç da aday sayılır
+  const list = (extra && !getMatch(s, extra.id) ? [...s.matches, extra] : s.matches)
+    .filter((m) => m.status !== "cancelled" && m.id !== r.mid && m.id !== r.target && (t ? when(m) > when(t) : m.date >= r.at))
+    .sort((a, b) => when(a).localeCompare(when(b)));
+  return (t && list.find((m) => m.kind === t.kind)) || list.find(isFootball) || list[0] || null;
+}
+
+/**
+ * Maç iptal edilir (ya da silinmek üzere): o maça bağlı "bir maç ceza"lar sıradaki maça kayar
+ * (benchMatch). Silinecek maçta hedef yeni maça yazılır. Kişi yeni maçta Var/Belki ise kadrodan
+ * çıkar (kayıttaki gibi). Döner: cezası kayan kişiler.
+ */
+export function retireMatch(s: State, m: Match, deleting = false): string[] {
+  const affected = s.discipline.filter((r) => benchMatch(s, r)?.id === m.id);
+  m.status = "cancelled";
+  const moved: string[] = [];
+  for (const r of affected) {
+    const next = benchMatch(s, r);
+    if (deleting) {
+      if (next) r.target = next.id;
+      else delete r.target;
+    }
+    if (!next) continue;
+    moved.push(r.pid);
+    if (next.status === "open" && (next.att[r.pid] === "in" || next.att[r.pid] === "maybe")) setAtt(next, r.pid, "out", true);
+  }
+  return moved;
+}
+
+/** Etkinlik seçilmeden kaydedilen olay ihlalinin (kavga, alkol …) etkinliği: kişinin o gün oynadığı maç. */
+function incidentMatch(s: State, pid: string, at: string): Match | null {
+  return s.matches.find((m) => m.date === at && m.status !== "cancelled" && lineup(s, m).playing.includes(pid)) || null;
+}
+
 /** "Bir maç kadroya alınmaz" için varsayılan hedef: tarihten sonraki ilk açık halı saha maçı (yoksa ilk açık etkinlik). */
 export function benchTarget(s: State, today: string, exclude?: string): Match | null {
   const open = openMatches(s).filter((m) => m.date >= today && m.id !== exclude);
@@ -137,7 +184,8 @@ export function statusOf(s: State, pid: string): Status {
     if (r.sanction === "expel") st.expelled = true;
     if (r.sanction === "ban" || r.step === 3) st.banned = true;
     if (r.sanction === "kindBan" && r.kind && !st.kinds.includes(r.kind)) st.kinds.push(r.kind);
-    if (r.target && (r.sanction === "bench" || r.step === 2)) st.bench.push(r.target);
+    const b = benchMatch(s, r);
+    if (b) st.bench.push(b.id);
   }
   if (st.expelled) st.banned = true;
   return st;
@@ -164,7 +212,8 @@ export function joinBlock(s: State, m: Match, pid: string, debt: number, st?: St
   if (x.expelled) return { why: "expel", rule: "9.1" };
   if (x.banned) return { why: "ban", rule: "9.3" };
   if (x.kinds.includes(m.kind)) return { why: "kind", rule: "17.4" };
-  if (x.bench.includes(m.id)) return { why: "bench", rule: "9.3" };
+  // Oluşturulmakta olan maç (yeni maç, otomatik planlama) da cezanın sıradaki maçı olabilir
+  if (x.bench.includes(m.id) || (!getMatch(s, m.id) && x.records.some((r) => benchMatch(s, r, m)?.id === m.id))) return { why: "bench", rule: "9.3" };
   if (s.settings.debtBlock && debt > 0.004) return { why: "debt", rule: "2.4" };
   return null;
 }
@@ -193,12 +242,14 @@ export interface NewInfraction {
 export function addInfraction(s: State, x: NewInfraction, today: string): Infraction {
   const v = violation(x.type);
   const r: Infraction = { id: uid(), pid: x.pid, at: x.at, type: x.type, rule: x.rule, sanction: x.sanction, note: x.note || "" };
-  if (x.mid) r.mid = x.mid;
+  // Etkinlikte olan ihlalde etkinlik seçilmediyse o gün oynadığı maç sayılır: oradan silinmez, oyundan alınır (payını öder).
+  const ev = getMatch(s, x.mid) || (v.event ? incidentMatch(s, x.pid, x.at) : null);
+  if (ev) r.mid = ev.id;
   if (x.step) r.step = x.step;
   if (x.sanction === "kindBan") r.kind = v.kind || "airsoft";
   const benched = x.sanction === "bench" || x.step === 2;
   if (benched) {
-    const t = getMatch(s, x.target) || benchTarget(s, today, x.mid);
+    const t = getMatch(s, x.target) || benchTarget(s, today, r.mid);
     if (t) {
       r.target = t.id;
       if (t.att[x.pid] === "in" || t.att[x.pid] === "maybe") setAtt(t, x.pid, "out", true);
@@ -206,17 +257,16 @@ export function addInfraction(s: State, x: NewInfraction, today: string): Infrac
   }
   const out = x.sanction === "ban" || x.sanction === "expel" || x.step === 3;
   for (const m of openMatches(s)) {
-    if (m.id === x.mid) continue;
+    if (m.id === r.mid) continue;
     const hit = out || (x.sanction === "kindBan" && m.kind === r.kind);
     if (hit && m.date >= today && (m.att[x.pid] === "in" || m.att[x.pid] === "maybe")) {
       delete m.att[x.pid];
       m.order = m.order.filter((id) => id !== x.pid);
     }
   }
-  const ev = getMatch(s, x.mid);
   if (ev && (x.sanction === "remove" || x.sanction === "dropDay" || x.sanction === "expel")) ev.removed[x.pid] = x.rule;
   if (x.sanction === "damage" && x.amount && x.amount > 0) {
-    const c = newExtra(x.pid, x.amount, x.at, x.note || L(violation(x.type)), x.mid, x.rule);
+    const c = newExtra(x.pid, x.amount, x.at, x.note || L(violation(x.type)), r.mid, x.rule);
     s.charges.push(c);
     r.cid = c.id;
   }

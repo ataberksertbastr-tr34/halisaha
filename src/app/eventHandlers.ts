@@ -11,19 +11,19 @@ import type { Game, Kind, Match, Sanction } from "../domain/types";
 import { KINDS } from "../domain/types";
 import { active, currentMatch, getMatch, getP } from "../domain/lineup";
 import { makeEvent } from "../domain/schedule";
-import { applyFixed } from "../domain/roster";
-import { agreeValue, isFootball } from "../domain/kinds";
+import { applyFixed, blockedFor } from "../domain/roster";
+import { agreeValue, isFootball, L } from "../domain/kinds";
 import { newCar, seatsLeft } from "../domain/cars";
 import { addPoint, newGame, other, replay, resultGame, scoreLine as scoreLineOf, undoPoint, winnerOf, type Side } from "../domain/scoring";
 import { drawTables, drawTeams, partners, queueResult, startQueue, syncQueue, tableGame } from "../domain/draw";
-import { addInfraction, removeInfraction, suggest } from "../domain/discipline";
+import { addInfraction, removeInfraction, suggest, violation } from "../domain/discipline";
 import { newExtra, toggleExtraPaid } from "../domain/ledger";
 import { billOf } from "../domain/money";
 import { teamName } from "../domain/teamstyle";
 import { BIB_COLORS } from "../domain/teamstyle";
 import { openGamePicker, openNewEvent } from "../ui/views/newEvent";
 import { findGame, openScoreboard, refreshScoreboard } from "../ui/views/scoreboard";
-import { discDraft, openDiscDialog, refreshDiscDialog } from "../ui/views/discipline";
+import { discDraft, guestHost, openDiscDialog, refreshDiscDialog } from "../ui/views/discipline";
 import { annSet, annToggle, ruleChangeText } from "../ui/views/announce";
 import { closeModal } from "../ui/modal";
 import { shareText } from "../ui/share";
@@ -88,7 +88,7 @@ registerActions({
     if (!KINDS.includes(k)) return;
     const S = store.s;
     const m = makeEvent(S, k, today());
-    if (k === "football") applyFixed(S, m);
+    const blocked = k === "football" ? applyFixed(S, m, blockedFor(S, today())).blocked : [];
     S.matches.push(m);
     ui.matchId = m.id;
     ui.payId = m.id;
@@ -98,6 +98,8 @@ registerActions({
       go({ name: "match" });
       commit();
       window.scrollTo(0, 0);
+      // Engelli sabit oyuncular yazılmadı (Kural 2.4, 9.1, 9.3); organizatör yine de elle ekleyebilir (12.1).
+      if (blocked.length) toast(t("blockedSkipped", { n: blocked.map((id) => getP(S, m, id)?.name || "").join(", ") }), undefined, 8000);
     });
   },
   check: (ds) => {
@@ -384,11 +386,23 @@ registerActions({
     const amount = Number(String(d.amount).replace(",", "."));
     if (sanction === "damage" && !(amount > 0)) return toast(t("amountBad"));
     const at = m && m.date <= today() ? m.date : today();
+    // Kural 1.8: misafirin ihlalinde getirene de "Getirdiği misafirin ihlali" kaydı (kademeli, 9.3)
+    const host = d.host && d.type !== "guest" ? guestHost(m, d.pid) : null;
+    const guestName = host ? getP(S, m, d.pid)?.name || "" : "";
     closeModal(false, () =>
-      mutate(t("discSaved"), () => {
+      mutate(host ? t("discSavedHost", { n: host.name }) : t("discSaved"), () => {
         addInfraction(S, { pid: d.pid, type: d.type, at, sanction, step, rule: sug.rule, mid: d.mid || undefined, target: d.target || undefined, amount: amount > 0 ? amount : undefined, note: d.note }, today());
+        if (host) {
+          const hs = suggest(S, host.id, "guest", m);
+          addInfraction(S, { pid: host.id, type: "guest", at, sanction: hs.sanction, step: hs.step, rule: hs.rule, mid: d.mid || undefined, note: guestName + ": " + L(violation(d.type)) }, today());
+        }
       }),
     );
+  },
+  discHost: () => {
+    const d = discDraft();
+    d.host = !d.host;
+    refreshDiscDialog();
   },
   discDel: (ds) => {
     mutate(t("discRemoved"), () => removeInfraction(store.s, ds.id!));
