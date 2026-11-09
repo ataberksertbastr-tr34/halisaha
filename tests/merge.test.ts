@@ -1120,3 +1120,60 @@ describe("rastgele özellik testi (tohumlu)", () => {
     expect(shared).toBeGreaterThan(0);
   });
 });
+
+describe("şema v5 alanları: sakatlık, puan cetveli, turnuva, korner", () => {
+  const sheet = (id: string, seats: string[][], rows: number[][]) => ({ id, t: 0, key: seats.flat().join(","), game: "okey", low: false, start: 0, seats, rows, done: false });
+
+  it("iki cihazda işaretlenen sakatlar birleşir", () => {
+    const b = base();
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).injured.p0 = true;
+    m1(r).injured.p1 = true;
+    expect(m1(merge3(b, l, r)).injured).toEqual({ p0: true, p1: true });
+  });
+
+  it("farklı masaların puan cetvelleri ikisi de kalır; aynı masada yarım cetvel oluşmaz", () => {
+    const b = base();
+    m1(b).sheets = [sheet("s1", [["p0"], ["p1"]], [[5, 3]])];
+    const l = fork(b, TL), r = fork(b, TR);
+    // Yerel: yeni masa + s1'e bir el (iki kişilik); uzak: s1'e üçüncü oyuncuyu ekledi (eller aynı)
+    m1(l).sheets.push(sheet("s2", [["p2"], ["p3"]], [[1, 2]]));
+    m1(l).sheets[0].rows.push([2, 2]);
+    m1(r).sheets[0] = { ...sheet("s1", [["p0"], ["p1"], ["p2"]], [[5, 3]]) };
+    const out = merge3(b, l, r);
+    expect(ids(m1(out).sheets)).toEqual(["s1", "s2"]);
+    // s1 bütün olarak kazanan taraftan (uzak, updatedAt büyük): oyuncular ve eller aynı cetvelden
+    expect(m1(out).sheets[0]).toEqual(m1(r).sheets[0]);
+    expect(m1(out).sheets[1].rows).toEqual([[1, 2]]);
+  });
+
+  it("turnuvada iki cihazın verdiği farklı maç kararları birleşir", () => {
+    const b = base();
+    m1(b).bracket = { seeds: [["p0"], ["p1"], ["p2"], ["p3"]], picks: {} };
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).bracket!.picks["0-0"] = { key: "p0|p1", win: "a" };
+    m1(r).bracket!.picks["0-1"] = { key: "p2|p3", win: "b" };
+    expect(m1(merge3(b, l, r)).bracket!.picks).toEqual({ "0-0": { key: "p0|p1", win: "a" }, "0-1": { key: "p2|p3", win: "b" } });
+  });
+
+  it("korner serisi bütün alınır (iki takımda birden seri oluşmaz)", () => {
+    const b = base();
+    m1(b).corners = { a: 0, b: 2 };
+    const l = fork(b, TL), r = fork(b, TR);
+    // Yerel: A korner kullandı (B'nin serisi sıfırlandı); uzak: B üçüncü kornerini kullandı
+    m1(l).corners = { a: 1, b: 0 };
+    m1(r).corners = { a: 0, b: 3 };
+    expect(m1(merge3(b, l, r)).corners).toEqual({ a: 0, b: 3 });
+  });
+
+  it("v4 cihazının buluttaki v5 veriye dokunmaması için sürüm korunur; v4 veri birleşince v5 olur", () => {
+    const b = base();
+    const old = { ...clone(b), v: 4 } as State;
+    // @ts-expect-error: v4 verisinde bu alanlar yoktu
+    old.matches.forEach((m) => { delete m.injured; delete m.sheets; });
+    const out = merge3(null, migrate(old), fork(b, TR));
+    expect(out.v).toBe(5);
+    expect(m1(out).injured).toEqual({});
+    expect(m1(out).sheets).toEqual([]);
+  });
+});
