@@ -14,7 +14,7 @@ import { cleanBulkLine, cleanName, norm, uid } from "../domain/text";
 import { currentMatch, getMatch, getP, lineup, materializeOrder, promoted, setAtt } from "../domain/lineup";
 import { joinBlock, retireMatch } from "../domain/discipline";
 import { isFootball, kindOf } from "../domain/kinds";
-import { gamesTally } from "../domain/scoring";
+import { gamesTally, keeperRotation } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
 import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
@@ -335,6 +335,9 @@ registerActions({
     if (n) m.goals[id] = n;
     else delete m.goals[id];
     commit();
+    // Kural 3.5: "2 golde bir kaleci değişimi" anlaşıldıysa gol yiyen takıma hatırlatılır
+    const rot = Number(ds.d) > 0 ? keeperRotation(m, id) : null;
+    if (rot) toast(rot === "both" ? t("keeper2gAny") : t("keeper2g", { t: teamName(store.s, rot) }), undefined, 6000);
   },
   mvp: (ds) => {
     const m = cur();

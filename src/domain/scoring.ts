@@ -194,3 +194,21 @@ export function gamesTally(m: Match): { a: number; b: number } | null {
   }
   return any ? { a, b } : null;
 }
+
+/**
+ * Kural 3.5 "2 golde bir kaleci değişimi": gol eklenince kalecisi değişmesi gereken takım.
+ * Gol yiyen takımın yediği gol 2'nin katına ulaştıysa o takım döner; takımlar kurulmadıysa
+ * (golü atan takımsızsa) toplam gol 2'nin katına ulaştığında "both". Anlaşma başkaysa null.
+ */
+export function keeperRotation(m: Pick<Match, "kind" | "agree" | "teams" | "goals">, scorer: string): Side | "both" | null {
+  if (agreeValue(m, "gk") !== "2g") return null;
+  const sum = (ids: string[]) => ids.reduce((x, id) => x + (m.goals[id] || 0), 0);
+  const side: Side | null = m.teams.a.includes(scorer) ? "a" : m.teams.b.includes(scorer) ? "b" : null;
+  if (side) {
+    // Golü atan takımın toplamı = rakibin yediği gol
+    const conceded = sum(m.teams[side]);
+    return conceded > 0 && conceded % 2 === 0 ? other(side) : null;
+  }
+  const total = Object.values(m.goals).reduce((x, n) => x + (n || 0), 0);
+  return total > 0 && total % 2 === 0 ? "both" : null;
+}

@@ -1,6 +1,6 @@
 /** Takım dengeleme: güç farkı, kaleci dağılımı, mevki dengesi, herkesin yerleşmesi. */
 import { describe, expect, it } from "vitest";
-import { generateTeams, previousTeams, repeatRatio, swapPlayers, teamSum } from "../src/domain/teams";
+import { generateTeams, previousTeams, repeatRatio, swapPlayers, teamSum, unevenTeams } from "../src/domain/teams";
 import { goalFactor, perfRatings, strengthFn } from "../src/domain/elo";
 import { cleanTeams } from "../src/domain/lineup";
 import type { Pos } from "../src/domain/types";
@@ -193,5 +193,16 @@ describe("performans puanı (Elo)", () => {
     expect(goalFactor(1)).toBe(1);
     expect(goalFactor(2)).toBe(1.5);
     expect(goalFactor(-3)).toBe(1.75);
+  });
+});
+
+describe("Kural 4.2: takımlar sahada eşit sayıda", () => {
+  it("halı sahada iki takımın kişi sayısı farklıysa uyarılır; etkinliklerde ve kurulmamış takımda uyarı yok", () => {
+    const m = match("m", { teams: { a: ["a", "b", "c"], b: ["d", "e"] } });
+    expect(unevenTeams(m)).toBe(true);
+    m.teams.b.push("f");
+    expect(unevenTeams(m)).toBe(false);
+    expect(unevenTeams(match("m", { teams: { a: ["a"], b: [] } }))).toBe(false);
+    expect(unevenTeams(match("m", { kind: "volleyball", teams: { a: ["a", "b"], b: ["c"] } }))).toBe(false);
   });
 });

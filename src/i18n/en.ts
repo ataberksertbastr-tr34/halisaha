@@ -233,6 +233,8 @@ export const en: Record<MsgKey, string> = {
   unfinishedGo: "Enter result",
   tplGuestPay: "Guest payment reminder (to the host)", sampleGuest: "Sam", guestDebtIncl: "incl. guest {g}", guestPrevDebt: "{a} unpaid from a previous visit",
   updating: "Downloading the new version…", gotIt: "Got it",
+  unevenTeams: "Teams aren't even ({a}–{b}). Both teams must field the same number; the extra player rotates in.",
+  keeper2g: "{t} conceded 2: swap the keeper (Rule 3.5)", keeper2gAny: "2 goals scored: swap the keeper (Rule 3.5)",
   iosMoveTitle: "Before adding to the home screen",
   iosMoveText: "On iPhone, the app on the home screen can't see Safari's data. Share a backup first, then in the home screen app go to Settings → Restore from backup. If you sign in to sync, your data follows automatically.",
   iosMoveSynced: "On iPhone, the app on the home screen can't see Safari's data. Sync is on: sign in there with the same email and password and your data comes along (if you used Google, set a password in Settings first).",

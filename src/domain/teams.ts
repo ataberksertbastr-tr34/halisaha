@@ -214,3 +214,9 @@ export function swapPlayers(m: Match, x: string, y: string): boolean {
   if (m.locks[y]) m.locks[y] = m.teams.a.includes(y) ? "a" : "b";
   return true;
 }
+
+/** Kural 4.2: halı sahada iki takımın sahada eşit sayıda oyuncusu olmalı (ör. 8–7 olmaz). */
+export function unevenTeams(m: Pick<Match, "kind" | "teams">): boolean {
+  const a = m.teams.a.length, b = m.teams.b.length;
+  return (m.kind || "football") === "football" && a > 0 && b > 0 && a !== b;
+}
