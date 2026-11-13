@@ -238,8 +238,9 @@ function setupPWA(): void {
 function bindEvents(): void {
   document.addEventListener("click", (e) => {
     const target = e.target as HTMLElement;
-    if (target.closest("[data-toast-act]")) {
-      runToastAction();
+    const ta = target.closest<HTMLElement>("[data-toast-act]");
+    if (ta) {
+      runToastAction(Number(ta.dataset.toastAct) || 0);
       return;
     }
     const b = target.closest<HTMLElement>("[data-a]");

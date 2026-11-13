@@ -1,4 +1,4 @@
-/** Kısa bildirimler; isteğe bağlı eylem düğmesi ("Geri al" gibi). */
+/** Kısa bildirimler; isteğe bağlı bir ya da iki eylem düğmesi ("Geri al" gibi). */
 import { esc } from "../domain/text";
 
 export interface ToastAction {
@@ -7,31 +7,34 @@ export interface ToastAction {
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null;
-let current: ToastAction | null = null;
+let current: ToastAction[] = [];
 
 function el(): HTMLElement {
   return document.getElementById("toast") as HTMLElement;
 }
 
-export function toast(msg: string, action?: ToastAction, ms?: number): void {
+/** action: tek eylem ya da iki eylem (iki eylemde düğmeler metnin altına iner). */
+export function toast(msg: string, action?: ToastAction | ToastAction[], ms?: number): void {
   const box = el();
   if (!box) return;
-  current = action || null;
-  box.innerHTML = '<span class="toast-msg">' + esc(msg) + "</span>" + (action ? '<button type="button" class="toast-act" data-toast-act="1">' + esc(action.label) + "</button>" : "");
+  current = !action ? [] : Array.isArray(action) ? action.slice(0, 2) : [action];
+  box.innerHTML = '<span class="toast-msg">' + esc(msg) + "</span>" +
+    current.map((a, i) => '<button type="button" class="toast-act" data-toast-act="' + i + '">' + esc(a.label) + "</button>").join("");
+  box.classList.toggle("two", current.length > 1);
   box.classList.add("show");
   if (timer) clearTimeout(timer);
-  timer = setTimeout(hideToast, ms ?? (action ? 6000 : 2200));
+  timer = setTimeout(hideToast, ms ?? (current.length ? 6000 : 2200));
 }
 
 export function hideToast(): void {
   const box = el();
   if (box) box.classList.remove("show");
-  current = null;
+  current = [];
 }
 
-/** Eylem düğmesine basıldı. */
-export function runToastAction(): void {
-  const a = current;
+/** Eylem düğmesine basıldı (i: kaçıncı düğme). */
+export function runToastAction(i = 0): void {
+  const a = current[i];
   hideToast();
   if (a) a.run();
 }

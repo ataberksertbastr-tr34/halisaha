@@ -90,6 +90,8 @@ function matchPayView(): string {
   });
   // Kural 1.5: yerine yedekten giren varsa geç iptal eden kendiliğinden muaf olur; hâlâ ödeyen varsa organizatöre hatırlatılır.
   if (late.some((id) => payers.includes(id))) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + " " + ruleChip(isFootball(mm) ? "1.5" : "15.3") + "</p>";
+  // "Kim ne zaman yazıldı / çıktı" tartışması için (Kural 1.4–1.6)
+  if (mm.log.length) h += '<button type="button" class="btn block ghost mt-s" data-a="attLog" data-id="' + esc(mm.id) + '">' + IC.list + esc(t("attLog")) + " (" + mm.log.length + ")</button>";
   h += "</section>";
   return h + extrasSection(mm, payers) + debtsSection();
 }

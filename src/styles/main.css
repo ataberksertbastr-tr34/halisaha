@@ -196,10 +196,10 @@ p { margin: 0 0 8px; }
 .lbl { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
 label.fld { display: block; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
 label.fld input, label.fld select, label.fld textarea { margin-top: 4px; }
-input[type=text], input[type=search], input[type=tel], input[type=url], input[type=email], input[type=password], input[type=number], input[type=date], input[type=time], input[type=month], select, textarea {
+input[type=text], input[type=search], input[type=tel], input[type=url], input[type=email], input[type=password], input[type=number], input[type=date], input[type=time], input[type=datetime-local], input[type=month], select, textarea {
   width: 100%; padding: 10px 11px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); min-height: 44px; color: var(--ink); font-size: 16px;
 }
-input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; }
+input[type=date], input[type=time], input[type=datetime-local] { -webkit-appearance: none; appearance: none; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 textarea { min-height: 120px; resize: vertical; line-height: 1.4; }
@@ -379,6 +379,9 @@ select { padding-right: 30px; }
 #toast:not(:has(.toast-act)) { padding-right: 16px; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .toast-msg { flex: 1 1 auto; min-width: 0; padding: 6px 0; }
+/* İki eylemli bildirim: metin üstte, düğmeler altta sağda */
+#toast.two { flex-wrap: wrap; justify-content: flex-end; row-gap: 0; padding-top: 8px; }
+#toast.two .toast-msg { flex-basis: 100%; padding-right: 10px; }
 .toast-act { flex: 0 0 auto; min-height: 44px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 14px; }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 .empty { text-align: center; padding: 26px 12px; }
@@ -475,6 +478,11 @@ button.qbtn { cursor: pointer; }
 .lrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); min-height: 52px; }
 .lrow:first-child { border-top: none; }
 .lrow .pname .tag { margin-left: 0; }
+/* Katılım günlüğü */
+.loglist .pname .meta { white-space: normal; }
+.logwhen { flex: 0 0 auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.logmark { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--gold-ink); text-align: center; }
+.logmark svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .cashbig { font-family: var(--display); font-weight: 800; font-size: clamp(40px, 13vw, 60px); text-align: center; line-height: 1; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
 .kv { margin: 12px 0 0; display: grid; gap: 0; }
 .kv div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }

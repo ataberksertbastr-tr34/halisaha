@@ -5,6 +5,7 @@
 import { defaults } from "../domain/schema";
 import type { State } from "../domain/types";
 import { todayISO } from "../domain/dates";
+import { attSnapshot, logChanges, pruneLogs, type AttSnap } from "../domain/attlog";
 import { setLang, t } from "../i18n";
 import { toast } from "../ui/toast";
 
@@ -80,8 +81,25 @@ export function render(): void {
   renderFn();
 }
 
+/**
+ * Katılım günlüğünün karşılaştırma tabanı: son kayıttan sonraki katılım görüntüsü. Her
+ * commit'te o andaki durumla karşılaştırılır ve değişenler günlüğe yazılır (domain/attlog).
+ */
+let logBase: AttSnap = {};
+
+/**
+ * Tabanı şimdiki duruma çeker: bundan önceki değişiklikler günlüğe yazılmaz. Dışarıdan gelen
+ * veride (yükleme, eşitleme, geri alma) ve günlük kaydını elle düzelten işlemlerde kullanılır.
+ */
+export function rebaseLog(): void {
+  logBase = attSnapshot(store.s);
+}
+
 /** Değişikliği kaydeder ve (istenirse) ekranı yeniler. */
 export function commit(noRender?: boolean): void {
+  logChanges(store.s, logBase, Date.now());
+  pruneLogs(store.s, todayISO());
+  logBase = attSnapshot(store.s);
   store.s.updatedAt = Date.now();
   version++;
   setLang(store.s.settings.lang);
@@ -98,6 +116,7 @@ export function replaceState(next: State): void {
   ui.matchId = null;
   ui.payId = null;
   ui.editId = null;
+  rebaseLog();
 }
 
 /**
@@ -111,6 +130,7 @@ export function applyExternal(next: State, note?: string): void {
   store.s = next;
   setLang(next.settings.lang);
   ui.editId = null;
+  rebaseLog();
   persistFn(next);
   renderFn();
   if (note) toast(note);
@@ -124,6 +144,7 @@ function restore(json: string): void {
   store.s = JSON.parse(json) as State;
   setLang(store.s.settings.lang);
   ui.editId = null;
+  rebaseLog();
 }
 
 let lockHook: (s: State, reason: string) => Promise<void> = async () => undefined;

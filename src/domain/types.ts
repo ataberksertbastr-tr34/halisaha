@@ -190,6 +190,31 @@ export interface Sheet {
   gid?: string;
 }
 
+/**
+ * Katılım günlüğü kaydı: kim, ne zaman, ne oldu. Geç iptal (Kural 1.4–1.5), yedek sırası
+ * (1.3) ve habersiz gelmeme (1.6) tartışmalarında "kim ne zaman yazıldı / çıktı" buradan okunur.
+ */
+export type LogEv = "in" | "wait" | "up" | "down" | "maybe" | "out" | "late" | "clear";
+export interface LogEntry {
+  id: string;
+  /** Kaydın uygulamaya işlendiği an (ms) */
+  at: number;
+  pid: string;
+  /**
+   * in: kadroya yazıldı; wait: yedeğe yazıldı; up: yedekten kadroya girdi; down: kadrodan yedeğe düştü;
+   * maybe / out / late: Belki, Yok, Geç iptal; clear: yanıtı silindi.
+   */
+  ev: LogEv;
+  /** Çıkmadan önce neredeydi (kadro ya da yedek) */
+  from?: "in" | "wait";
+  /** O andaki sırası (kadroda ya da yedekte, 1'den) */
+  n?: number;
+  /** Oyuncunun haber verdiği an (ms); kayıt anından farklıysa organizatör girer */
+  said?: number;
+  /** Misafirin adı (misafir sonradan çıkarılabilir) */
+  name?: string;
+}
+
 export interface Match {
   id: string;
   /** Etkinlik türü (eski veri: halı saha) */
@@ -252,6 +277,8 @@ export interface Match {
   sheets: Sheet[];
   /** Üç korner bir penaltı (Kural 7.6): tarafların üst üste korner serisi */
   corners?: Score;
+  /** Katılım günlüğü (son 90 günün etkinlikleri için tutulur) */
+  log: LogEntry[];
 }
 
 /** Hesap defteri: alınan her ödeme bir kayıttır. mid varsa o maçın payına sayılır, yoksa en eski borçlara. */

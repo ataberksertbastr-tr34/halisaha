@@ -344,7 +344,7 @@ function dropResurrected(s: State, io: Inputs): void {
 }
 
 const RECORDS = ["att", "exempt", "locks", "goals", "noshow", "removed", "checks", "agree"] as const;
-const LISTS = ["guests", "cars", "games"] as const;
+const LISTS = ["guests", "cars", "games", "log"] as const;
 /** Tek değerli maç alanları: kalan maçta oluşturma varsayılanı duruyorsa kopyadaki düzenleme alınır. */
 const SCALARS = ["price", "fieldId", "field", "cap", "lockH", "format", "mvp", "score", "manualTeams", "draw", "queue", "clock"] as const;
 

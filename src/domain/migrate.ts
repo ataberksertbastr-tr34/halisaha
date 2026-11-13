@@ -8,7 +8,7 @@
  *  - Daha yeni bir uygulamadan gelen yedek reddedilir (veri kaybını önlemek için).
  */
 import { defaults, SCHEMA_VERSION } from "./schema";
-import type { Att, Bracket, Car, Draw, Expense, ExtraCharge, Field, Game, GameType, Infraction, Kind, Match, PairRule, Payment, Player, Pos, Queue, Sanction, Sheet, Side, State } from "./types";
+import type { Att, Bracket, Car, Draw, Expense, ExtraCharge, Field, Game, GameType, Infraction, Kind, LogEntry, LogEv, Match, PairRule, Payment, Player, Pos, Queue, Sanction, Sheet, Side, State } from "./types";
 import { KINDS } from "./types";
 import { payersOf, shareOf } from "./money";
 import { clampRating, uid } from "./text";
@@ -29,6 +29,7 @@ const STATUS_OK = new Set(["open", "played", "cancelled"]);
 const KIND_OK = new Set<string>(KINDS);
 const GAME_OK = new Set(["sets", "tavla", "rounds", "result"]);
 const SANCTION_OK = new Set(["warn", "bench", "ban", "expel", "kindBan", "dropDay", "dropGame", "remove", "damage"]);
+const LOG_OK = new Set(["in", "wait", "up", "down", "maybe", "out", "late", "clear"]);
 
 const isObj = (x: unknown): x is Record<string, any> => !!x && typeof x === "object" && !Array.isArray(x);
 const arr = <T = Raw>(x: unknown): T[] => (Array.isArray(x) ? (x as T[]) : []);
@@ -160,11 +161,26 @@ function v4to5(s: Raw): Raw {
   return s;
 }
 
+/**
+ * v5 → v6 (katılım günlüğü):
+ *  - Her etkinliğe boş katılım günlüğü eklenir; geçmişe dönük kayıt üretilmez
+ *    (eski yanıtların ne zaman verildiği bilinmiyor).
+ *  - Hiçbir hesap değişmez.
+ */
+function v5to6(s: Raw): Raw {
+  s.matches.forEach((m: Raw) => {
+    if (!isObj(m)) return;
+    if (!Array.isArray(m.log)) m.log = [];
+  });
+  return s;
+}
+
 /** Sürüm N'den N+1'e geçiş adımları (v1→v2 yukarıdaki legacyV1toV2'dir). */
 const STEPS: Record<number, (s: Raw) => Raw> = {
   2: v2to3,
   3: v3to4,
   4: v4to5,
+  5: v5to6,
 };
 
 function detectVersion(s: Raw): number {
@@ -194,7 +210,7 @@ function normBracket(b: Raw): Bracket {
 
 /**
  * Tip güvenliği için son temizlik: eksik alanları varsayılanla doldurur, hiçbir bilgiyi silmez.
- * Girdiyi yerinde değiştirir; güncel şemadaki (v5) durumlar için idempotenttir (eşitleme de kullanır).
+ * Girdiyi yerinde değiştirir; güncel şemadaki (v6) durumlar için idempotenttir (eşitleme de kullanır).
  */
 export function normalize(s: Raw): State {
   const d = defaults();
@@ -302,6 +318,14 @@ export function normalize(s: Raw): State {
       })).filter((x: Sheet) => x.seats.length >= 2),
       ...(isObj(m.bracket) && Array.isArray(m.bracket.seeds) ? { bracket: normBracket(m.bracket) } : { bracket: undefined }),
       ...(isObj(m.corners) ? { corners: { a: Math.max(0, Math.round(num(m.corners.a))), b: Math.max(0, Math.round(num(m.corners.b))) } } : { corners: undefined }),
+      log: arr(m.log).filter(isObj).map((x: Raw): LogEntry => {
+        const out: LogEntry = { id: str(x.id) || uid(), at: num(x.at), pid: str(x.pid), ev: (LOG_OK.has(x.ev) ? x.ev : "clear") as LogEv };
+        if (x.from === "in" || x.from === "wait") out.from = x.from;
+        if (num(x.n) > 0) out.n = Math.round(num(x.n));
+        if (num(x.said) > 0) out.said = num(x.said);
+        if (x.name) out.name = str(x.name);
+        return out;
+      }).filter((x: LogEntry) => x.pid),
     };
   }).map((m: Match) => {
     // Boş isteğe bağlı alanları at (yedek temiz kalsın)

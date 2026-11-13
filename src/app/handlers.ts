@@ -1,9 +1,9 @@
 /** Tüm kullanıcı eylemleri. Eski uygulamadaki act() / onField() ile aynı davranış. */
 import { t } from "../i18n";
-import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
+import { commit, mutate, rebaseLog, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { back, go, route, tabOf, type RouteName, type Tab } from "./router";
 import { dispatch, registerActions } from "./actions";
-import type { Att, ExpenseCat, Guest, Match, Pos, Side } from "../domain/types";
+import type { Att, ExpenseCat, Guest, LogEv, Match, Pos, Side } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
@@ -17,7 +17,9 @@ import { isFootball, kindOf } from "../domain/kinds";
 import { gamesTally, keeperRotation } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
-import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
+import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } from "../domain/roster";
+import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
+import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
@@ -135,6 +137,24 @@ function coverToast(m: Match, by: string, late: string): void {
 
 function nameOf(m: Match, id: string): string {
   return getP(store.s, m, id)?.name || "";
+}
+
+/**
+ * Geç iptal sayılmasın: dokunulan yanıt geri gelir (Yok, Belki ya da yanıtsız). Günlükteki
+ * "geç iptal" kaydı ayrı bir satır eklenmeden o yanıta çevrilir; said: oyuncunun haber verdiği an.
+ */
+function undoLate(m: Match, id: string, tapped: string, said?: number): void {
+  if (m.att[id] !== "late") return;
+  if (tapped === "in") delete m.att[id];
+  else setAtt(m, id, tapped as Att, true);
+  delete m.exempt[id];
+  const e = lastEntry(m, id);
+  if (e && e.ev === "late") {
+    e.ev = tapped === "in" ? "clear" : (tapped as LogEv);
+    if (said) setSaid(m, id, said);
+    rebaseLog();
+  }
+  commit();
 }
 
 function markExported(): void {
@@ -277,15 +297,12 @@ registerActions({
     const up = promoted(before, lineup(store.s, m).playing).filter((x) => x !== id);
     if (up.length) return promotedToast(m, up[0]);
     if (autoLate) {
-      return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), {
-        label: t("notLate"),
-        // Geç iptal sayılmasın: dokunulan yanıt geri gelir (Yok, Belki ya da yanıtsız)
-        run: () => {
-          if (tapped === "in") delete m.att[id];
-          else setAtt(m, id, tapped, true);
-          commit();
-        },
-      }, 8000);
+      // Oyuncu kesinleşmeden önce haber verdiyse (organizatör sonradan işlediyse) saati girilir;
+      // "Geç iptal sayma" organizatörün takdiridir (12.1).
+      return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), [
+        { label: t("saidAsk"), run: () => openSaidSheet(m, id, tapped) },
+        { label: t("notLate"), run: () => undoLate(m, id, tapped) },
+      ], 9000);
     }
     if (cover) return coverToast(m, id, cover);
     if (m.att[id] === "in" && !ds.force) {
@@ -297,6 +314,41 @@ registerActions({
         toast(t("debtWarn", { n: name, a: money(owe.total) + (g ? " (" + t("guestDebtIncl", { g }) + ")" : "") }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
       }
     }
+  },
+  attLog: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) openLogSheet(m);
+  },
+  shareLog: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) shareText(logShareText(store.s, m, t("attLog") + " – " + logTitle(m), Date.now()));
+  },
+  saidOpen: (ds) => {
+    const m = getMatch(store.s, ds.mid);
+    if (m) openSaidSheet(m, ds.id!, ds.s || "out");
+  },
+  /** Geç iptalde haber saati: kesinleşmeden önceyse geç iptal sayılmaz (Kural 1.4–1.5, 15.3). */
+  saidSave: (ds) => {
+    const m = getMatch(store.s, ds.mid);
+    const id = ds.id!;
+    if (!m) return closeModal();
+    const v = val("#said-at");
+    const said = v ? new Date(v).getTime() : NaN;
+    if (!Number.isFinite(said)) return toast(t("saidBad"));
+    if (said > Date.now() + 60_000) return toast(t("saidFuture"));
+    const name = nameOf(m, id);
+    const lock = lockAt(m);
+    const early = !!lock && said < lock.getTime() && m.att[id] === "late";
+    closeModal(false, () => {
+      if (early) {
+        undoLate(m, id, ds.s || "out", said);
+        toast(t("saidBefore", { n: name, d: stamp(said) }), undefined, 6000);
+      } else {
+        setSaid(m, id, said);
+        commit();
+        toast(t("saidAfter", { n: name, d: stamp(said), r: lateRule(m) }), undefined, 6000);
+      }
+    });
   },
   /** Sonucu girilmemiş maç uyarısından: o maçı açıp sonuç bölümüne kaydırır. */
   openResult: (ds) => {

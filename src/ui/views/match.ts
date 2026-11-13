@@ -158,6 +158,7 @@ function attendanceBlock(m: Match): string {
   });
   h += '</ul><p class="none-msg" id="none-att" hidden>' + esc(t("noResults")) + "</p>";
   h += '<p class="legend">' + esc(t("legend")) + "<br>" + esc(t("enterHint")) + "</p>";
+  h += '<button type="button" class="btn block ghost" data-a="attLog" data-id="' + esc(m.id) + '">' + IC.list + esc(t("attLog")) + (m.log.length ? " (" + m.log.length + ")" : "") + "</button>";
   const hosts = S.players.filter((p) => p.active !== false).slice().sort(trSort);
   // Daha önce getirilmiş misafirler adıyla önerilir; seçilince getiren, seviye ve mevki gelir (Kural 1.8)
   const here = new Set(m.guests.map((g) => norm(g.name)));
