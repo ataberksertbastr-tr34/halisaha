@@ -279,6 +279,11 @@ export interface Match {
   corners?: Score;
   /** Katılım günlüğü (son 90 günün etkinlikleri için tutulur) */
   log: LogEntry[];
+  /**
+   * Gönderilen mesajlar: mesaj türü (invite, squad, teams, brief, pay, result, cars, cancel) → son
+   * paylaşım anı (ms). teamsSig: paylaşılan takımların imzası (takımlar sonradan değiştiyse anlaşılır).
+   */
+  sent: Record<string, number>;
 }
 
 /** Hesap defteri: alınan her ödeme bir kayıttır. mid varsa o maçın payına sayılır, yoksa en eski borçlara. */

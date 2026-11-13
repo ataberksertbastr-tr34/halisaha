@@ -23,6 +23,7 @@ import { IC } from "../icons";
 import { prepBlock } from "./prep";
 import { carsBlock } from "./cars";
 import { resultBlock } from "./results";
+import { todoBlock } from "./todo";
 
 const ATT_KEYS: Att[] = ["in", "maybe", "out", "late"];
 const ATT_SYM: Record<Att, string> = { in: "✓", maybe: "?", out: "✕", late: "!" };
@@ -31,8 +32,8 @@ export function viewMatch(): string {
   const S = store.s;
   if (!S.players.length) return emptyState(t("bulkHint"), { a: "tab", v: "players", label: t("goPlayers") }, t("noPlayersYet"));
   const m = currentMatch(S, ui.matchId, today());
-  if (!m) return matchChips("") + emptyState(t("noEvent"), { a: "newEvent", label: t("createEvent") }) + historyBlock();
-  return matchChips(m.id) + matchCard(m) + prepBlock(m) + attendanceBlock(m) + (isFootball(m) ? "" : carsBlock(m)) + resultBlock(m) + historyBlock();
+  if (!m) return matchChips("") + todoBlock(null) + emptyState(t("noEvent"), { a: "newEvent", label: t("createEvent") }) + historyBlock();
+  return matchChips(m.id) + todoBlock(m) + matchCard(m) + prepBlock(m) + attendanceBlock(m) + (isFootball(m) ? "" : carsBlock(m)) + resultBlock(m) + historyBlock();
 }
 
 /** "Per 16.10 11:00" */

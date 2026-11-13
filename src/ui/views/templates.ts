@@ -105,12 +105,16 @@ export function updateTemplatePreview(): void {
   if (ta && out) out.textContent = previewOf(ta.dataset.k as TemplateKey, ta.value);
 }
 
-/** Mesajı paylaşmadan önce görmek/düzeltmek için. */
-export function openShareSheet(title: string, text: string): void {
+/**
+ * Mesajı paylaşmadan önce görmek/düzeltmek için. k ve mid verilirse paylaşılınca ya da
+ * kopyalanınca o etkinlikte "gönderildi" diye işaretlenir (iş listesi).
+ */
+export function openShareSheet(title: string, text: string, k = "", mid = ""): void {
+  const ref = k && mid ? ' data-k="' + esc(k) + '" data-id="' + esc(mid) + '"' : "";
   showModal(sheetHead(title) +
     '<textarea id="mtext" aria-label="' + esc(title) + '">' + esc(text) + "</textarea>" +
-    '<div class="row mt"><button type="button" class="btn primary grow" data-a="shareSheet">' + IC.share + esc(t("share")) + "</button>" +
-    '<button type="button" class="btn grow" data-a="copy">' + IC.copy + esc(t("copy")) + "</button></div>");
+    '<div class="row mt"><button type="button" class="btn primary grow" data-a="shareSheet"' + ref + ">" + IC.share + esc(t("share")) + "</button>" +
+    '<button type="button" class="btn grow" data-a="copy"' + ref + ">" + IC.copy + esc(t("copy")) + "</button></div>");
 }
 
 export function isDefaultTemplate(k: TemplateKey, text: string): boolean {

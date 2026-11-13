@@ -28,7 +28,7 @@ export function blankMatch(kind: Kind, date: string, time: string, extra: Partia
     id: uid(), kind, title: "", cap: 0, lockH: 24, date, time, fieldId: "", price: 0, format: 7,
     status: "open", att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
     locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false,
-    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], injured: {}, sheets: [], log: [],
+    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], injured: {}, sheets: [], log: [], sent: {},
     ...extra,
   };
 }

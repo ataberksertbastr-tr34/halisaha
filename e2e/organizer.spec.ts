@@ -1,6 +1,6 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
- * katılım günlüğü ve haber saati.
+ * katılım günlüğü ve haber saati, haftalık iş listesi.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -128,5 +128,91 @@ test("katılım günlüğü: kim ne zaman yazıldı; geç iptalde haber saati ke
   await page.locator('#view [data-a="attLog"]').click();
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0)).toContainText("Yok dedi · kadrodan çıktı · haber: Çar 14.10 20:50");
+  expect(errors).toEqual([]);
+});
+
+test("haftalık iş listesi: sıradaki iş tek dokunuşla yapılır, adımlar durumunu gösterir", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const todo = page.locator("#view .todobox");
+  const row = (step: string) => todo.locator(`[data-step="${step}"]`);
+  await expect(todo.locator("h2")).toHaveText("Sıradaki iş");
+  // Kapalıyken yalnızca sıradaki iş: önceki maçın kapanmamış ödemeleri
+  await expect(todo.locator(".todo-row")).toHaveCount(1);
+  await expect(row("pay-past")).toContainText("Sal 13.10 ödemeleri");
+  await expect(row("pay-past")).toContainText("2/12 ödedi · kalan 3.000 ₺");
+  await expect(todo.locator('[data-a="todoToggle"]')).toHaveText("0/6 · Tümü");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "iş listesi (kapalı)")).toEqual([]);
+
+  // "Tümü": önceki maçtan kalan iş + bu maçın altı adımı
+  await todo.locator('[data-a="todoToggle"]').click();
+  await expect(todo.locator(".todo-row")).toHaveCount(7);
+  await expect(todo.locator(".todo-row strong")).toHaveText(["Sal 13.10 ödemeleri", "Davet", "Kadro", "Saha", "Takımlar", "Sonuç", "Ödemeler"]);
+  await expect(row("invite")).toContainText("gönderilmedi");
+  await expect(row("squad")).toContainText("4/16 · 12 kişi eksik");
+  await expect(row("field")).toContainText("rezerve edilmedi");
+  await expect(row("teams")).toContainText("kurulmadı");
+  await expect(row("result")).toContainText("maçtan sonra");
+  await expect(row("pay")).toContainText("1/3 ödedi");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "iş listesi (açık)")).toEqual([]);
+
+  // Davet tek dokunuşla gider ve adım kapanır
+  await row("invite").locator("button").click();
+  expect(await lastShared(page)).toContain("1. Kaleci Kemal");
+  await expect(row("invite")).toContainText("gönderildi · Paz 11.10 12:0");
+  await expect(row("invite").locator("button")).toHaveCount(0);
+  await expect(todo.locator('[data-a="todoToggle"]')).toHaveText("1/6 · Kapat");
+  // Saha
+  await row("field").locator("button").click();
+  await expect(row("field")).toContainText("rezerve edildi");
+  await expect(page.locator(".hero-chips")).toContainText("Rezerve edildi");
+  // Kadro: WhatsApp listesi penceresi açılır
+  await row("squad").locator("button").click();
+  await expect(page.locator("#plist")).toBeVisible();
+  await page.locator('#modal [data-a="closeModal"]').click();
+
+  // Takımlar: kur → paylaş → iş listesinde kapanır; takas sonrası yeniden paylaşmak gerekir
+  await row("teams").locator("button").click();
+  await expect(page.locator('#tabs [data-v="teams"]')).toHaveAttribute("aria-current", "page");
+  await page.locator('[data-a="gen"]').click();
+  await page.locator('[data-a="msg"][data-k="teams"]').click();
+  expect(await lastShared(page)).toContain("Sarılar");
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(row("teams")).toContainText("gönderildi · Paz 11.10 12:0");
+  await page.locator('#tabs [data-v="teams"]').click();
+  await page.locator(".team.a .tp").first().click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(row("teams")).toContainText("paylaşıldıktan sonra değişti");
+  // Önizlemeden paylaşmak da sayılır
+  await page.locator('#tabs [data-v="teams"]').click();
+  await page.locator('[data-a="msgPreview"][data-k="teams"]').click();
+  await page.locator('#modal [data-a="shareSheet"]').click();
+  await page.locator('#modal [data-a="closeModal"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(row("teams")).toContainText("gönderildi");
+
+  // Ödemeler: bu maç ve önceki maç doğru maçla açılır
+  await row("pay").locator("button").click();
+  await expect(page.locator('#tabs [data-v="pay"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('select[data-f="payId"] option:checked')).toContainText("15.10");
+  await page.locator('#tabs [data-v="match"]').click();
+  await row("pay-past").locator("button").click();
+  await expect(page.locator('select[data-f="payId"] option:checked')).toContainText("13.10");
+  // Önceki maçın ödemeleri kapanınca iş listesinden düşer
+  await page.locator('[data-a="allPaid"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(row("pay-past")).toHaveCount(0);
+  await expect(todo.locator(".todo-row")).toHaveCount(6);
+
+  // Gönderim kayıtları kalıcı: sayfa yenilenince durur, liste kapalı açılır ve sıradaki işi gösterir
+  await page.reload();
+  await openThursday(page);
+  await expect(todo.locator(".todo-row")).toHaveCount(1);
+  await expect(row("squad")).toContainText("4/16 · 12 kişi eksik");
+  await expect(todo.locator('[data-a="todoToggle"]')).toHaveText("3/6 · Tümü");
   expect(errors).toEqual([]);
 });

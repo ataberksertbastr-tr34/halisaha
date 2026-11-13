@@ -37,11 +37,12 @@ import { findRule, ruleShareText, stripMd } from "../domain/rules";
 import { isIOS } from "../pwa/register";
 import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
-import { shareText } from "../ui/share";
+import { shareText, type ShareResult } from "../ui/share";
+import { teamsSig } from "../domain/todo";
 import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
 import { applyFilter, blockReason } from "../ui/components";
 import { guestHistory, pastGuests } from "../domain/guests";
-import { closeModal } from "../ui/modal";
+import { closeModal, isModalOpen } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
 import { toast } from "../ui/toast";
 import { copyText } from "../ui/clipboard";
@@ -155,6 +156,20 @@ function undoLate(m: Match, id: string, tapped: string, said?: number): void {
     rebaseLog();
   }
   commit();
+}
+
+/**
+ * Mesaj paylaşıldıysa ya da kopyalandıysa etkinlikte "gönderildi" diye işaretler (iş listesi).
+ * Takımlarda paylaşılan kadronun imzası da tutulur: takımlar sonradan değişirse yeniden paylaşmak gerekir.
+ */
+function sentIf(r: ShareResult, mid: string | undefined, k: string | undefined): void {
+  if ((r !== "shared" && r !== "copied") || !mid || !k) return;
+  const m = getMatch(store.s, mid);
+  if (!m) return;
+  m.sent[k] = Date.now();
+  if (k === "teams") m.sent.teamsSig = teamsSig(m);
+  // Açık bir pencere (önizleme) ve yazılmakta olan metin bozulmasın: yalnızca kaydet
+  commit(isModalOpen());
 }
 
 function markExported(): void {
@@ -599,17 +614,31 @@ registerActions({
   msg: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
-    shareText(buildMessage(ds.k || "invite", mm).text);
+    const k = ds.k || "invite";
+    shareText(buildMessage(k, mm).text).then((r) => sentIf(r, mm.id, k));
   },
   msgPreview: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
-    const { title, text } = buildMessage(ds.k || "invite", mm);
-    openShareSheet(title, text);
+    const k = ds.k || "invite";
+    const { title, text } = buildMessage(k, mm);
+    openShareSheet(title, text, k, mm.id);
   },
-  shareSheet: () => {
+  shareSheet: (ds) => {
     const ta = $<HTMLTextAreaElement>("#mtext");
-    if (ta) shareText(ta.value);
+    if (ta) shareText(ta.value).then((r) => sentIf(r, ds.id, ds.k));
+  },
+  todoToggle: () => {
+    ui.open.todo = !ui.open.todo;
+    render();
+  },
+  /** İş listesinden: o etkinliğin ödemelerini açar. */
+  todoPay: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (!m) return;
+    ui.payId = m.id;
+    ui.payTab = "match";
+    goTab("pay");
   },
   tplEdit: (ds) => openTemplateSheet(ds.k as TemplateKey),
   tplIns: (ds) => {
@@ -643,6 +672,7 @@ registerActions({
     if (!ta) return;
     copyText(ta.value).then((ok) => {
       if (ok && ds.backup) markExported();
+      if (ok) sentIf("copied", ds.id, ds.k);
     });
   },
   copyIban: () => copyText(store.s.settings.iban),

@@ -1217,16 +1217,29 @@ describe("şema v6 alanları: katılım günlüğü", () => {
     expect(m1(merge3(b, l, r)).log).toEqual([]);
   });
 
+  it("gönderilen mesaj kayıtları mesaj mesaj birleşir; aynı mesajda yeni olan kalır", () => {
+    const b = base();
+    m1(b).sent = { invite: 100 };
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).sent.teams = 200;
+    m1(l).sent.teamsSig = 77;
+    m1(l).sent.invite = 210;
+    m1(r).sent.squad = 300;
+    m1(r).sent.invite = 310;
+    expect(m1(merge3(b, l, r)).sent).toEqual({ invite: 310, teams: 200, teamsSig: 77, squad: 300 });
+  });
+
   it("v5 cihazının verisi birleşince v6 olur ve günlük alanı eklenir", () => {
     const b = base();
     const old = { ...clone(b), v: 5 } as State;
     // @ts-expect-error: v5 verisinde günlük yoktu
-    old.matches.forEach((m) => delete m.log);
+    old.matches.forEach((m) => { delete m.log; delete m.sent; });
     const r = fork(b, TR);
     m1(r).log = [entry("eR", "p0", "in", 300, { n: 1 })];
     const out = merge3(null, migrate(old), r);
     expect(out.v).toBe(6);
     expect(ids(m1(out).log)).toEqual(["eR"]);
+    expect(m1(out).sent).toEqual({});
   });
 
   it("otomatik planlanan maç açılırken günlüğe kayıt düşmez: iki cihazın ayrı ayrı açtığı maç ikilenmez", () => {

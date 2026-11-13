@@ -162,15 +162,17 @@ function v4to5(s: Raw): Raw {
 }
 
 /**
- * v5 → v6 (katılım günlüğü):
+ * v5 → v6 (katılım günlüğü, gönderilen mesajlar):
  *  - Her etkinliğe boş katılım günlüğü eklenir; geçmişe dönük kayıt üretilmez
  *    (eski yanıtların ne zaman verildiği bilinmiyor).
+ *  - Her etkinliğe boş "gönderilen mesajlar" kaydı eklenir (eski paylaşımlar bilinmiyor).
  *  - Hiçbir hesap değişmez.
  */
 function v5to6(s: Raw): Raw {
   s.matches.forEach((m: Raw) => {
     if (!isObj(m)) return;
     if (!Array.isArray(m.log)) m.log = [];
+    if (!isObj(m.sent)) m.sent = {};
   });
   return s;
 }
@@ -270,6 +272,11 @@ export function normalize(s: Raw): State {
       return r;
     };
     const ids = (x: Raw) => arr(x).map(str).filter(Boolean);
+    const stamps = (o: Raw) => {
+      const r: Record<string, number> = {};
+      if (isObj(o)) for (const k in o) if (num(o[k]) > 0) r[k] = num(o[k]);
+      return r;
+    };
     const kind = (KIND_OK.has(m.kind) ? m.kind : "football") as Kind;
     return {
       ...m,
@@ -326,6 +333,7 @@ export function normalize(s: Raw): State {
         if (x.name) out.name = str(x.name);
         return out;
       }).filter((x: LogEntry) => x.pid),
+      sent: stamps(m.sent),
     };
   }).map((m: Match) => {
     // Boş isteğe bağlı alanları at (yedek temiz kalsın)
