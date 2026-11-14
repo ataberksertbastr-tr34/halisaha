@@ -6,7 +6,7 @@ import { esc } from "../domain/text";
 import { ddmm } from "../domain/dates";
 import { fieldOf } from "../domain/fields";
 import { capOf, currentMatch, lineup } from "../domain/lineup";
-import { dayName } from "../domain/messages";
+import { dayName, dayShort } from "../domain/messages";
 import { isLocked } from "../domain/roster";
 import { eventTitle, isFootball, kindOf } from "../domain/kinds";
 import { onColor, teamColor } from "../domain/teamstyle";
@@ -98,7 +98,7 @@ function renderHero(): void {
       const k = kindOf(m);
       const { playing } = lineup(S, m);
       const c = capOf(S, m);
-      const label = dayName(m.date).slice(0, 3) + " " + m.time + (isFootball(m) ? "" : " · " + eventTitle(m));
+      const label = dayShort(m.date) + " " + m.time + (isFootball(m) ? "" : " · " + eventTitle(m));
       next = '<button type="button" class="hero-next" data-a="tab" data-v="match" aria-label="' + esc(t("nextMatch") + ": " + dayName(m.date) + " " + m.time) + '">' + (IC[k.icon as IconKey] || IC.ball) + "<span>" + esc(label) + "</span><b>" + playing.length + (c ? "/" + c : "") + "</b></button>";
     }
     el.innerHTML = '<div class="hero-in"><div class="brand"><span class="brand-name">' + crestSmall + "Predators</span>" + next + '<span class="brand-acts">' + heroStatus() + "</span></div></div>";

@@ -12,7 +12,7 @@ import { dirUrl, fieldOf, mapsUrl, telHref } from "../../domain/fields";
 import { capOf, currentMatch, isGuest, lineup, penalized } from "../../domain/lineup";
 import { estShare } from "../../domain/money";
 import { liabilityMap } from "../../domain/ledger";
-import { dayName } from "../../domain/messages";
+import { dayName, dayShort } from "../../domain/messages";
 import { copyCandidates, isLocked, lockAt, lockHours, noShowLastTime, reliability } from "../../domain/roster";
 import { checkProgress, eventTitle, isFootball, kindOf, L, pendingAgreements } from "../../domain/kinds";
 import { joinBlock, statusMap } from "../../domain/discipline";
@@ -39,7 +39,7 @@ export function viewMatch(): string {
 /** "Per 16.10 11:00" */
 function whenShort(d: Date): string {
   const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  return dayName(iso).slice(0, 3) + " " + ddmm(iso) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return dayShort(iso) + " " + ddmm(iso) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
 /** Kompakt etkinlik kartı: özet + kısayollar; "Düzenle" ile tüm alanlar açılır. */

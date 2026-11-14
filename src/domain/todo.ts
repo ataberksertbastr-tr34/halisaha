@@ -12,7 +12,7 @@ import { fieldOf } from "./fields";
 import { agreeValue, isCup, isFootball, kindOf } from "./kinds";
 import { isLocked } from "./roster";
 import { addDays, ddmm, matchStart } from "./dates";
-import { dayName } from "./messages";
+import { dayShort } from "./messages";
 import { unfinished } from "./schedule";
 import { stamp } from "./attlog";
 
@@ -61,7 +61,7 @@ export function payProgress(s: State, m: Match, acc: Map<string, Account>): { n:
   return { n: payers.length, paid, left };
 }
 
-const short = (m: Match) => dayName(m.date).slice(0, 3) + " " + ddmm(m.date);
+const short = (m: Match) => dayShort(m.date) + " " + ddmm(m.date);
 
 function inviteStep(s: State, m: Match, now: Date): Step {
   const base = { key: "invite" as const, mid: m.id, title: t("todoInvite") };

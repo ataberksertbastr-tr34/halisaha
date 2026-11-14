@@ -13,7 +13,7 @@ import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, isFree } from "../../domain/money";
 import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
 import { eventTitle, isFootball } from "../../domain/kinds";
-import { dayName, guestPayText, waLink, waPersonal } from "../../domain/messages";
+import { dayShort, guestPayText, waLink, waPersonal } from "../../domain/messages";
 import { emptyState, eventOption, ruleChip, shareButtons } from "../components";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
@@ -185,13 +185,13 @@ export function openLedger(id: string): void {
   a?.charges.forEach((c) => {
     const st = c.status === "paid" ? '<span class="tag ok">' + esc(t("paid")) + "</span>" : c.status === "partial" ? '<span class="tag wait">' + esc(t("partialPaid", { p: money(c.paid) })) + "</span>" : c.due ? '<span class="tag debt">' + esc(t("unpaid")) + "</span>" : "";
     const cm = c.mid ? getMatch(S, c.mid) : null;
-    const d = dayName(c.date).slice(0, 3) + " " + ddmm(c.date);
+    const d = dayShort(c.date) + " " + ddmm(c.date);
     const title = c.cid ? (c.note || t("extraCharge")) + " · " + d : cm && !isFootball(cm) ? t("eventShareRow", { d, e: eventTitle(cm) }) : t("chargeRow", { d });
     rows.push({ at: c.date + "1", html: '<li class="lrow"><div class="pname"><strong>' + esc(title) + "</strong>" + st + '</div><span class="amount neg">−' + esc(money(c.amount)) + "</span></li>" });
   });
   a?.payments.forEach((p) => {
     const m = p.mid ? getMatch(S, p.mid) : null;
-    const sub = [ddmm(p.at), m ? dayName(m.date).slice(0, 3) + " " + ddmm(m.date) : "", p.note || ""].filter(Boolean).join(" · ");
+    const sub = [ddmm(p.at), m ? dayShort(m.date) + " " + ddmm(m.date) : "", p.note || ""].filter(Boolean).join(" · ");
     rows.push({ at: p.at + "2", html: '<li class="lrow"><div class="pname"><strong>' + esc(p.amount < 0 ? t("refundNote") : t("paymentRow")) + '</strong><span class="meta">' + esc(sub) + '</span></div><span class="amount pos">' + (p.amount < 0 ? "−" : "+") + esc(money(Math.abs(p.amount))) + "</span>" +
       '<button type="button" class="tx" data-a="delPayment" data-id="' + esc(p.id) + '" data-pid="' + esc(id) + '" aria-label="' + esc(t("del")) + '">' + IC.close + "</button></li>" });
   });

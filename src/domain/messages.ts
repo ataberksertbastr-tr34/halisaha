@@ -4,7 +4,7 @@
  * Hepsi düzenlenebilir şablonlardan üretilir; etkinlik türüne göre başlık,
  * ikon ve ilgili kural numaraları değişir.
  */
-import { DAYS, lang, money, t } from "../i18n";
+import { DAYS, DAYS_SHORT, lang, money, t } from "../i18n";
 import type { Match, State, TemplateKey } from "./types";
 import { render, templateOf } from "./templates";
 import { ddmm, weekday } from "./dates";
@@ -20,6 +20,11 @@ import { occupants, perHead, unassigned } from "./cars";
 
 export function dayName(date: string): string {
   return DAYS[lang()][weekday(date)];
+}
+
+/** Günün kısaltması: "Pzt", "Cmt" (Pazar "Paz", Cuma "Cum"). */
+export function dayShort(date: string): string {
+  return DAYS_SHORT[lang()][weekday(date)];
 }
 
 function nameOf(s: State, m: Match, id: string): string {
@@ -38,7 +43,7 @@ function lockPhrase(m: Match): string {
   const at = lockAt(m);
   if (!at) return "";
   const iso = at.getFullYear() + "-" + p2(at.getMonth() + 1) + "-" + p2(at.getDate());
-  return t("lockSentenceEvent", { h: lockHours(m), d: dayName(iso).slice(0, 3) + " " + ddmm(iso) + " " + p2(at.getHours()) + ":" + p2(at.getMinutes()) });
+  return t("lockSentenceEvent", { h: lockHours(m), d: dayShort(iso) + " " + ddmm(iso) + " " + p2(at.getHours()) + ":" + p2(at.getMinutes()) });
 }
 
 /** Ön anlaşmaların özeti (madde işaretli). */

@@ -6,7 +6,7 @@ import { POSITIONS } from "../domain/types";
 import { esc, norm, trSort } from "../domain/text";
 import { ddmm } from "../domain/dates";
 import { dirUrl, mapsUrl, telHref } from "../domain/fields";
-import { dayName } from "../domain/messages";
+import { dayName, dayShort } from "../domain/messages";
 import { openMatches } from "../domain/lineup";
 import { eventTitle, isFootball, kindOf, L } from "../domain/kinds";
 import { IC, type IconKey } from "./icons";
@@ -79,7 +79,7 @@ export function applyFilter(key: FilterKey): void {
 }
 
 export function matchLabel(m: Match): string {
-  return dayName(m.date).slice(0, 3) + " " + ddmm(m.date);
+  return dayShort(m.date) + " " + ddmm(m.date);
 }
 
 /** Seçim listelerinde etkinlik adı: "Sal 13.10 21:00 · Paintball" */

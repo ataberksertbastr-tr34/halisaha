@@ -8,7 +8,7 @@
  * maçı ayrı ayrı açarsa kayıtlar ikilenmesin), başka cihazdan eşitlenen ve yedekten yüklenen veri
  * (o cihaz kendi kaydını zaten yazmıştır) ve "Geri al" (kayıt da geri alınır).
  */
-import { DAYS, lang, t } from "../i18n";
+import { DAYS_SHORT, lang, t } from "../i18n";
 import type { LogEntry, LogEv, Match, State } from "./types";
 import { getP, isGuest, lineup } from "./lineup";
 import { addDays, ddmm, iso } from "./dates";
@@ -136,7 +136,7 @@ const p2 = (n: number) => String(n).padStart(2, "0");
 export function stamp(ms: number): string {
   const d = new Date(ms);
   const day = iso(d);
-  return DAYS[lang()][d.getDay()].slice(0, 3) + " " + ddmm(day) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+  return DAYS_SHORT[lang()][d.getDay()] + " " + ddmm(day) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
 }
 
 /** Kaydın açıklaması: "kadroya yazıldı (3.)", "Yok dedi · kadrodan çıktı" … */
