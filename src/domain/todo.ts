@@ -63,12 +63,17 @@ export function payProgress(s: State, m: Match, acc: Map<string, Account>): { n:
 
 const short = (m: Match) => dayName(m.date).slice(0, 3) + " " + ddmm(m.date);
 
-function inviteStep(s: State, m: Match): Step {
+function inviteStep(s: State, m: Match, now: Date): Step {
   const base = { key: "invite" as const, mid: m.id, title: t("todoInvite") };
   if (m.sent.invite) return { ...base, state: "done", text: t("todoSent", { d: stamp(m.sent.invite) }) };
   const cap = capOf(s, m);
   if (cap && lineup(s, m).playing.length >= cap) return { ...base, state: "done", text: t("todoInviteFull") };
-  return { ...base, state: "todo", text: t("todoNotSent"), act: { a: "msg", k: "invite", label: t("todoSend") } };
+  // Davet günü geldiyse (Ayarlar → Hatırlatmalar) uyarıya döner
+  const due = matchStart(m.date, m.time);
+  due.setDate(due.getDate() - (s.settings.inviteDays || 3));
+  const [h, mi] = (s.settings.remindAt || "12:00").split(":").map(Number);
+  due.setHours(h || 0, mi || 0, 0, 0);
+  return { ...base, state: now.getTime() >= due.getTime() ? "warn" : "todo", text: t("todoNotSent"), act: { a: "msg", k: "invite", label: t("todoSend") } };
 }
 
 function squadStep(s: State, m: Match, now: Date): Step {
@@ -146,7 +151,7 @@ function payStep(s: State, m: Match, acc: Map<string, Account>, past = false): S
 
 /** Sıradaki (açık) etkinliğin adımları, yapılış sırasıyla. */
 export function matchSteps(s: State, m: Match, now: Date, today: string, acc: Map<string, Account> = accounts(s, today)): Step[] {
-  return [inviteStep(s, m), squadStep(s, m, now), fieldStep(s, m, now), teamsStep(s, m, now), resultStep(m, now), payStep(s, m, acc)];
+  return [inviteStep(s, m, now), squadStep(s, m, now), fieldStep(s, m, now), teamsStep(s, m, now), resultStep(m, now), payStep(s, m, acc)];
 }
 
 /** Ödemesi kapanmamış eski etkinlik kaç gün geriye kadar hatırlatılır. */

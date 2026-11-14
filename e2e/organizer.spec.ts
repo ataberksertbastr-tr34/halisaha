@@ -1,6 +1,6 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
- * katılım günlüğü ve haber saati, haftalık iş listesi.
+ * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -214,5 +214,58 @@ test("haftalık iş listesi: sıradaki iş tek dokunuşla yapılır, adımlar du
   await expect(todo.locator(".todo-row")).toHaveCount(1);
   await expect(row("squad")).toContainText("4/16 · 12 kişi eksik");
   await expect(todo.locator('[data-a="todoToggle"]')).toHaveText("3/6 · Tümü");
+  expect(errors).toEqual([]);
+});
+
+test("hatırlatmalar: haftalık maç günlerinden takvim dosyası ve Google Takvim bağlantıları", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  const sec = page.locator('section[aria-labelledby="h-rem"]');
+  await expect(sec.locator("h2")).toHaveText("Hatırlatmalar");
+  // Davet günü ve hatırlatma saati ayarı
+  await sec.locator('select[data-f="s.inviteDays"]').selectOption("2");
+  await expect(page.locator("#toast")).toContainText("Kaydedildi");
+  await sec.locator('input[data-f="s.remindAt"]').fill("10:30");
+  await sec.locator('input[data-f="s.remindAt"]').press("Tab");
+  await sec.scrollIntoViewIfNeeded();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "ayarlar: hatırlatmalar")).toEqual([]);
+
+  await sec.locator('[data-a="remOpen"]').click();
+  const sheet = page.locator("#modal");
+  await expect(sheet.locator("#sheet-title")).toHaveText("Hatırlatmalar");
+  await expect(sheet.locator("h3")).toHaveText(["Salı 21:00 maçı", "Perşembe 21:00 maçı"]);
+  const rows = sheet.locator(".lrow");
+  await expect(rows).toHaveCount(10);
+  // Salı maçı: davet 2 gün önce 10:30 (Pazar), saha 2 gün önce (Pazar), kesinleşmeden 2 saat önce (Pazartesi 19:00)
+  await expect(rows.nth(0)).toContainText("Daveti gönder");
+  await expect(rows.nth(0)).toContainText("Her Pazar 10:30");
+  await expect(rows.nth(2)).toContainText("Kadroyu tamamla");
+  await expect(rows.nth(2)).toContainText("Her Pazartesi 19:00");
+  await expect(rows.nth(3)).toContainText("Her Salı 22:30");
+  await expect(rows.nth(4)).toContainText("Ödemeleri kapat");
+  await expect(rows.nth(4)).toContainText("Her Çarşamba 10:30");
+  const g = new URL((await rows.nth(0).locator("a").getAttribute("href"))!);
+  expect(g.origin + g.pathname).toBe("https://calendar.google.com/calendar/render");
+  expect(g.searchParams.get("text")).toBe("Davet gönder: Salı 21:00 maçı");
+  expect(g.searchParams.get("recur")).toBe("RRULE:FREQ=WEEKLY;BYDAY=SU");
+  expect(g.searchParams.get("ctz")).toBe("Europe/Istanbul");
+  expect(g.searchParams.get("dates")).toBe("20261018T103000/20261018T104500");
+  expect(g.searchParams.get("details")).toContain("http://localhost:4173/");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "hatırlatma penceresi")).toEqual([]);
+
+  // Takvim dosyası: on hatırlatma, haftalık tekrar, yerel saat
+  const [dl] = await Promise.all([page.waitForEvent("download"), sheet.locator('[data-a="remIcs"]').click()]);
+  expect(dl.suggestedFilename()).toBe("predators-hatirlatmalar.ics");
+  const ics = readFileSync(await dl.path(), "utf8");
+  expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(10);
+  expect(ics).toContain("DTSTART:20261018T103000\r\nDTEND:20261018T104500\r\nRRULE:FREQ=WEEKLY;BYDAY=SU\r\nSUMMARY:Davet gönder: Salı 21:00 maçı");
+  expect(ics).toContain("SUMMARY:Kadro kesinleşiyor (21:00): Perşembe 21:00 maçı");
+
+  // Ayar kalıcı
+  await page.reload();
+  await expect(sec.locator('select[data-f="s.inviteDays"]')).toHaveValue("2");
+  await expect(sec.locator('input[data-f="s.remindAt"]')).toHaveValue("10:30");
   expect(errors).toEqual([]);
 });

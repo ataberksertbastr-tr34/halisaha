@@ -59,6 +59,10 @@ export interface Settings {
   debtBlock: boolean;
   /** Kural 1.6: habersiz gelmeyen bir sonraki maçta yedeğin sonuna yazılır */
   noShowPenalty: boolean;
+  /** Davet maçtan kaç gün önce gönderilir (hatırlatma ve iş listesi için) */
+  inviteDays: number;
+  /** Gün bazlı hatırlatmaların saati (davet, saha, ödeme): "SS:DD" */
+  remindAt: string;
 }
 
 export interface Field {

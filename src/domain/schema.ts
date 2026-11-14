@@ -11,7 +11,7 @@ export function defaultSettings(): Settings {
     format: 7, gkFree: true, round: true, lang: "tr", theme: "system",
     templates: {}, autoSchedule: true, avoidRepeat: true, perf: true, reserveDays: 2,
     teamA: { name: "", color: "" }, teamB: { name: "", color: "" },
-    debtBlock: true, noShowPenalty: true,
+    debtBlock: true, noShowPenalty: true, inviteDays: 3, remindAt: "12:00",
   };
 }
 

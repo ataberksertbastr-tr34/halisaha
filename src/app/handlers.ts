@@ -32,6 +32,8 @@ import { generateTeams, swapPlayers } from "../domain/teams";
 import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
+import { orgReminders, remindersICS } from "../domain/reminders";
+import { appUrl, openRemindersSheet } from "../ui/views/reminders";
 import { ruleBook } from "../ui/views/rules";
 import { findRule, ruleShareText, stripMd } from "../domain/rules";
 import { isIOS } from "../pwa/register";
@@ -85,10 +87,8 @@ function scoreFromGoals(m: Match): Match["score"] {
   return { a: sum(m.teams.a), b: sum(m.teams.b) };
 }
 
-/** .ics dosyasını kaydeder / açar (iPhone'da doğrudan takvim ekranı). */
-function saveICS(ms: Match[]): void {
-  if (!ms.length) return;
-  const ics = buildICS(ms.map((m) => eventOf(store.s, m, t("calEventTitle"))));
+/** .ics metnini kaydeder / açar (iPhone'da doğrudan takvim ekranı). */
+function saveICSText(ics: string, name: string): void {
   if (isIOS()) {
     window.open("data:text/calendar;charset=utf-8," + encodeURIComponent(ics), "_blank");
     return;
@@ -96,11 +96,16 @@ function saveICS(ms: Match[]): void {
   const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = (ms.length === 1 ? "halisaha-" + ms[0].date : "halisaha-maclar") + ".ics";
+  a.download = name + ".ics";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function saveICS(ms: Match[]): void {
+  if (!ms.length) return;
+  saveICSText(buildICS(ms.map((m) => eventOf(store.s, m, t("calEventTitle")))), ms.length === 1 ? "halisaha-" + ms[0].date : "halisaha-maclar");
 }
 
 function openLink(u: string): void {
@@ -393,6 +398,12 @@ registerActions({
   },
   icsAll: () => {
     saveICS(store.s.matches.filter((m) => m.status === "open" && m.date >= today()));
+  },
+  remOpen: () => openRemindersSheet(),
+  /** Organizatör hatırlatmaları: haftalık tekrarlı takvim dosyası. */
+  remIcs: () => {
+    const list = orgReminders(store.s, new Date(), appUrl());
+    if (list.length) saveICSText(remindersICS(list), "predators-hatirlatmalar");
   },
   goal: (ds) => {
     const m = cur();
@@ -1034,7 +1045,9 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
   if (f.startsWith("s.")) {
     const k = f.slice(2);
     const st = S.settings as unknown as Record<string, unknown>;
-    st[k] = k === "price" ? Number(v) || 0 : k === "format" ? Number(v) : v;
+    // Hatırlatma saati boş bırakılamaz
+    if (k === "remindAt" && !v) return render();
+    st[k] = k === "price" ? Number(v) || 0 : k === "format" || k === "inviteDays" ? Number(v) : v;
     commit();
     toast(t("saved"));
     return;

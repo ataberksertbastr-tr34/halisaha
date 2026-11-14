@@ -236,6 +236,8 @@ export function normalize(s: Raw): State {
   st.teamB = team(st.teamB);
   st.debtBlock = st.debtBlock !== false;
   st.noShowPenalty = st.noShowPenalty !== false;
+  st.inviteDays = Math.min(6, Math.max(1, Math.round(num(st.inviteDays, d.settings.inviteDays)) || d.settings.inviteDays));
+  st.remindAt = /^([01]\d|2[0-3]):[0-5]\d$/.test(str(st.remindAt)) ? str(st.remindAt) : d.settings.remindAt;
 
   s.fields = arr(s.fields).filter(isObj).map((f: Raw): Field => ({
     ...f, id: str(f.id) || uid(), name: str(f.name), address: str(f.address), link: str(f.link), phone: str(f.phone),
