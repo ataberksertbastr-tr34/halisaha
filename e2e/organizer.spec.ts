@@ -1,6 +1,7 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
- * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi.
+ * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi, borç dökümü ve
+ * borçlulara sırayla hatırlatma.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -21,6 +22,20 @@ const lastShared = (page: Page) => page.evaluate(() => {
   const a = (window as unknown as { __shared: { text: string }[] }).__shared;
   return a[a.length - 1]?.text || "";
 });
+
+/** window.open ile açılan adresleri toplar (WhatsApp bağlantıları yeni sekme açmasın). */
+function stubOpen(page: Page): Promise<void> {
+  return page.addInitScript(() => {
+    (window as unknown as { __opened: string[] }).__opened = [];
+    window.open = (u?: string | URL) => {
+      (window as unknown as { __opened: string[] }).__opened.push(String(u));
+      return null;
+    };
+  });
+}
+const opened = (page: Page) => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened);
+/** wa.me bağlantısındaki mesaj metni. */
+const waText = (u: string) => new URL(u).searchParams.get("text") || "";
 
 /** Fikstürdeki açık maç: Perşembe 15.10 21:00 (kadro 14.10 21:00'de kesinleşir). */
 async function openThursday(page: Page): Promise<void> {
@@ -267,5 +282,82 @@ test("hatırlatmalar: haftalık maç günlerinden takvim dosyası ve Google Takv
   await page.reload();
   await expect(sec.locator('select[data-f="s.inviteDays"]')).toHaveValue("2");
   await expect(sec.locator('input[data-f="s.remindAt"]')).toHaveValue("10:30");
+  expect(errors).toEqual([]);
+});
+
+test("borç dökümü ve sırayla hatırlatma: kalem kalem döküm; herkese tek oturumda mesaj (Kural 2.4)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await stubOpen(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="pay"]').click();
+  const debts = page.locator('section[aria-labelledby="h-debts"]');
+  const rowOf = (name: string) => debts.locator(".payrow", { hasText: name });
+  const n = await debts.locator(".payrow").count();
+  expect(n).toBeGreaterThan(3);
+  await expect(debts.locator('[data-a="remindAll"]')).toHaveText("Sırayla hatırlat (" + n + " kişi)");
+  await debts.scrollIntoViewIfNeeded();
+  await noHorizontalScroll(page);
+  // Bildirim kapanınca ölç: sayfanın sonundaki satırlar bildirimin altında kalmasın
+  await expect(page.locator("#toast")).not.toHaveClass(/show/, { timeout: 10_000 });
+  expect(await deadZones(page, "biriken borçlar")).toEqual([]);
+
+  // Telefonu olan: döküm doğrudan WhatsApp'ta açılır
+  await rowOf("Forvet Fırat").locator('[data-a="statement"]').click();
+  let urls = await opened(page);
+  expect(urls).toHaveLength(1);
+  expect(urls[0].startsWith("https://wa.me/90")).toBe(true);
+  expect(waText(urls[0]).split("\n")).toEqual([
+    "Selam Forvet Fırat, 11.10.2026 itibarıyla hesap dökümün:", "",
+    "• Sal 13.10 maç payı: 300 ₺ – ödenmedi", "",
+    "Toplam borç: 300 ₺", "",
+    "IBAN: TR00 0000 0000 0000 0000 0000 00 (Organizatör Deneme)", "",
+    "Teşekkürler!",
+  ]);
+  // Telefonu olmayan: paylaşım menüsü
+  await rowOf("Bek Bülent").locator('[data-a="statement"]').click();
+  expect(await lastShared(page)).toContain("Selam Bek Bülent, 11.10.2026 itibarıyla hesap dökümün:");
+  expect(await opened(page)).toHaveLength(1);
+
+  // Kısmi ödeme dökümde kalanıyla görünür; hesap defterinden de gönderilir
+  await rowOf("Forvet Fırat").locator(".plink").click();
+  await page.locator("#lp-amount").fill("120");
+  await page.locator('[data-a="takePayment"]').click();
+  await page.locator('#modal [data-a="statement"]').click();
+  urls = await opened(page);
+  expect(waText(urls[1])).toContain("• Sal 13.10 maç payı: 300 ₺ – 120 ₺ ödendi, kalan 180 ₺");
+  expect(waText(urls[1])).toContain("Toplam borç: 180 ₺");
+  expect(waText(urls[1])).toContain("Son ödemelerin: 11.10 120 ₺");
+  await page.locator('#modal [data-a="closeModal"]').click();
+
+  // Sırayla hatırlat: gönder → sıradaki kişi hazır; atla; sonunda özet
+  await debts.locator('[data-a="remindAll"]').click();
+  const sheet = page.locator("#modal");
+  await expect(sheet.locator("#sheet-title")).toHaveText("Sırayla hatırlat");
+  await expect(sheet.locator("#rq-step")).toContainText("1/" + n);
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "sırayla hatırlat")).toEqual([]);
+  const first = (await sheet.locator(".rq-card strong").textContent())!;
+  await sheet.locator('[data-a="remindSend"][data-k="short"]').click();
+  expect(await lastShared(page)).toContain("Selam " + first + ", organizasyonlardan kalan borcun 300 ₺.");
+  await expect(sheet.locator("#rq-step")).toContainText("2/" + n);
+  const second = (await sheet.locator(".rq-card strong").textContent())!;
+  expect(second).not.toBe(first);
+  await sheet.locator('[data-a="remindSend"][data-k="statement"]').click();
+  expect(await lastShared(page)).toContain("Selam " + second + ", 11.10.2026 itibarıyla hesap dökümün:");
+  await expect(sheet.locator("#rq-step")).toContainText("3/" + n);
+  for (let i = 3; i <= n; i++) await sheet.locator('[data-a="remindSkip"]').click();
+  await expect(sheet).toContainText("Sıra bitti: 2 kişi için mesaj açıldı.");
+  await sheet.locator('.btn[data-a="closeModal"]').click();
+  await expect(sheet).toBeHidden();
+
+  // Şablon Ayarlar'da düzenlenebilir; kısa hatırlatma şablonu yerinde duruyor
+  await page.goto("/#/settings");
+  const tpl = page.locator('section[aria-labelledby="h-tpl"]');
+  await expect(tpl.locator(".frow", { hasText: "Kişisel ödeme hatırlatması" })).toHaveCount(1);
+  await tpl.locator(".frow", { hasText: "Borç dökümü" }).locator('[data-a="tplEdit"]').click();
+  await expect(page.locator("#tpl-preview")).toContainText("Selam Ahmet,");
+  await expect(page.locator("#tpl-preview")).toContainText("• Per 08.10 maç payı: 215 ₺ – 65 ₺ ödendi, kalan 150 ₺");
+  await noHorizontalScroll(page);
   expect(errors).toEqual([]);
 });

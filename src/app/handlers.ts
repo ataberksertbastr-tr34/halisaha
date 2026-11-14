@@ -23,10 +23,11 @@ import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
-import { debtReminderText, promotedText, waLink } from "../domain/messages";
+import { debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
+import { openRemindSheet } from "../ui/views/remind";
 import { money } from "../i18n";
 import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
-import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
+import { accounts, chargeOf, debts, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams, swapPlayers } from "../domain/teams";
 import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
@@ -175,6 +176,23 @@ function sentIf(r: ShareResult, mid: string | undefined, k: string | undefined):
   if (k === "teams") m.sent.teamsSig = teamsSig(m);
   // Açık bir pencere (önizleme) ve yazılmakta olan metin bozulmasın: yalnızca kaydet
   commit(isModalOpen());
+}
+
+/**
+ * Borçluya gidecek mesajı açar: kısa hatırlatma (mevcut şablon) ya da kalem kalem döküm.
+ * Misafirin mesajı getirenine gider (Kural 1.8). Telefon varsa doğrudan WhatsApp, yoksa paylaşım menüsü.
+ */
+function sendDebtMsg(id: string, kind: string | undefined): boolean {
+  const S = store.s;
+  const a = accounts(S, today()).get(id);
+  if (!a || a.owed <= 0.004) return false;
+  const host = a.guest && a.host ? S.players.find((p) => p.id === a.host) : null;
+  const text = kind === "statement" ? statementText(S, id, today()) : host ? guestPayText(S, host.name, a.name, a.owed) : personalPayText(S, a.name, a.owed);
+  if (!text) return false;
+  const u = waLink(a.phone || host?.phone, text);
+  if (u) openLink(u);
+  else void shareText(text);
+  return true;
 }
 
 function markExported(): void {
@@ -777,6 +795,29 @@ registerActions({
     render();
   },
   ledger: (ds) => openLedger(ds.id!),
+  /** Kalem kalem borç dökümü (Kural 2.4, 1.8) */
+  statement: (ds) => {
+    if (!sendDebtMsg(ds.id!, "statement")) toast(t("noDebts"));
+  },
+  remindAll: () => {
+    const ids = debts(store.s, today()).map((d) => d.id);
+    if (!ids.length) return;
+    ui.remind = { ids, i: 0, sent: 0 };
+    openRemindSheet();
+  },
+  remindSend: (ds) => {
+    const q = ui.remind;
+    if (!q) return closeModal();
+    if (sendDebtMsg(q.ids[q.i], ds.k)) q.sent++;
+    q.i++;
+    openRemindSheet();
+  },
+  remindSkip: () => {
+    const q = ui.remind;
+    if (!q) return closeModal();
+    q.i++;
+    openRemindSheet();
+  },
   takePayment: (ds) => {
     const id = ds.id!;
     const amount = Number(String(val("#lp-amount")).replace(",", "."));

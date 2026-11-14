@@ -23,7 +23,7 @@ export interface Slot {
 }
 
 /** Düzenlenebilir mesaj şablonları */
-export type TemplateKey = "invite" | "squad" | "teams" | "pay" | "personalPay" | "promoted" | "brief" | "cars" | "cancel" | "result" | "guestPay";
+export type TemplateKey = "invite" | "squad" | "teams" | "pay" | "personalPay" | "promoted" | "brief" | "cars" | "cancel" | "result" | "guestPay" | "statement";
 
 /** Takım adı ve yelek rengi (Kural 3.3). */
 export interface TeamStyle {

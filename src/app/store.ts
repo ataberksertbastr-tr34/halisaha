@@ -43,6 +43,8 @@ export interface UIState {
   drawPairs: boolean;
   /** Disiplin sayfasında arama */
   discQ: string;
+  /** Borçlulara sırayla hatırlatma: sıradaki kişiler, kaçıncıda olunduğu, gönderilen sayısı */
+  remind: { ids: string[]; i: number; sent: number } | null;
   /** Yeni oyun için seçilen taraflar (grup indeksleri) */
   pickA: number;
   pickB: number;
@@ -53,7 +55,7 @@ export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
   matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "", open: {}, swapPick: null, ruleTogether: true, season: "", ruleQ: "",
-  drawGame: "okey", drawPairs: false, discQ: "", pickA: 0, pickB: 1,
+  drawGame: "okey", drawPairs: false, discQ: "", pickA: 0, pickB: 1, remind: null,
   f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" }, people: { q: "", pos: "" } },
 };
 

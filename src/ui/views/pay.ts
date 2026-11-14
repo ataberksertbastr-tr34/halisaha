@@ -129,11 +129,14 @@ function debtsSection(): string {
   const dl = debts(S, today());
   let h = '<section class="section" aria-labelledby="h-debts"><h2 id="h-debts">' + esc(t("debts")) + "</h2>";
   if (!dl.length) h += '<p class="muted m0">' + esc(t("noDebts")) + "</p>";
+  // Herkese tek oturumda, sırayla (Kural 2.4)
+  if (dl.length > 1) h += '<button type="button" class="btn block mb" data-a="remindAll">' + IC.whatsapp + esc(t("remindAll", { n: dl.length })) + "</button>";
   dl.forEach((d) => {
     const host = d.host ? S.players.find((p) => p.id === d.host) : null;
     // Misafirin borcu getirene misafirin adıyla hatırlatılır (Kural 1.8)
     const u = d.phone ? waPersonal(S, d.phone, d.name, d.total) : host ? waLink(host.phone, guestPayText(S, host.name, d.name, d.total)) : "";
-    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>" : "") +
+    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remindShort")) + "</a>" : "") +
+      '<button type="button" class="linkbtn" data-a="statement" data-id="' + esc(d.id) + '">' + esc(t("statementShort")) + "</button>" +
       '</span></div><span class="amount">' + esc(money(d.total)) + '</span><button type="button" class="btn sm" data-a="settle" data-id="' + esc(d.id) + '">' + esc(t("settle")) + "</button></div>";
   });
   return h + "</section>";
@@ -178,6 +181,7 @@ export function openLedger(id: string): void {
     '<label class="fld full">' + esc(t("note")) + '<input type="text" id="lp-note" autocomplete="off"></label></div>' +
     '<div class="row mt-s"><button type="button" class="btn primary grow" data-a="takePayment" data-id="' + esc(id) + '">' + IC.check + esc(t("takePayment")) + "</button>" +
     (u ? '<a class="btn grow" href="' + esc(u) + '" target="_blank" rel="noopener">' + IC.whatsapp + esc(t("remindShort")) + "</a>" : "") + "</div>" +
+    (a && a.owed > 0.004 ? '<button type="button" class="btn block mt-s" data-a="statement" data-id="' + esc(id) + '">' + IC.list + esc(t("statementSend")) + "</button>" : "") +
     (a && a.credit > 0.004 ? '<button type="button" class="linkbtn mt-s" data-a="refund" data-id="' + esc(id) + '">' + esc(t("refund")) + " (" + esc(money(a.credit)) + ")</button>" : "") +
     '<p class="small muted mt-s m0">' + esc(t("ledgerHint")) + "</p></div>";
   type Row = { at: string; html: string };

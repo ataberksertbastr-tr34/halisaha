@@ -1,5 +1,5 @@
 /** Mesaj şablonları: Ayarlar bölümü, düzenleme sayfası ve canlı önizleme. */
-import { lang, t, type MsgKey } from "../../i18n";
+import { lang, money, t, type MsgKey } from "../../i18n";
 import { store, today, ui } from "../../app/store";
 import type { Match, TemplateKey } from "../../domain/types";
 import { esc } from "../../domain/text";
@@ -7,14 +7,15 @@ import { currentMatch, lineup, openMatches } from "../../domain/lineup";
 import { isFootball } from "../../domain/kinds";
 import { makeMatch } from "../../domain/schedule";
 import { DEFAULT_TEMPLATES, PLACEHOLDERS, render, TEMPLATE_KEYS, templateOf } from "../../domain/templates";
-import { guestPayText, matchVars, msgBrief, msgCancel, msgCars, msgInvite, msgPay, msgResult, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
+import { ddmm } from "../../domain/dates";
+import { guestPayText, ibanLine, matchVars, msgBrief, msgCancel, msgCars, msgInvite, msgPay, msgResult, msgSquad, msgTeams, personalPayText, promotedText } from "../../domain/messages";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
 import { IC } from "../icons";
 
 export const TPL_NAMES: Record<TemplateKey, MsgKey> = {
   invite: "tplInvite", squad: "tplSquad", teams: "tplTeams", brief: "tplBrief", pay: "tplPay", personalPay: "tplPersonalPay", promoted: "tplPromoted",
-  cars: "tplCars", cancel: "tplCancel", result: "tplResult", guestPay: "tplGuestPay",
+  cars: "tplCars", cancel: "tplCancel", result: "tplResult", guestPay: "tplGuestPay", statement: "tplStatement",
 };
 
 /** Mesaj başlığı + metni (paylaşım ve önizleme için). */
@@ -77,6 +78,13 @@ export function previewOf(k: TemplateKey, tplText: string): string {
   try {
     if (k === "personalPay") return personalPayText(S, t("sampleName"), 215);
     if (k === "guestPay") return guestPayText(S, t("sampleName"), t("sampleGuest"), 300);
+    if (k === "statement") {
+      return render(tplText, {
+        ad: t("sampleName"), tarih: ddmm(today()) + "." + today().slice(0, 4), toplam: money(365), iban: ibanLine(S),
+        dokum: "• " + t("chargeRow", { d: t("sampleDay1") }) + ": " + money(215) + " – " + t("stUnpaid") + "\n• " + t("chargeRow", { d: t("sampleDay2") }) + ": " + money(215) + " – " + t("stPartial", { p: money(65), a: money(150) }),
+        odemeler: t("sampleDay0") + " " + money(65),
+      });
+    }
     if (k === "promoted") {
       const id = lineup(S, m).playing[0];
       return id ? promotedText(S, m, id) : render(tplText, { ...matchVars(S, m), ad: t("sampleName") });
