@@ -73,6 +73,16 @@ describe("sıradaki etkinliğin adımları", () => {
     expect(brief(by(matchSteps(y.s, y.m, locked, "2026-10-14"), "squad"))).toEqual(["warn", "8/10 · kesinleşti, 2 kişi eksik", "msg:squad"]);
     y.m.sent.squad = 1;
     expect(brief(by(matchSteps(y.s, y.m, locked, "2026-10-14"), "squad"))).toEqual(["warn", "8/10 · kesinleşti, 2 kişi eksik", "pasteList"]);
+    // Maç başlayınca kadro adımı kapanır, sıradaki iş sonuca geçer; gönderilmemiş davet de sırayı tıkamaz
+    const started = at("2026-10-15", "21:30");
+    expect(brief(by(matchSteps(y.s, y.m, started, "2026-10-15"), "squad"))).toEqual(["done", "8/10", null]);
+    expect(brief(by(matchSteps(y.s, y.m, started, "2026-10-15"), "invite"))).toEqual(["later", "gönderilmedi", null]);
+    expect(brief(by(matchSteps(y.s, y.m, started, "2026-10-15"), "field"))).toEqual(["later", "Saha seçilmedi · rezerve edilmedi", null]);
+    expect(by(matchSteps(y.s, y.m, started, "2026-10-15"), "teams").state).toBe("later");
+    expect(todoOf(y.s, y.m, started, "2026-10-15").next!.key).toBe("result");
+    // Kurulmuş ama paylaşılmamış takımlar da maç başlayınca kapanır
+    y.m.teams = { a: ids(4), b: ids(4, 4) };
+    expect(brief(by(matchSteps(y.s, y.m, started, "2026-10-15"), "teams"))).toEqual(["done", "kuruldu, paylaşılmadı", null]);
   });
 
   it("saha: ayırtma süresi yaklaşınca uyarı olur, ayırtılınca kapanır", () => {

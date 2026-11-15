@@ -124,6 +124,19 @@ function setupStorageWarning(): void {
   );
 }
 
+/**
+ * Yapıştırılan liste ya da banka metni kendiliğinden önizlenir ("Önizle" dokunuşu gerekmez).
+ * Yalnızca birden çok satır tek seferde geldiğinde: elle yazarken araya girmez.
+ */
+const pasteLen = new WeakMap<HTMLTextAreaElement, number>();
+function autoPreview(el: HTMLTextAreaElement): void {
+  const before = pasteLen.get(el) ?? el.defaultValue.length;
+  pasteLen.set(el, el.value.length);
+  const lines = el.value.split(/\r?\n/).filter((l) => l.trim()).length;
+  if (el.value.length - before < 20 || lines < 2) return;
+  dispatch(el.id === "plist" ? "pastePreview" : "bankPreview", {} as DOMStringMap, el);
+}
+
 /** Ekranda yazılıp henüz kaydedilmemiş (değeri ilk hâlinden farklı) bir metin alanı var mı. */
 function hasDraft(): boolean {
   // Arama kutuları hariç: değerleri arayüz durumunda tutulur, yeniden çizimde kaybolmaz.
@@ -260,6 +273,7 @@ function bindEvents(): void {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
     if (el.id === "guestName") return guestPrefill(el.value);
+    if (el.id === "plist" || el.id === "bank-text") return autoPreview(el as unknown as HTMLTextAreaElement);
     if (el.id === "q-rules") return liveSearch("q-rules", (q) => (ui.ruleQ = q), el.value);
     if (el.id === "q-disc") return liveSearch("q-disc", (q) => (ui.discQ = q), el.value);
     if (el.dataset && el.dataset.f === "ann.ruleText") return void onEventField(el);

@@ -61,6 +61,9 @@ export function payProgress(s: State, m: Match, acc: Map<string, Account>): { n:
   return { n: payers.length, paid, left };
 }
 
+/** Etkinlik başladı mı (hazırlık adımları artık sırayı tıkamaz). */
+const started = (m: Match, now: Date) => now.getTime() >= matchStart(m.date, m.time).getTime();
+
 const short = (m: Match) => dayShort(m.date) + " " + ddmm(m.date);
 
 function inviteStep(s: State, m: Match, now: Date): Step {
@@ -68,6 +71,8 @@ function inviteStep(s: State, m: Match, now: Date): Step {
   if (m.sent.invite) return { ...base, state: "done", text: t("todoSent", { d: stamp(m.sent.invite) }) };
   const cap = capOf(s, m);
   if (cap && lineup(s, m).playing.length >= cap) return { ...base, state: "done", text: t("todoInviteFull") };
+  // Kadro kesinleştikten sonra davetin zamanı geçmiştir: sıradaki işi tıkamaz
+  if (isLocked(m, now)) return { ...base, state: "later", text: t("todoNotSent") };
   // Davet günü geldiyse (Ayarlar → Hatırlatmalar) uyarıya döner
   const due = matchStart(m.date, m.time);
   due.setDate(due.getDate() - (s.settings.inviteDays || 3));
@@ -85,6 +90,8 @@ function squadStep(s: State, m: Match, now: Date): Step {
   const count = cap ? n + "/" + cap : t("peopleN", { n });
   const extra = wait.length ? " · " + t("todoWait", { n: wait.length }) : "";
   const full = cap ? n >= cap : locked && n >= 2;
+  // Maç başladı: kadroyla ilgili iş kalmadı (eksik kaldıysa da artık sonuç ve ödemeler sırada)
+  if (started(m, now)) return { ...base, state: "done", text: count + extra };
   // Kadro kesinleşince son hâli gruba duyurulur (Kural 1.4, 15.3)
   if (locked && n >= 2 && !m.sent.squad) {
     return { ...base, state: full ? "todo" : "warn", text: count + " · " + (full ? t("todoSquadLocked") : t("todoSquadShort", { x: cap - n })) + extra, act: { a: "msg", k: "squad", label: t("todoShare") } };
@@ -100,6 +107,8 @@ function fieldStep(s: State, m: Match, now: Date): Step {
   const base = { key: "field" as const, mid: m.id, title: isFootball(m) ? t("field") : t("venue") };
   const name = f ? f.name : t("noField");
   if (m.reserved) return { ...base, state: "done", text: name + " · " + t("todoReserved") };
+  // Maç başladı: saha işi kalmadı
+  if (started(m, now)) return { ...base, state: "later", text: name + " · " + t("todoNotReserved") };
   const days = s.settings.reserveDays;
   const soon = !!days && matchStart(m.date, m.time).getTime() - now.getTime() <= days * 24 * 60 * 60 * 1000;
   return { ...base, state: soon ? "warn" : "todo", text: name + " · " + t("todoNotReserved"), act: { a: "reserve", label: t("reservedDone") } };
@@ -114,18 +123,22 @@ function teamsStep(s: State, m: Match, now: Date): Step {
   const ready = isLocked(m, now) || (cap ? ids.length >= cap : false);
   const go = (label: string): StepAct => ({ a: "goTeams", label });
   if (ids.length < 2) return { ...base, state: "later", text: t("todoNeedSquad") };
+  // Maç başladı: takım işi sonucu girmeyi tıkamaz (yine de açılabilir)
+  const late = started(m, now);
   if (!two) {
     const singles = mode === "queue" && agreeValue(m, "mode") !== "double";
     const drawn = isCup(m) ? !!m.bracket?.seeds.length : singles ? !!m.queue : !!m.draw;
     if (drawn) return { ...base, state: "done", text: t("todoDrawn") };
-    return { ...base, state: ready ? "todo" : "later", text: t("todoNotDrawn"), act: go(t("todoDrawAct")) };
+    return { ...base, state: ready && !late ? "todo" : "later", text: t("todoNotDrawn"), act: go(t("todoDrawAct")) };
   }
   const set = new Set(ids);
   const a = m.teams.a.filter((id) => set.has(id)), b = m.teams.b.filter((id) => set.has(id));
-  if (!a.length && !b.length) return { ...base, state: ready ? "todo" : "later", text: t("todoNotBuilt"), act: go(t("todoBuild")) };
+  // "Kur": takımlar doğrudan kurulur ve Takımlar sekmesi açılır (bir dokunuş)
+  if (!a.length && !b.length) return { ...base, state: ready && !late ? "todo" : "later", text: t("todoNotBuilt"), act: { a: "todoBuild", label: t("todoBuild") } };
   const un = ids.length - a.length - b.length;
-  if (un > 0) return { ...base, state: "warn", text: t("todoUnassigned", { n: un }), act: go(t("todoOpen")) };
+  if (un > 0) return { ...base, state: late ? "later" : "warn", text: t("todoUnassigned", { n: un }), act: go(t("todoOpen")) };
   const share: StepAct = { a: "msg", k: "teams", label: t("todoShare") };
+  if (late) return { ...base, state: "done", text: m.sent.teams ? t("todoSent", { d: stamp(m.sent.teams) }) : t("todoTeamsBuilt") };
   if (!m.sent.teams) return { ...base, state: "todo", text: t("todoTeamsBuilt"), act: share };
   if (m.sent.teamsSig !== teamsSig({ ...m, teams: { a, b } })) return { ...base, state: "warn", text: t("todoTeamsChanged"), act: share };
   return { ...base, state: "done", text: t("todoSent", { d: stamp(m.sent.teams) }) };

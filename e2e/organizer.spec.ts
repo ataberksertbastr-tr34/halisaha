@@ -194,7 +194,9 @@ test("haftalık iş listesi: sıradaki iş tek dokunuşla yapılır, adımlar du
   // Takımlar: kur → paylaş → iş listesinde kapanır; takas sonrası yeniden paylaşmak gerekir
   await row("teams").locator("button").click();
   await expect(page.locator('#tabs [data-v="teams"]')).toHaveAttribute("aria-current", "page");
-  await page.locator('[data-a="gen"]').click();
+  // "Kur" takımları doğrudan kurar
+  await expect(page.locator("#toast")).toContainText("Takımlar kuruldu");
+  await expect(page.locator(".team.a .tp").first()).toBeVisible();
   await page.locator('[data-a="msg"][data-k="teams"]').click();
   expect(await lastShared(page)).toContain("Sarılar");
   await page.locator('#tabs [data-v="match"]').click();
@@ -465,7 +467,7 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   await debts.locator('[data-a="bankOpen"]').click();
   await expect(page.locator("#modal #sheet-title")).toHaveText("Banka bildirimleri");
   await page.locator("#bank-text").fill(TEXT);
-  await page.locator('[data-a="bankPreview"]').click();
+  // Yapıştırınca kendiliğinden önizlenir
   const rows = page.locator("#modal .bankrow");
   await expect(rows).toHaveCount(4);
   await expect(page.locator("#modal")).toContainText("4 hareket bulundu, seçilenlerin toplamı 600 ₺");
@@ -483,6 +485,7 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   // "Metni düzenle" yazılan metni geri getirir
   await page.locator('#modal [data-a="bankOpen"]').click();
   await expect(page.locator("#bank-text")).toHaveValue(TEXT);
+  // Metni elle düzenleyince kendiliğinden önizlenmez: "Önizle" ile
   await page.locator('[data-a="bankPreview"]').click();
   // Organizatör üçüncü havalenin Bek Bülent'ten geldiğini biliyor
   await rows.nth(2).locator("select").selectOption({ label: "Bek Bülent · 300 ₺" });
@@ -498,7 +501,6 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   await debts.locator('[data-a="bankOpen"]').click();
   await expect(page.locator("#bank-text")).toHaveValue("");
   await page.locator("#bank-text").fill(TEXT);
-  await page.locator('[data-a="bankPreview"]').click();
   await rows.nth(2).locator("select").selectOption({ label: "Bek Bülent · 300 ₺" });
   await page.locator('[data-a="bankApply"]').click();
   await expect(page.locator("#toast")).toContainText("3 ödeme işlendi");
@@ -512,7 +514,6 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   // Aynı metin ikinci kez: işlenmişler atlanır; elle eşlenen ad artık kendiliğinden tutar
   await page.locator('#view [data-a="bankOpen"]').click();
   await page.locator("#bank-text").fill(TEXT + "\n09.10.2026 Gelen FAST HASAN DENEME 150,00");
-  await page.locator('[data-a="bankPreview"]').click();
   await expect(rows).toHaveCount(5);
   await expect(rows.nth(0)).toContainText("bu ödeme zaten işlenmiş");
   await expect(rows.nth(2)).toContainText("bu ödeme zaten işlenmiş");

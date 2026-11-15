@@ -668,6 +668,18 @@ registerActions({
     const text = balanceText(store.s, m);
     if (text) openShareSheet(t("balShare"), text);
   },
+  /** İş listesinden: takımları kurar ve Takımlar sekmesini açar (Kural 3.1). */
+  todoBuild: (ds) => {
+    const m = getMatch(store.s, ds.id) || cur();
+    if (!m) return;
+    ui.matchId = m.id;
+    go({ name: "teams" });
+    window.scrollTo(0, 0);
+    let broken = 0;
+    mutate(() => (broken ? t("rulesBroken", { n: broken }) : t("teamsDone")), () => {
+      broken = generateTeams(store.s, m).broken.length;
+    });
+  },
   todoToggle: () => {
     ui.open.todo = !ui.open.todo;
     render();

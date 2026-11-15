@@ -291,7 +291,8 @@ test("WhatsApp listesi yapıştırılınca katılım tek seferde işaretlenir; �
     "1. Kaleci Kemal 🧤", "2. orta ömer", "3. İlker İleri", "4. DEFANS DOĞAN", "5. Mehmet Yeni", "6. Eldivn Ercan", "7. ", "",
     "⏳ Yedek: Zeki Zorlu", "🤔 Belki: Ali Aslan",
   ].join("\n"));
-  await page.locator('[data-a="pastePreview"]').click();
+  // Yapıştırılan liste kendiliğinden önizlenir ("Önizle"ye gerek yok)
+  await expect(page.locator('[data-a="pasteApply"]')).toBeVisible();
   await expect(page.locator("#modal")).toContainText("8 isim bulundu");
   await expect(page.locator("#pr-2")).toHaveValue("skip"); // İlker İleri borçlu (Kural 2.4)
   await expect(page.locator("label.fld", { has: page.locator("#pr-2") })).toContainText("borçlu");
