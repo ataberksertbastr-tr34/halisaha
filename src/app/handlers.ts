@@ -25,6 +25,8 @@ import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
 import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
 import { openRemindSheet } from "../ui/views/remind";
+import { applyBank, parseBank, planBank, type BankRow } from "../domain/bank";
+import { openBankSheet, showBankPreview } from "../ui/views/bank";
 import { money } from "../i18n";
 import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
 import { accounts, chargeOf, debts, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
@@ -78,6 +80,8 @@ function blockedText(m: Match, ids: string[]): string {
 }
 
 let pendingImport: State | null = null;
+/** Önizlenen banka bildirimleri (Metni düzenle ile metin geri gelir). */
+let pendingBank: { text: string; rows: BankRow[] } | null = null;
 /** Önizlenen WhatsApp listesi (Metni düzenle ile metin geri gelir). */
 let pendingPaste: { mid: string; text: string; rows: PlanRow[] } | null = null;
 
@@ -802,6 +806,31 @@ registerActions({
     render();
   },
   ledger: (ds) => openLedger(ds.id!),
+  bankOpen: () => openBankSheet(pendingBank?.text || ""),
+  bankPreview: () => {
+    const text = val("#bank-text");
+    const lines = parseBank(text, today());
+    if (!lines.length) return toast(t("bankNone"));
+    pendingBank = { text, rows: planBank(store.s, lines, today()) };
+    showBankPreview(store.s, pendingBank.rows, today());
+  },
+  /** Onaylanan havaleler deftere genel ödeme olarak yazılır, en eski borçtan kapanır (Kural 2.3). */
+  bankApply: () => {
+    const p = pendingBank;
+    if (!p) return closeModal();
+    const choices = p.rows.map((row, i) => ({ row, pid: val("#bk-" + i) }));
+    pendingBank = null;
+    closeModal(false, () => {
+      let n = 0;
+      mutate(() => t("bankDone", { n }), () => {
+        n = applyBank(store.s, choices);
+        if (!n) {
+          toast(t("pasteNothing"));
+          return false;
+        }
+      });
+    });
+  },
   /** Kalem kalem borç dökümü (Kural 2.4, 1.8) */
   statement: (ds) => {
     if (!sendDebtMsg(ds.id!, "statement")) toast(t("noDebts"));

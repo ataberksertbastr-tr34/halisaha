@@ -1,7 +1,8 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
  * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi, borç dökümü ve
- * borçlulara sırayla hatırlatma, disiplin kararı mesajı, takım dengesi özeti.
+ * borçlulara sırayla hatırlatma, disiplin kararı mesajı, takım dengesi özeti, banka bildiriminden
+ * ödeme işaretleme.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -443,5 +444,82 @@ test("takım dengesi özeti: iki takımın sayısı, ortalama gücü ve mevkiler
   await page.locator('#modal [data-a="closeModal"]').click();
   await noHorizontalScroll(page);
   expect(await deadZones(page, "takımlar")).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşlenen ad bir dahaki sefere kendiliğinden tutar (Kural 2.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="pay"]').click();
+  const debts = page.locator('section[aria-labelledby="h-debts"]');
+  const owes = (name: string) => debts.locator(".payrow", { hasText: name });
+  await expect(owes("Forvet Fırat")).toHaveCount(1);
+  await expect(owes("Stoper Şükrü")).toHaveCount(1);
+  await expect(owes("Bek Bülent")).toHaveCount(1);
+  const TEXT = [
+    "Hesabınıza 10.10.2026 14:05'te FORVET FIRAT tarafından 300,00 TL FAST ile gönderildi. Bakiye: 4.250,00 TL",
+    "FAST STOPER ŞÜKRÜ'DEN 300 TL gelen transfer",
+    "11/10/2026 Gelen FAST HASAN DENEME halisaha 300,00",
+    "Kartınızdan 50,00 TL harcama yapıldı",
+  ].join("\n");
+  await debts.locator('[data-a="bankOpen"]').click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Banka bildirimleri");
+  await page.locator("#bank-text").fill(TEXT);
+  await page.locator('[data-a="bankPreview"]').click();
+  const rows = page.locator("#modal .bankrow");
+  await expect(rows).toHaveCount(4);
+  await expect(page.locator("#modal")).toContainText("4 hareket bulundu, seçilenlerin toplamı 600 ₺");
+  await expect(rows.nth(0)).toContainText("FORVET FIRAT");
+  await expect(rows.nth(0)).toContainText("10.10 · adı tutuyor · borcu 300 ₺");
+  await expect(rows.nth(0).locator("select option:checked")).toHaveText("Forvet Fırat");
+  await expect(rows.nth(1).locator("select option:checked")).toHaveText("Stoper Şükrü");
+  await expect(rows.nth(2)).toContainText("kimseyle eşleşmedi, seç");
+  await expect(rows.nth(2).locator("select option:checked")).toHaveText("Atla");
+  await expect(rows.nth(3)).toContainText("hesaptan çıkan, ödeme değil");
+  await expect(rows.nth(3)).toContainText("−50 ₺");
+  await expect(rows.nth(3).locator("select")).toBeDisabled();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "banka önizleme")).toEqual([]);
+  // "Metni düzenle" yazılan metni geri getirir
+  await page.locator('#modal [data-a="bankOpen"]').click();
+  await expect(page.locator("#bank-text")).toHaveValue(TEXT);
+  await page.locator('[data-a="bankPreview"]').click();
+  // Organizatör üçüncü havalenin Bek Bülent'ten geldiğini biliyor
+  await rows.nth(2).locator("select").selectOption({ label: "Bek Bülent · 300 ₺" });
+  await page.locator('[data-a="bankApply"]').click();
+  await expect(page.locator("#toast")).toContainText("3 ödeme işlendi");
+  await expect(owes("Forvet Fırat")).toHaveCount(0);
+  await expect(owes("Stoper Şükrü")).toHaveCount(0);
+  await expect(owes("Bek Bülent")).toHaveCount(0);
+  // Geri al: üçü de geri gelir
+  await page.locator("#toast [data-toast-act]", { hasText: "Geri al" }).click();
+  await expect(owes("Bek Bülent")).toHaveCount(1);
+  // Uygulanan metin bir dahaki açılışta gelmez; yeniden yapıştırılır
+  await debts.locator('[data-a="bankOpen"]').click();
+  await expect(page.locator("#bank-text")).toHaveValue("");
+  await page.locator("#bank-text").fill(TEXT);
+  await page.locator('[data-a="bankPreview"]').click();
+  await rows.nth(2).locator("select").selectOption({ label: "Bek Bülent · 300 ₺" });
+  await page.locator('[data-a="bankApply"]').click();
+  await expect(page.locator("#toast")).toContainText("3 ödeme işlendi");
+
+  // Hesap defterinde bankadan gelen ödeme notuyla görünür
+  await page.locator('[data-a="payTab"][data-v="people"]').click();
+  await page.locator("#list-people li", { hasText: "Bek Bülent" }).locator("button").click();
+  await expect(page.locator("#modal .llist")).toContainText("Banka: HASAN DENEME");
+  await page.locator('#modal [data-a="closeModal"]').click();
+
+  // Aynı metin ikinci kez: işlenmişler atlanır; elle eşlenen ad artık kendiliğinden tutar
+  await page.locator('#view [data-a="bankOpen"]').click();
+  await page.locator("#bank-text").fill(TEXT + "\n09.10.2026 Gelen FAST HASAN DENEME 150,00");
+  await page.locator('[data-a="bankPreview"]').click();
+  await expect(rows).toHaveCount(5);
+  await expect(rows.nth(0)).toContainText("bu ödeme zaten işlenmiş");
+  await expect(rows.nth(2)).toContainText("bu ödeme zaten işlenmiş");
+  await expect(rows.nth(4)).toContainText("kayıtlı banka adı");
+  await expect(rows.nth(4).locator("select option:checked")).toHaveText("Bek Bülent");
+  await expect(page.locator("#modal")).toContainText("seçilenlerin toplamı 150 ₺");
+  await page.locator('[data-a="bankApply"]').click();
+  await expect(page.locator("#toast")).toContainText("1 ödeme işlendi");
   expect(errors).toEqual([]);
 });

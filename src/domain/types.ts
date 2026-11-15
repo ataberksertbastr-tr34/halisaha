@@ -88,6 +88,8 @@ export interface Player extends Person {
   active: boolean;
   /** Sabit oyuncu: her yeni maça otomatik "Var" yazılır */
   fixed: boolean;
+  /** Banka bildirimlerinde görünen adları ("AHMET YILMAZ"); organizatör bir kez eşleyince kaydedilir */
+  bank?: string[];
 }
 
 export interface Guest extends Person {

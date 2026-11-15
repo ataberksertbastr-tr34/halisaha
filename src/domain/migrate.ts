@@ -244,10 +244,16 @@ export function normalize(s: Raw): State {
     price: num(f.price), lat: f.lat === "" || f.lat == null ? null : num(f.lat), lng: f.lng === "" || f.lng == null ? null : num(f.lng),
   }));
 
-  s.players = arr(s.players).filter(isObj).map((p: Raw): Player => ({
-    ...p, id: str(p.id) || uid(), name: str(p.name), rating: clampRating(p.rating || 3), pos: (POS_OK.has(p.pos) ? p.pos : "") as Pos,
-    phone: str(p.phone), active: p.active !== false, fixed: !!p.fixed,
-  }));
+  s.players = arr(s.players).filter(isObj).map((p: Raw): Player => {
+    const out: Player = {
+      ...p, id: str(p.id) || uid(), name: str(p.name), rating: clampRating(p.rating || 3), pos: (POS_OK.has(p.pos) ? p.pos : "") as Pos,
+      phone: str(p.phone), active: p.active !== false, fixed: !!p.fixed,
+    };
+    const bank = arr(p.bank).map(str).map((x: string) => x.trim()).filter(Boolean);
+    if (bank.length) out.bank = [...new Set(bank)];
+    else delete out.bank;
+    return out;
+  });
 
   s.matches = arr(s.matches).filter(isObj).map((m: Raw): Match => {
     const att: Record<string, Att> = {};

@@ -479,6 +479,12 @@ button.qbtn { cursor: pointer; }
 .lrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); min-height: 52px; }
 .lrow:first-child { border-top: none; }
 .lrow .pname .tag { margin-left: 0; }
+/* Banka bildirimi önizlemesi */
+.bankrow { border-top: 1px solid var(--line); padding-top: 8px; }
+.bankrow:first-child { border-top: none; padding-top: 0; }
+.bk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.bk-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-amt { font-family: var(--display); font-size: 18px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 /* Sırayla hatırlatma */
 .rq-card { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface-2); }
 .rq-card .pname strong { font-size: 18px; }

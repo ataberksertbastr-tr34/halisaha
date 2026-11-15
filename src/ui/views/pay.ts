@@ -129,8 +129,9 @@ function debtsSection(): string {
   const dl = debts(S, today());
   let h = '<section class="section" aria-labelledby="h-debts"><h2 id="h-debts">' + esc(t("debts")) + "</h2>";
   if (!dl.length) h += '<p class="muted m0">' + esc(t("noDebts")) + "</p>";
-  // Herkese tek oturumda, sırayla (Kural 2.4)
+  // Herkese tek oturumda, sırayla (Kural 2.4); gelen havaleleri tek yapıştırmayla işle
   if (dl.length > 1) h += '<button type="button" class="btn block mb" data-a="remindAll">' + IC.whatsapp + esc(t("remindAll", { n: dl.length })) + "</button>";
+  if (dl.length) h += '<button type="button" class="btn block mb" data-a="bankOpen">' + IC.wallet + esc(t("bankOpen")) + "</button>";
   dl.forEach((d) => {
     const host = d.host ? S.players.find((p) => p.id === d.host) : null;
     // Misafirin borcu getirene misafirin adıyla hatırlatılır (Kural 1.8)
@@ -157,6 +158,7 @@ function peopleView(): string {
   const credit = acc.reduce((tot, a) => tot + a.credit, 0);
   acc.sort((a, b) => b.owed - a.owed || b.credit - a.credit || a.name.localeCompare(b.name, "tr"));
   let h = '<section class="section"><div class="money-sum two"><div class="count"><b class="neg">' + esc(money(owed)) + "</b><span>" + esc(t("totalOwed")) + '</span></div><div class="count"><b class="pos">' + esc(money(credit)) + "</b><span>" + esc(t("creditors")) + "</span></div></div>";
+  h += '<button type="button" class="btn block mb" data-a="bankOpen">' + IC.wallet + esc(t("bankOpen")) + "</button>";
   h += '<div class="search">' + IC.search + '<input type="search" id="q-people" data-q="people" placeholder="' + esc(t("searchPeople")) + '" value="' + esc(ui.f.people.q) + '" autocomplete="off" aria-label="' + esc(t("searchPeople")) + '"><button type="button" class="clr" data-a="clearQ" data-k="people" aria-label="' + esc(t("close")) + '"' + (ui.f.people.q ? "" : " hidden") + ">" + IC.close + "</button></div>";
   h += '<ul class="plist" id="list-people">';
   acc.forEach((a) => {
