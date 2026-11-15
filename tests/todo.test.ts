@@ -103,9 +103,9 @@ describe("sıradaki etkinliğin adımları", () => {
     const { s, m } = setup();
     allIn(m, ids(6));
     // Kadro dolmadı ve kesinleşmedi: zamanı gelmedi ama kurulabilir
-    expect(brief(by(matchSteps(s, m, NOW, TODAY), "teams"))).toEqual(["later", "kurulmadı", "goTeams"]);
+    expect(brief(by(matchSteps(s, m, NOW, TODAY), "teams"))).toEqual(["later", "kurulmadı", "todoBuild"]);
     allIn(m, ids(4, 6));
-    expect(brief(by(matchSteps(s, m, NOW, TODAY), "teams"))).toEqual(["todo", "kurulmadı", "goTeams"]);
+    expect(brief(by(matchSteps(s, m, NOW, TODAY), "teams"))).toEqual(["todo", "kurulmadı", "todoBuild"]);
     m.teams = { a: ids(5), b: ids(5, 5) };
     expect(brief(by(matchSteps(s, m, NOW, TODAY), "teams"))).toEqual(["todo", "kuruldu, paylaşılmadı", "msg:teams"]);
     m.sent.teams = at(TODAY, "10:00").getTime();
