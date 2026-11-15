@@ -4,7 +4,7 @@ import { generateTeams, previousTeams, repeatRatio, swapPlayers, teamSum, uneven
 import { goalFactor, perfRatings, strengthFn } from "../src/domain/elo";
 import { cleanTeams } from "../src/domain/lineup";
 import type { Pos } from "../src/domain/types";
-import { allIn, match, roster, state } from "./helpers/factory";
+import { allIn, match, player, roster, state } from "./helpers/factory";
 import { seeded } from "./helpers/rng";
 
 function setup(ratings: number[], pos: Pos[] = []) {
@@ -204,5 +204,60 @@ describe("Kural 4.2: takımlar sahada eşit sayıda", () => {
     expect(unevenTeams(m)).toBe(false);
     expect(unevenTeams(match("m", { teams: { a: ["a"], b: [] } }))).toBe(false);
     expect(unevenTeams(match("m", { kind: "volleyball", teams: { a: ["a", "b"], b: ["c"] } }))).toBe(false);
+  });
+});
+
+describe("takım dengesi özeti (Kural 3.1, 3.2)", () => {
+  it("kişi sayısı, ortalama güç, kaleci ve mevki; güç farkı yüzdesi; kişisel seviye yazmaz", async () => {
+    const { balanceOf } = await import("../src/domain/teams");
+    const { balanceText } = await import("../src/domain/messages");
+    const { setLang } = await import("../src/i18n");
+    setLang("tr");
+    const ps = [
+      player("k1", "Kaleci Bir", 3, "GK"), player("d1", "Defans Bir", 4, "DEF"), player("o1", "Orta Bir", 3, "MID"), player("f1", "Forvet Bir", 5, "FWD"),
+      player("k2", "Kaleci İki", 3, "GK"), player("d2", "Defans İki", 3, "DEF"), player("d3", "Defans Üç", 4, "DEF"), player("o2", "Orta İki", 4, "MID"),
+    ];
+    const m = allIn(match("m1", { date: "2026-10-15", format: 3 }), ps.map((p) => p.id));
+    m.teams = { a: ["k1", "d1", "o1", "f1"], b: ["k2", "d2", "d3", "o2"] };
+    const s = state(ps, [m], { perf: false });
+    const b = balanceOf(s, m)!;
+    expect(b.a).toEqual({ n: 4, avg: 3.75, gk: 1, pos: { DEF: 1, MID: 1, FWD: 1 } });
+    expect(b.b).toEqual({ n: 4, avg: 3.5, gk: 1, pos: { DEF: 2, MID: 1 } });
+    expect(b.pct).toBe(7);
+    expect(b.diff).toBe(1);
+    expect(b.repeat).toBeNull();
+    const text = balanceText(s, m);
+    expect(text).toBe([
+      "⚖️ Takım dengesi – Perşembe 15.10", "",
+      "🟡 Sarılar: 4 kişi · ortalama güç 3,8 · 1 kaleci · 1 defans, 1 orta saha, 1 forvet",
+      "🟠 Turuncular: 4 kişi · ortalama güç 3,5 · 1 kaleci · 2 defans, 1 orta saha", "",
+      "Ortalama güç farkı: %7", "",
+      "Takımlar seviye ve mevki dengesi gözetilerek kuruldu (Kural 3.1). Kişisel seviyeler paylaşılmaz.",
+    ].join("\n"));
+    // Kişisel seviye ve isim yok
+    for (const p of ps) expect(text).not.toContain(p.name);
+  });
+
+  it("geçen maçla karşılaştırma; takımlar kurulmadıysa özet yok; etkinlikte mevki yazılmaz", async () => {
+    const { balanceOf } = await import("../src/domain/teams");
+    const { balanceText } = await import("../src/domain/messages");
+    const ps = roster(4);
+    const prev = allIn(match("p", { date: "2026-10-08", status: "played" }), ["p0", "p1", "p2", "p3"]);
+    prev.teams = { a: ["p0", "p1"], b: ["p2", "p3"] };
+    const m = allIn(match("m", { date: "2026-10-15" }), ["p0", "p1", "p2", "p3"]);
+    const s = state(ps, [prev, m], { perf: false });
+    expect(balanceOf(s, m)).toBeNull();
+    expect(balanceText(s, m)).toBe("");
+    m.teams = { a: ["p0", "p2"], b: ["p1", "p3"] };
+    expect(balanceOf(s, m)!.repeat).toBe(0);
+    m.teams = { a: ["p0", "p1"], b: ["p2", "p3"] };
+    expect(balanceOf(s, m)!.repeat).toBe(1);
+    expect(balanceText(s, m)).toContain("Geçen maçta aynı takımda olanların %100'i yine birlikte");
+    const ev = allIn(match("e", { kind: "paintball", cap: 4, date: "2026-10-17" }), ["p0", "p1", "p2", "p3"]);
+    ev.teams = { a: ["p0", "p1"], b: ["p2", "p3"] };
+    s.matches.push(ev);
+    const text = balanceText(s, ev);
+    expect(text).toContain("🟡 Sarılar: 2 kişi · ortalama güç 3,0\n");
+    expect(text).not.toContain("kaleci");
   });
 });

@@ -61,7 +61,7 @@ function twoTeamsView(m: Match): string {
   let h = '<section class="section"><div class="row nowrap">' +
     '<button type="button" class="btn ' + (built ? "" : "primary ") + 'grow" data-a="gen">' + IC.shuffle + esc(built ? t("reshuffle") : t("buildTeams")) + "</button>" +
     '<button type="button" class="btn grow" data-a="manual">' + esc(t("manual")) + "</button>" +
-    "</div>" + (built ? '<div class="row nowrap mt-s">' + shareButtons("teams", t("shareTeams")) + "</div>" : "");
+    "</div>" + (built ? '<div class="row nowrap mt-s">' + shareButtons("teams", t("shareTeams")) + '<button type="button" class="btn side" data-a="balanceShare">' + esc(t("balShare")) + "</button></div>" : "");
   if (m.kind === "volleyball") h += '<p class="small muted mt-s m0">' + esc(t("volleyTeamsHint", { n: agreeValue(m, "size") || "6" })) + " " + ruleChip("18.1") + "</p>";
   if (!has) return h + '<p class="muted small mt">' + esc(fb ? t("tip") : t("tipEvent")) + " " + ruleChip("3.1") + "</p></section>" + rulesSection(m);
   h += "</section>";

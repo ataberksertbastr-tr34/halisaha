@@ -23,7 +23,7 @@ import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
-import { debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
+import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
 import { openRemindSheet } from "../ui/views/remind";
 import { money } from "../i18n";
 import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
@@ -656,6 +656,13 @@ registerActions({
   shareSheet: (ds) => {
     const ta = $<HTMLTextAreaElement>("#mtext");
     if (ta) shareText(ta.value).then((r) => sentIf(r, ds.id, ds.k));
+  },
+  /** Takım dengesi özeti: önizlenir, sonra paylaşılır (Kural 3.1). */
+  balanceShare: () => {
+    const m = cur();
+    if (!m) return;
+    const text = balanceText(store.s, m);
+    if (text) openShareSheet(t("balShare"), text);
   },
   todoToggle: () => {
     ui.open.todo = !ui.open.todo;

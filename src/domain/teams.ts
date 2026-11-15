@@ -220,3 +220,53 @@ export function unevenTeams(m: Pick<Match, "kind" | "teams">): boolean {
   const a = m.teams.a.length, b = m.teams.b.length;
   return (m.kind || "football") === "football" && a > 0 && b > 0 && a !== b;
 }
+
+export interface SideBalance {
+  n: number;
+  /** Ortalama güç (seviye; performans açıksa harmanlanmış) */
+  avg: number;
+  gk: number;
+  /** Kaleci dışındaki mevkiler: DEF, MID, FWD (halı saha) */
+  pos: Record<string, number>;
+}
+
+export interface Balance {
+  a: SideBalance;
+  b: SideBalance;
+  /** Ortalama güç farkı, güçlü takımın yüzdesi olarak (0–100) */
+  pct: number;
+  /** Güç toplamı farkı */
+  diff: number;
+  /** Geçen maçın takımlarıyla aynı kalan oran (0–1; geçmiş yoksa null) */
+  repeat: number | null;
+}
+
+/**
+ * Takım dengesi (Kural 3.1, 3.2): iki takımın kişi sayısı, ortalama gücü, kaleci ve mevki
+ * dağılımı. Kişisel seviyeler açık edilmeden "takımlar dengeli mi" sorusuna sayıyla cevap verir.
+ */
+export function balanceOf(s: State, m: Match): Balance | null {
+  const ids = new Set(active(s, m));
+  const A = m.teams.a.filter((id) => ids.has(id)), B = m.teams.b.filter((id) => ids.has(id));
+  if (!A.length || !B.length) return null;
+  const str = strengthFn(s, m);
+  const side = (xs: string[]): SideBalance => {
+    const pos: Record<string, number> = {};
+    let gk = 0;
+    for (const id of xs) {
+      const p = getP(s, m, id)?.pos || "";
+      if (p === "GK") gk++;
+      else if (p) pos[p] = (pos[p] || 0) + 1;
+    }
+    return { n: xs.length, avg: Math.round((xs.reduce((t, id) => t + str(id), 0) / xs.length) * 100) / 100, gk, pos };
+  };
+  const a = side(A), b = side(B);
+  const hi = Math.max(a.avg, b.avg);
+  const prev = previousTeams(s, m);
+  return {
+    a, b,
+    pct: hi ? Math.round((Math.abs(a.avg - b.avg) / hi) * 100) : 0,
+    diff: Math.abs(teamSum(s, m, A) - teamSum(s, m, B)),
+    repeat: prev ? Math.round(repeatRatio(prev, A, B) * 100) / 100 : null,
+  };
+}

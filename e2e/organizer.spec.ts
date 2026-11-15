@@ -1,7 +1,7 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
  * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi, borç dökümü ve
- * borçlulara sırayla hatırlatma, disiplin kararı mesajı.
+ * borçlulara sırayla hatırlatma, disiplin kararı mesajı, takım dengesi özeti.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -407,5 +407,41 @@ test("disiplin kararı: kayıttan hemen sonra ve listeden paylaşılır; madde, 
   await rows.first().locator('[data-a="nav"][data-v="player"]').click();
   await expect(page.locator('#h-pdisc')).toBeVisible();
   await expect(page.locator('.drow [data-a="discShare"]')).toHaveCount(2);
+  expect(errors).toEqual([]);
+});
+
+test("takım dengesi özeti: iki takımın sayısı, ortalama gücü ve mevkileri; isim ve kişisel seviye yok (Kural 3.1)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  // Kadroya dört kişi daha yaz, takımları kur
+  for (const n of ["Zeki Zorlu", "Defans Doğan", "Eldiven Ercan"]) {
+    await page.locator("#q-att").fill(n);
+    await page.locator("#q-att").press("Enter");
+    await expect(attBtn(page, n, "in")).toHaveAttribute("aria-pressed", "true");
+  }
+  await page.locator("#guestName").fill("Misafir Mehmet");
+  await page.locator('[data-a="addGuest"]').click();
+  await expect(page.locator(".hero-count b")).toHaveText("8/16");
+  await page.locator('#tabs [data-v="teams"]').click();
+  await expect(page.locator('[data-a="balanceShare"]')).toHaveCount(0);
+  await page.locator('[data-a="gen"]').click();
+  await page.locator('[data-a="balanceShare"]').click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Denge özeti");
+  const text = await page.locator("#mtext").inputValue();
+  const lines = text.split("\n");
+  expect(lines[0]).toBe("⚖️ Takım dengesi – Perşembe 15.10");
+  expect(lines[2]).toMatch(/^.+ Sarılar: 4 kişi · ortalama güç \d,\d · 1 kaleci/);
+  expect(lines[3]).toMatch(/^.+ Turuncular: 4 kişi · ortalama güç \d,\d · 1 kaleci/);
+  expect(text).toMatch(/Ortalama güç farkı: %\d+/);
+  expect(text).toContain("(Kural 3.1)");
+  for (const n of ["Kaleci Kemal", "Zeki Zorlu", "Orta Ömer"]) expect(text).not.toContain(n);
+  await noHorizontalScroll(page);
+  await page.locator('#modal [data-a="shareSheet"]').click();
+  expect(await lastShared(page)).toBe(text);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "takımlar")).toEqual([]);
   expect(errors).toEqual([]);
 });

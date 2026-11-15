@@ -16,6 +16,7 @@ import { phoneDigits } from "./text";
 import { agreeLabel, agreeValue, eventTitle, isFootball, kindOf, L } from "./kinds";
 import { lockAt, lockHours } from "./roster";
 import { teamEmoji, teamName } from "./teamstyle";
+import { balanceOf, type SideBalance } from "./teams";
 import { occupants, perHead, unassigned } from "./cars";
 
 export function dayName(date: string): string {
@@ -238,6 +239,37 @@ export function statementText(s: State, id: string, today: string): string {
     odemeler: st.payments.map((p) => ddmm(p.at) + " " + money(p.amount)).join(", "),
     iban: ibanLine(s),
   });
+}
+
+/**
+ * Takım dengesi özeti (Kural 3.1, 3.2): iki takımın kişi sayısı, ortalama gücü, kaleci ve mevki
+ * dağılımı, güç farkı. Kişisel seviyeler yazılmaz. Takımlar kurulmadıysa boş.
+ */
+export function balanceText(s: State, m: Match): string {
+  const b = balanceOf(s, m);
+  if (!b) return "";
+  const fb = isFootball(m);
+  const nf = new Intl.NumberFormat(lang() === "en" ? "en-GB" : "tr-TR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const side = (x: SideBalance, k: "a" | "b") => {
+    const parts = [t("balPeople", { n: x.n }), t("balAvg", { a: nf.format(x.avg) })];
+    if (fb) {
+      parts.push(t("balGk", { n: x.gk }));
+      const pos = (["DEF", "MID", "FWD"] as const).filter((p) => x.pos[p]).map((p) => x.pos[p] + " " + t(("pos" + p) as "posDEF").toLocaleLowerCase(lang()));
+      if (pos.length) parts.push(pos.join(", "));
+    }
+    return teamEmoji(s, k) + " " + teamName(s, k) + ": " + parts.join(" · ");
+  };
+  const lines = [
+    t("balTitle", { d: dayName(m.date) + " " + ddmm(m.date) }),
+    "",
+    side(b.a, "a"),
+    side(b.b, "b"),
+    "",
+    t("balDiff", { p: b.pct }),
+  ];
+  if (b.repeat != null) lines.push(t("balRepeat", { p: Math.round(b.repeat * 100) }));
+  lines.push("", fb && s.settings.perf ? t("balHowPerf") : t("balHow"));
+  return lines.join("\n");
 }
 
 /** Yedekten kadroya giren oyuncuya hazır mesaj. */
