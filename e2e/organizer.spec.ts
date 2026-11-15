@@ -1,7 +1,7 @@
 /**
  * Organizatörün haftalık işini kısaltan özellikler uçtan uca (360 px, konsol hatası yok):
  * katılım günlüğü ve haber saati, haftalık iş listesi, hatırlatma takvimi, borç dökümü ve
- * borçlulara sırayla hatırlatma.
+ * borçlulara sırayla hatırlatma, disiplin kararı mesajı.
  */
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -359,5 +359,53 @@ test("borç dökümü ve sırayla hatırlatma: kalem kalem döküm; herkese tek 
   await expect(page.locator("#tpl-preview")).toContainText("Selam Ahmet,");
   await expect(page.locator("#tpl-preview")).toContainText("• Per 08.10 maç payı: 215 ₺ – 65 ₺ ödendi, kalan 150 ₺");
   await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test("disiplin kararı: kayıttan hemen sonra ve listeden paylaşılır; madde, kademe, ceza maçı ve sicil yazar (Kural 9.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await page.goto("/#/discipline");
+  const record = async (type: string) => {
+    await page.locator('[data-a="discNew"]').first().click();
+    await page.locator('select[data-f="disc.pid"]').selectOption({ label: "Orta Ömer" });
+    await page.locator('select[data-f="disc.type"]').selectOption(type);
+    await page.locator('[data-a="discSave"]').click();
+    await expect(page.locator("#modal")).toBeHidden();
+  };
+  await record("late");
+  // Bildirimde iki eylem: kararı paylaş ve geri al
+  await expect(page.locator("#toast [data-toast-act]")).toHaveText(["Kararı paylaş", "Geri al"]);
+  await record("swear");
+  await page.locator("#toast [data-toast-act]", { hasText: "Kararı paylaş" }).click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Kararı paylaş");
+  const text = await page.locator("#mtext").inputValue();
+  expect(text).toContain("Kişi: Orta Ömer");
+  expect(text).toContain("İhlal: Küfür ve hakaret (Kural 9.2)");
+  expect(text).toContain("2. ihlal: yaptırım kademeli (Kural 9.3");
+  expect(text).toContain("Yaptırım: Bir maç kadroya alınmaz");
+  expect(text).toContain("Kadroya alınmayacağı maç: Per 15.10 21:00");
+  expect(text).toContain("Önceki kayıtlar (1):\n• 11.10 Geç kalma (1.7) – Uyarı");
+  expect(text).toContain("son söz organizatörün (Kural 12.1)");
+  await noHorizontalScroll(page);
+  // Önizlemede düzenlenip paylaşılır
+  await page.locator("#mtext").fill(text + "\nGeçmiş olsun.");
+  await page.locator('#modal [data-a="shareSheet"]').click();
+  expect(await lastShared(page)).toContain("Geçmiş olsun.");
+  await page.locator('#modal [data-a="closeModal"]').click();
+
+  // Listedeki satırdan da paylaşılır (ilk kayıt: uyarı)
+  const rows = page.locator("#list-disc li");
+  await expect(rows).toHaveCount(2);
+  await rows.nth(1).locator('[data-a="discShare"]').click();
+  await expect(page.locator("#mtext")).toHaveValue(/Yaptırım: Uyarı/);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "disiplin listesi")).toEqual([]);
+  // Oyuncu kartında da paylaşım düğmesi var
+  await rows.first().locator('[data-a="nav"][data-v="player"]').click();
+  await expect(page.locator('#h-pdisc')).toBeVisible();
+  await expect(page.locator('.drow [data-a="discShare"]')).toHaveCount(2);
   expect(errors).toEqual([]);
 });

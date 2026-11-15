@@ -458,7 +458,7 @@ test("misafir: getiren sorumlu; borcu getirenin engeline sayılır, hatırlatma 
   await expect(page.locator("#list-disc li")).toHaveCount(2);
   await expect(page.locator("#list-disc li", { hasText: "Zeki Zorlu" })).toContainText("Getirdiği misafirin ihlali");
   // Geri al: ikisi birden
-  await page.locator("[data-toast-act]").click();
+  await page.locator("#toast [data-toast-act]", { hasText: "Geri al" }).click();
   await expect(page.locator("#list-disc li")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

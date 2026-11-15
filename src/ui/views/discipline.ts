@@ -72,6 +72,7 @@ export function recordRow(r: Infraction, who: string, withName: boolean): string
     '<span class="dline"><strong>' + esc(L(violation(r.type))) + "</strong> " + ruleChip(r.rule) + "</span>" +
     '<span class="tag ' + (SEVERE.has(r.sanction) || r.step === 3 ? "ban" : "wait") + '">' + esc(sanctionText(r) + stepTxt) + "</span>" +
     '<span class="meta">' + esc(meta) + "</span></div>" +
+    '<button type="button" class="tx share" data-a="discShare" data-id="' + esc(r.id) + '" aria-label="' + esc(t("decShare") + ": " + (who || L(violation(r.type)))) + '" title="' + esc(t("decShare")) + '">' + IC.share + "</button>" +
     '<button type="button" class="tx" data-a="discDel" data-id="' + esc(r.id) + '" data-confirm="1" aria-label="' + esc(t("pardon")) + '" title="' + esc(t("pardon")) + '">' + IC.close + "</button></li>";
 }
 

@@ -16,7 +16,8 @@ import { agreeValue, isFootball, L } from "../domain/kinds";
 import { newCar, seatsLeft } from "../domain/cars";
 import { addPoint, newGame, other, replay, resultGame, scoreLine as scoreLineOf, undoPoint, winnerOf, type Side } from "../domain/scoring";
 import { drawTables, drawTeams, partners, queueResult, startQueue, syncQueue, tableGame } from "../domain/draw";
-import { addInfraction, removeInfraction, suggest, violation } from "../domain/discipline";
+import { addInfraction, decisionText, removeInfraction, suggest, violation } from "../domain/discipline";
+import { openShareSheet } from "../ui/views/templates";
 import { newExtra, toggleExtraPaid } from "../domain/ledger";
 import { billOf } from "../domain/money";
 import { teamName } from "../domain/teamstyle";
@@ -77,6 +78,12 @@ function advanceQueue(m: Match, g: Game): void {
   const w = winnerOf(g);
   if (w !== "a" && w !== "b") return;
   m.queue = queueResult(q, w === "a" ? g.a[0] : g.b[0], Number(agreeValue(m, "queue")) || 0);
+}
+
+/** Disiplin kararı: önizleyip düzenlenebilir, sonra paylaşılır (gruba ya da kişiye). */
+function openDecision(id: string): void {
+  const text = decisionText(store.s, id);
+  if (text) openShareSheet(t("decShare"), text);
 }
 
 let gpFirst: Side = "a";
@@ -389,14 +396,15 @@ registerActions({
     // Kural 1.8: misafirin ihlalinde getirene de "Getirdiği misafirin ihlali" kaydı (kademeli, 9.3)
     const host = d.host && d.type !== "guest" ? guestHost(m, d.pid) : null;
     const guestName = host ? getP(S, m, d.pid)?.name || "" : "";
+    let rid = "";
     closeModal(false, () =>
       mutate(host ? t("discSavedHost", { n: host.name }) : t("discSaved"), () => {
-        addInfraction(S, { pid: d.pid, type: d.type, at, sanction, step, rule: sug.rule, mid: d.mid || undefined, target: d.target || undefined, amount: amount > 0 ? amount : undefined, note: d.note }, today());
+        rid = addInfraction(S, { pid: d.pid, type: d.type, at, sanction, step, rule: sug.rule, mid: d.mid || undefined, target: d.target || undefined, amount: amount > 0 ? amount : undefined, note: d.note }, today()).id;
         if (host) {
           const hs = suggest(S, host.id, "guest", m);
           addInfraction(S, { pid: host.id, type: "guest", at, sanction: hs.sanction, step: hs.step, rule: hs.rule, mid: d.mid || undefined, note: guestName + ": " + L(violation(d.type)) }, today());
         }
-      }),
+      }, { extra: () => ({ label: t("decShare"), run: () => openDecision(rid) }) }),
     );
   },
   discHost: () => {
@@ -404,6 +412,7 @@ registerActions({
     d.host = !d.host;
     refreshDiscDialog();
   },
+  discShare: (ds) => openDecision(ds.id!),
   discDel: (ds) => {
     mutate(t("discRemoved"), () => removeInfraction(store.s, ds.id!));
   },

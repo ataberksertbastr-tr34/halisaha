@@ -7,7 +7,7 @@ import type { State } from "../domain/types";
 import { todayISO } from "../domain/dates";
 import { attSnapshot, logChanges, pruneLogs, type AttSnap } from "../domain/attlog";
 import { setLang, t } from "../i18n";
-import { toast } from "../ui/toast";
+import { toast, type ToastAction } from "../ui/toast";
 
 export type FilterKey = "att" | "roster" | "team" | "people";
 export interface Filter {
@@ -159,7 +159,7 @@ export function setLockHook(fn: (s: State, reason: string) => Promise<void>): vo
  * Geri al, işlemden önceki duruma döner. lock: riskli işlemlerde (silme,
  * iptal) önceki durum kilitli yerel sürüm olarak da saklanır.
  */
-export function mutate(labelIn: string | null | (() => string | null), fn: () => void | false, opts: { lock?: string } = {}): void {
+export function mutate(labelIn: string | null | (() => string | null), fn: () => void | false, opts: { lock?: string; extra?: () => ToastAction | null } = {}): void {
   const before = JSON.stringify(store.s);
   if (fn() === false) return;
   const label = typeof labelIn === "function" ? labelIn() : labelIn;
@@ -167,14 +167,17 @@ export function mutate(labelIn: string | null | (() => string | null), fn: () =>
   if (opts.lock) lockHook(JSON.parse(before) as State, opts.lock).catch(() => undefined);
   commit();
   if (label) {
-    toast(label, {
+    const undo: ToastAction = {
       label: t("undo"),
       run: () => {
         restore(before);
         commit();
         toast(t("undone"));
       },
-    });
+    };
+    // İsteğe bağlı ikinci eylem (ör. "Kararı paylaş") Geri al'ın önünde durur
+    const extra = opts.extra?.();
+    toast(label, extra ? [extra, undo] : undo, extra ? 9000 : undefined);
   }
 }
 

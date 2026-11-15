@@ -320,6 +320,7 @@ select { padding-right: 30px; }
 .tx { flex: 0 0 auto; width: 44px; height: 44px; border: none; background: transparent; color: var(--muted); border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .tx svg { width: 16px; height: 16px; }
 .tx:hover { background: var(--surface-2); color: var(--bad); }
+.tx.share:hover { color: var(--accent); }
 
 /* ---------- takımlar ---------- */
 .pitch-wrap { max-width: 420px; margin: 0 auto 12px; }

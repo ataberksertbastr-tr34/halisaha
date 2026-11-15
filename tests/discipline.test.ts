@@ -174,3 +174,48 @@ describe("ek borçlar: zarar bedeli ve kişisel harcama", () => {
     expect(cashAt(s)).toBe(before + 300);
   });
 });
+
+describe("disiplin kararı mesajı", () => {
+  it("ihlal, madde, kademe, cezanın maçı ve önceki kayıtlar; son söz organizatörün", async () => {
+    const { decisionText } = await import("../src/domain/discipline");
+    const { setLang } = await import("../src/i18n");
+    setLang("tr");
+    const ps = [player("a", "Ali Deneme"), player("b", "Berk Deneme")];
+    const m1 = match("m1", { date: "2026-10-06", status: "played" });
+    const m2 = match("m2", { date: "2026-10-15" });
+    const s = state(ps, [m1, m2]);
+    const r1 = addInfraction(s, { pid: "a", type: "late", at: "2026-10-06", sanction: "warn", step: 1, rule: "1.7", mid: "m1" }, "2026-10-06");
+    const r2 = addInfraction(s, { pid: "a", type: "swear", at: "2026-10-08", sanction: "bench", step: 2, rule: "9.2", target: "m2", note: "Rakibe küfür" }, "2026-10-08");
+    expect(decisionText(s, r1.id)).toBe([
+      "⚖️ Disiplin kararı – 06.10.2026", "",
+      "Kişi: Ali Deneme", "İhlal: Geç kalma (Kural 1.7)", "Etkinlik: Sal 06.10 21:00", "",
+      "1. ihlal: yaptırım kademeli (Kural 9.3: 1. uyarı, 2. bir maç kadroya alınmaz, 3. davet edilmez)", "Yaptırım: Uyarı", "",
+      "Karar yönetmeliğe göre verildi; son söz organizatörün (Kural 12.1).",
+    ].join("\n"));
+    expect(decisionText(s, r2.id)).toBe([
+      "⚖️ Disiplin kararı – 08.10.2026", "",
+      "Kişi: Ali Deneme", "İhlal: Küfür ve hakaret (Kural 9.2)", "Not: Rakibe küfür", "",
+      "2. ihlal: yaptırım kademeli (Kural 9.3: 1. uyarı, 2. bir maç kadroya alınmaz, 3. davet edilmez)", "Yaptırım: Bir maç kadroya alınmaz", "Kadroya alınmayacağı maç: Per 15.10 21:00", "",
+      "Önceki kayıtlar (1):", "• 06.10 Geç kalma (1.7) – Uyarı", "",
+      "Karar yönetmeliğe göre verildi; son söz organizatörün (Kural 12.1).",
+    ].join("\n"));
+    expect(decisionText(s, "yok")).toBe("");
+  });
+
+  it("zarar bedeli tutarıyla; misafirin kararı adıyla; İngilizce", async () => {
+    const { decisionText } = await import("../src/domain/discipline");
+    const { setLang } = await import("../src/i18n");
+    const m = match("m1", { date: "2026-10-06", status: "played", guests: [{ id: "g1", name: "Misafir Mert", rating: 3, pos: "", host: "a" }] });
+    const s = state([player("a", "Ali Deneme")], [m]);
+    const r = addInfraction(s, { pid: "g1", type: "damage", at: "2026-10-06", sanction: "damage", rule: "10.5", mid: "m1", amount: 450 }, "2026-10-06");
+    setLang("tr");
+    const text = decisionText(s, r.id);
+    expect(text).toContain("Kişi: Misafir Mert");
+    expect(text).toContain("Yaptırım: Zararı karşılar\nZarar bedeli: 450 ₺");
+    expect(text).not.toContain("ihlal: yaptırım kademeli");
+    setLang("en");
+    expect(decisionText(s, r.id).split("\n")[0]).toBe("⚖️ Disciplinary decision – 06.10.2026");
+    expect(decisionText(s, r.id)).toContain("Event: Tue 06.10 21:00");
+    setLang("tr");
+  });
+});
