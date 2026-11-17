@@ -92,8 +92,9 @@ test("telefondaki veriler bilgisayara gelir, değişiklikler iki yönde eşitlen
   await phone.page.goto("/#/settings");
   await synced(phone.page);
   await syncNow(pc.page);
+  // Bildirim önceki bir eşitlemeden kalmış olabilir: yeni oyuncu gelene kadar beklenir
   await expect(pc.page.locator("#toast")).toContainText("Diğer cihazdaki değişiklikler alındı");
-  expect(await rosterNames(pc.page)).toContain("Senkron Deneme");
+  await expect.poll(() => rosterNames(pc.page), { timeout: 20_000 }).toContain("Senkron Deneme");
 
   // Bilgisayarda değişiklik → telefonda görünür.
   await pc.page.goto("/#/settings");
@@ -188,7 +189,7 @@ test("yazı yazılırken gelen değişiklik yazılanı silmez; yazı bitince uyg
   await pc.page.goto("/#/settings");
   await synced(pc.page);
   await syncNow(phone.page);
-  expect(await rosterNames(phone.page)).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
+  await expect.poll(() => rosterNames(phone.page), { timeout: 20_000 }).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
   expect(phone.errors).toEqual([]);
   expect(pc.errors).toEqual([]);
   await phone.ctx.close();
@@ -421,3 +422,73 @@ async function page_emailIn(page: Page, email: string, pw: string): Promise<void
   await expect(sec).toContainText(email, { timeout: 20_000 });
   await synced(page);
 }
+
+test("oyuncu sayfası: organizatör açar, oyuncu bağlantıdan kadroyu ve yedek sırasını görür; kapatınca bağlantı çalışmaz", async ({ browser }) => {
+  const email = uniq();
+  const org = await device(browser, "phone");
+  await importBackupText(org.page, V2);
+  // Kayıtlı değilken sayfa açılamaz
+  await org.page.goto("/#/settings");
+  const sec = org.page.locator("#pub-sec");
+  await expect(sec).toContainText("Önce yukarıdan cihazlar arası eşitlemeye giriş yap");
+  await expect(sec.locator('[data-a="pubOn"]')).toHaveCount(0);
+  await emailAuth(org.page, email, "up");
+
+  // Sıradaki (otomatik planlanmış) maça iki kişi yazılır
+  await org.page.locator('#tabs [data-v="match"]').click();
+  for (const n of ["Kaleci Kemal", "Eldiven Ercan"]) {
+    await org.page.locator("#q-att").fill(n);
+    await org.page.locator("#q-att").press("Enter");
+    await expect(org.page.locator("#list-att li", { hasText: n }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "true");
+  }
+  const day = (await org.page.locator(".hero-day").textContent())!.trim();
+
+  await org.page.goto("/#/settings");
+  await sec.scrollIntoViewIfNeeded();
+  await expect(sec).toContainText("Telefon, IBAN, seviye, borç ve disiplin kaydı görünmez");
+  await sec.locator('[data-a="pubOn"]').click();
+  await expect(sec.locator("#pub-status")).toContainText("Yayında", { timeout: 20_000 });
+  await noHorizontalScroll(org.page);
+  const link = (await sec.locator(".pub-link code").textContent())!.trim();
+  expect(link).toMatch(/\/durum\.html#[a-z2-9]{24}$/);
+
+  // Oyuncu: uygulaması olmayan ayrı bir telefon, yalnızca bağlantı
+  const player = await device(browser, "phone");
+  await player.page.goto(link);
+  const card = player.page.locator(".pb-card").first();
+  await expect(card.locator(".pb-when")).toContainText(day.split(" ")[0]);
+  await expect(card.locator(".pb-count")).toHaveText("2/16");
+  await expect(card).toContainText("14 kişi eksik");
+  await expect(card.locator(".pb-list li")).toHaveText(["Kaleci Kemal", "Eldiven Ercan"]);
+  await expect(player.page.locator("body")).not.toContainText("TR00");
+  await expect(player.page.locator(".pb-foot")).toContainText("Güncellendi:");
+  await noHorizontalScroll(player.page);
+
+  // Organizatör bir kişi daha yazar: sayfa birkaç saniye içinde güncellenir
+  await org.page.locator('#tabs [data-v="match"]').click();
+  await org.page.locator("#q-att").fill("Zeki Zorlu");
+  await org.page.locator("#q-att").press("Enter");
+  await expect(org.page.locator("#list-att li", { hasText: "Zeki Zorlu" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(async () => {
+    await player.page.locator("#pb-refresh").click();
+    await expect(card.locator(".pb-count")).toHaveText("3/16", { timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(card.locator(".pb-list li").last()).toHaveText("Zeki Zorlu");
+
+  // Kapatınca bağlantı "kapalı" der
+  await org.page.goto("/#/settings");
+  // İki dokunuşla onaylanır
+  await sec.locator('[data-a="pubOff"]').click();
+  await sec.locator('[data-a="pubOff"]').click();
+  await expect(org.page.locator("#toast")).toContainText("Oyuncu sayfası kapatıldı");
+  await expect(sec.locator('[data-a="pubOn"]')).toBeVisible();
+  await player.page.locator("#pb-refresh").click();
+  await expect(player.page.locator(".pb-msg")).toContainText("Bu sayfa kapalı ya da bağlantı yanlış");
+  // Yanlış bağlantı da aynı şeyi söyler
+  await player.page.goto(link.replace(/#.*/, "#yanlis"));
+  await expect(player.page.locator(".pb-msg")).toContainText("Bu sayfa kapalı ya da bağlantı yanlış");
+  expect(org.errors).toEqual([]);
+  expect(player.errors).toEqual([]);
+  await org.ctx.close();
+  await player.ctx.close();
+});

@@ -2,7 +2,7 @@ import type { Kind, Match, State, Settings } from "./types";
 import { uid } from "./text";
 
 /** Güncel veri şeması sürümü. Değiştiğinde migrate.ts'e adım + test eklenmeli. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export function defaultSettings(): Settings {
   return {
@@ -11,7 +11,7 @@ export function defaultSettings(): Settings {
     format: 7, gkFree: true, round: true, lang: "tr", theme: "system",
     templates: {}, autoSchedule: true, avoidRepeat: true, perf: true, reserveDays: 2,
     teamA: { name: "", color: "" }, teamB: { name: "", color: "" },
-    debtBlock: true, noShowPenalty: true,
+    debtBlock: true, noShowPenalty: true, inviteDays: 3, remindAt: "12:00", pubId: "",
   };
 }
 
@@ -28,7 +28,7 @@ export function blankMatch(kind: Kind, date: string, time: string, extra: Partia
     id: uid(), kind, title: "", cap: 0, lockH: 24, date, time, fieldId: "", price: 0, format: 7,
     status: "open", att: {}, order: [], guests: [], exempt: {}, teams: { a: [], b: [] }, score: null,
     locks: {}, goals: {}, mvp: "", noshow: {}, reserved: false,
-    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], injured: {}, sheets: [],
+    removed: {}, checks: {}, agree: {}, note: "", cars: [], games: [], injured: {}, sheets: [], log: [], sent: {},
     ...extra,
   };
 }

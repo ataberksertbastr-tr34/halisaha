@@ -13,8 +13,9 @@ import { guestPrefill, importFromFile, onEnter, onField, pitchHandlers } from ".
 import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadIssue, loadState, lockedSnapshot, onSaveError, onStorageBlocked, requestPersistence, saveState, storageMode } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
-import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
+import { initSync, onSyncChange, schedulePublish, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
 import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/views/sync";
+import { refreshPubSection } from "./ui/views/pubpage";
 import { dismissIosMove, iosMoveBanner } from "./ui/views/iosmove";
 import "./app/syncActions";
 import { renderApp } from "./ui/shell";
@@ -124,6 +125,19 @@ function setupStorageWarning(): void {
   );
 }
 
+/**
+ * Yapıştırılan liste ya da banka metni kendiliğinden önizlenir ("Önizle" dokunuşu gerekmez).
+ * Yalnızca birden çok satır tek seferde geldiğinde: elle yazarken araya girmez.
+ */
+const pasteLen = new WeakMap<HTMLTextAreaElement, number>();
+function autoPreview(el: HTMLTextAreaElement): void {
+  const before = pasteLen.get(el) ?? el.defaultValue.length;
+  pasteLen.set(el, el.value.length);
+  const lines = el.value.split(/\r?\n/).filter((l) => l.trim()).length;
+  if (el.value.length - before < 20 || lines < 2) return;
+  dispatch(el.id === "plist" ? "pastePreview" : "bankPreview", {} as DOMStringMap, el);
+}
+
 /** Ekranda yazılıp henüz kaydedilmemiş (değeri ilk hâlinden farklı) bir metin alanı var mı. */
 function hasDraft(): boolean {
   // Arama kutuları hariç: değerleri arayüz durumunda tutulur, yeniden çizimde kaybolmaz.
@@ -145,6 +159,8 @@ function setupSync(): void {
       if (isModalOpen() || hasDraft()) return false;
       applyExternal(next, t("syncPulled"));
       autoSchedule();
+      // Başka cihazdan gelen değişiklik de oyuncu sayfasına yansısın
+      schedulePublish();
       return true;
     },
     lock: lockedSnapshot,
@@ -155,6 +171,7 @@ function setupSync(): void {
   addBanner(syncAlertBanner);
   onSyncChange(() => {
     refreshSyncSection();
+    refreshPubSection();
     refreshHeroStatus();
     renderBanners();
   });
@@ -238,8 +255,9 @@ function setupPWA(): void {
 function bindEvents(): void {
   document.addEventListener("click", (e) => {
     const target = e.target as HTMLElement;
-    if (target.closest("[data-toast-act]")) {
-      runToastAction();
+    const ta = target.closest<HTMLElement>("[data-toast-act]");
+    if (ta) {
+      runToastAction(Number(ta.dataset.toastAct) || 0);
       return;
     }
     const b = target.closest<HTMLElement>("[data-a]");
@@ -259,6 +277,7 @@ function bindEvents(): void {
     const el = e.target as HTMLInputElement;
     if (el.id === "tpl-text") return updateTemplatePreview();
     if (el.id === "guestName") return guestPrefill(el.value);
+    if (el.id === "plist" || el.id === "bank-text") return autoPreview(el as unknown as HTMLTextAreaElement);
     if (el.id === "q-rules") return liveSearch("q-rules", (q) => (ui.ruleQ = q), el.value);
     if (el.id === "q-disc") return liveSearch("q-disc", (q) => (ui.discQ = q), el.value);
     if (el.dataset && el.dataset.f === "ann.ruleText") return void onEventField(el);

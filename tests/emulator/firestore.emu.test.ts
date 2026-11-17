@@ -3,7 +3,7 @@
  * Çalıştırma: firebase emulators:exec --only auth,firestore "npm run test:emu"
  */
 import { describe, expect, it } from "vitest";
-import { AuthError, ConflictError, firestoreRemote } from "../../src/sync/firestore";
+import { AuthError, ConflictError, firestoreRemote, NetError, pubWriter, readPub } from "../../src/sync/firestore";
 import { pack, unpack } from "../../src/sync/envelope";
 import { state, player } from "../helpers/factory";
 
@@ -99,5 +99,54 @@ describe("Firestore emülatörü", () => {
     expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, fazla: { stringValue: "x" } })).status).toBe(403);
     expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, data: { integerValue: "5" } })).status).toBe(403);
     expect((await commit(`users/${u.uid}/halisaha/state`, { ...ok, data: { stringValue: "x".repeat(1_000_001) } })).status).toBe(403);
+  });
+});
+
+describe("oyuncu durum sayfası (pub/{id})", () => {
+  const ID = () => "deneme" + Math.random().toString(36).slice(2, 12) + "abcdefghij";
+  const writerFor = (uid: string, token: string) => pubWriter({ projectId: PROJECT, uid, getToken: async () => token, base: `http://${FS}/v1` });
+  const read = (id: string) => readPub({ projectId: PROJECT, base: `http://${FS}/v1` }, id);
+
+  it("sahibi yazar; herkes oturumsuz okur; kapatınca bağlantı 'yok' der", async () => {
+    const u = await signUp();
+    const id = ID();
+    expect(await read(id)).toBeNull();
+    await writerFor(u.uid, u.token).write(id, '{"v":1,"events":[]}', 1234);
+    expect(await read(id)).toEqual({ at: 1234, data: '{"v":1,"events":[]}' });
+    await writerFor(u.uid, u.token).write(id, '{"v":1,"events":[1]}', 5678);
+    expect(await read(id)).toEqual({ at: 5678, data: '{"v":1,"events":[1]}' });
+    await writerFor(u.uid, u.token).remove(id);
+    expect(await read(id)).toBeNull();
+  });
+
+  it("başka hesap üzerine yazamaz ve silemez; oturumsuz yazılamaz; sayfalar listelenemez", async () => {
+    const a = await signUp();
+    const b = await signUp();
+    const id = ID();
+    await writerFor(a.uid, a.token).write(id, "{}");
+    await expect(writerFor(b.uid, b.token).write(id, "ele geçir")).rejects.toBeInstanceOf(AuthError);
+    await expect(writerFor(b.uid, b.token).remove(id)).rejects.toBeInstanceOf(AuthError);
+    // Başkasının kimliğiyle sahip alanı yazılamaz
+    await expect(writerFor(a.uid, b.token).write(ID(), "{}")).rejects.toBeInstanceOf(AuthError);
+    expect((await read(id))?.data).toBe("{}");
+    const base = `http://${FS}/v1/projects/${PROJECT}/databases/(default)/documents`;
+    const anon = await fetch(`${base}:commit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ writes: [{ update: { name: `projects/${PROJECT}/databases/(default)/documents/pub/${ID()}`, fields: { owner: { stringValue: "x" }, at: { integerValue: "1" }, data: { stringValue: "{}" } } } }] }) });
+    expect(anon.status).toBe(403);
+    expect((await fetch(`${base}/pub`)).status).toBe(403);
+  });
+
+  it("kurallar: kısa kimlik, fazla alan ve büyük veri reddedilir", async () => {
+    const u = await signUp();
+    const w = writerFor(u.uid, u.token);
+    await expect(w.write("kisa", "{}")).rejects.toBeInstanceOf(AuthError);
+    await expect(w.write(ID(), "x".repeat(100_001))).rejects.toBeInstanceOf(AuthError);
+    const base = `http://${FS}/v1/projects/${PROJECT}/databases/(default)/documents`;
+    const extra = await fetch(`${base}:commit`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + u.token },
+      body: JSON.stringify({ writes: [{ update: { name: `projects/${PROJECT}/databases/(default)/documents/pub/${ID()}`, fields: { owner: { stringValue: u.uid }, at: { integerValue: "1" }, data: { stringValue: "{}" }, telefon: { stringValue: "x" } } } }] }),
+    });
+    expect(extra.status).toBe(403);
+    void NetError;
   });
 });

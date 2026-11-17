@@ -231,6 +231,68 @@ export function liabilities(s: State, today: string): Record<string, Liability> 
   return out;
 }
 
+export interface StatementLine {
+  /** Etkinlik (ek borçta boş olabilir) */
+  mid: string;
+  cid?: string;
+  note?: string;
+  rule?: string;
+  date: string;
+  amount: number;
+  paid: number;
+  /** Getirdiği misafirin payıysa misafirin adı (Kural 1.8) */
+  guest?: string;
+}
+
+export interface Statement {
+  /** Dökümün gönderileceği kişi: oyuncunun kendisi; misafirse getireni (yoksa misafir) */
+  to: { id: string; name: string; phone: string };
+  /** Vadesi gelmiş, kapanmamış kalemler (eskiden yeniye) */
+  lines: StatementLine[];
+  /** Kalan toplam */
+  total: number;
+  /** Son ödemeler (yeniden eskiye, en çok 3) */
+  payments: Payment[];
+}
+
+/**
+ * Borç dökümü: kişinin vadesi gelmiş, kapanmamış her kalemi (maç payı, etkinlik payı, ek borç)
+ * ve getirdiği misafirlerin ödenmemiş payları (Kural 1.8), ödenen ve kalan tutarlarıyla. Misafirin
+ * dökümü getirenine yazılır. Borcu olmayan için null.
+ */
+export function statement(s: State, id: string, today: string, acc: Map<string, Account> = accounts(s, today)): Statement | null {
+  const a = acc.get(id);
+  const lines: StatementLine[] = [];
+  const add = (x: Account, guest?: string, onlyHost?: string) => {
+    for (const c of x.charges) {
+      if (!c.due || c.amount - c.paid <= EPS) continue;
+      if (onlyHost) {
+        const m = c.mid ? s.matches.find((mm) => mm.id === c.mid) : undefined;
+        if ((m?.guests.find((g) => g.id === x.id)?.host || x.host) !== onlyHost) continue;
+      }
+      const l: StatementLine = { mid: c.mid, date: c.date, amount: c.amount, paid: c.paid };
+      if (c.cid) l.cid = c.cid;
+      if (c.note) l.note = c.note;
+      if (c.rule) l.rule = c.rule;
+      if (guest) l.guest = guest;
+      lines.push(l);
+    }
+  };
+  if (a) add(a, a.guest ? a.name : undefined);
+  // Oyuncunun getirdiği misafirlerin payları da onun dökümüne girer
+  if (!a?.guest) for (const g of acc.values()) if (g.guest) add(g, g.name, id);
+  if (!lines.length) return null;
+  lines.sort((x, y) => x.date.localeCompare(y.date));
+  const who = whoIs(s, id);
+  const host = who?.guest && who.host ? s.players.find((p) => p.id === who.host) : null;
+  const to = host ? { id: host.id, name: host.name, phone: host.phone || "" } : { id, name: who?.name || "", phone: who?.phone || "" };
+  return {
+    to, lines,
+    total: r2(lines.reduce((t, l) => t + l.amount - l.paid, 0)),
+    payments: (a?.payments || []).filter((p) => p.amount > 0).slice(-3).reverse(),
+  };
+}
+
 /** Kişi → sorumlu olunan toplam borç (kendi + misafirleri). */
 export function liabilityMap(s: State, today: string): Record<string, number> {
   const d: Record<string, number> = {};

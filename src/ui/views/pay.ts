@@ -13,7 +13,7 @@ import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, isFree } from "../../domain/money";
 import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
 import { eventTitle, isFootball } from "../../domain/kinds";
-import { dayName, guestPayText, waLink, waPersonal } from "../../domain/messages";
+import { dayShort, guestPayText, waLink, waPersonal } from "../../domain/messages";
 import { emptyState, eventOption, ruleChip, shareButtons } from "../components";
 import { showModal } from "../modal";
 import { sheetHead } from "../sheets";
@@ -90,6 +90,8 @@ function matchPayView(): string {
   });
   // Kural 1.5: yerine yedekten giren varsa geç iptal eden kendiliğinden muaf olur; hâlâ ödeyen varsa organizatöre hatırlatılır.
   if (late.some((id) => payers.includes(id))) h += '<p class="small muted mt-s">' + esc(t("exemptHint")) + " " + ruleChip(isFootball(mm) ? "1.5" : "15.3") + "</p>";
+  // "Kim ne zaman yazıldı / çıktı" tartışması için (Kural 1.4–1.6)
+  if (mm.log.length) h += '<button type="button" class="btn block ghost mt-s" data-a="attLog" data-id="' + esc(mm.id) + '">' + IC.list + esc(t("attLog")) + " (" + mm.log.length + ")</button>";
   h += "</section>";
   return h + extrasSection(mm, payers) + debtsSection();
 }
@@ -127,11 +129,15 @@ function debtsSection(): string {
   const dl = debts(S, today());
   let h = '<section class="section" aria-labelledby="h-debts"><h2 id="h-debts">' + esc(t("debts")) + "</h2>";
   if (!dl.length) h += '<p class="muted m0">' + esc(t("noDebts")) + "</p>";
+  // Herkese tek oturumda, sırayla (Kural 2.4); gelen havaleleri tek yapıştırmayla işle
+  if (dl.length > 1) h += '<button type="button" class="btn block mb" data-a="remindAll">' + IC.whatsapp + esc(t("remindAll", { n: dl.length })) + "</button>";
+  if (dl.length) h += '<button type="button" class="btn block mb" data-a="bankOpen">' + IC.wallet + esc(t("bankOpen")) + "</button>";
   dl.forEach((d) => {
     const host = d.host ? S.players.find((p) => p.id === d.host) : null;
     // Misafirin borcu getirene misafirin adıyla hatırlatılır (Kural 1.8)
     const u = d.phone ? waPersonal(S, d.phone, d.name, d.total) : host ? waLink(host.phone, guestPayText(S, host.name, d.name, d.total)) : "";
-    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remind")) + "</a>" : "") +
+    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remindShort")) + "</a>" : "") +
+      '<button type="button" class="linkbtn" data-a="statement" data-id="' + esc(d.id) + '">' + esc(t("statementShort")) + "</button>" +
       '</span></div><span class="amount">' + esc(money(d.total)) + '</span><button type="button" class="btn sm" data-a="settle" data-id="' + esc(d.id) + '">' + esc(t("settle")) + "</button></div>";
   });
   return h + "</section>";
@@ -152,6 +158,7 @@ function peopleView(): string {
   const credit = acc.reduce((tot, a) => tot + a.credit, 0);
   acc.sort((a, b) => b.owed - a.owed || b.credit - a.credit || a.name.localeCompare(b.name, "tr"));
   let h = '<section class="section"><div class="money-sum two"><div class="count"><b class="neg">' + esc(money(owed)) + "</b><span>" + esc(t("totalOwed")) + '</span></div><div class="count"><b class="pos">' + esc(money(credit)) + "</b><span>" + esc(t("creditors")) + "</span></div></div>";
+  h += '<button type="button" class="btn block mb" data-a="bankOpen">' + IC.wallet + esc(t("bankOpen")) + "</button>";
   h += '<div class="search">' + IC.search + '<input type="search" id="q-people" data-q="people" placeholder="' + esc(t("searchPeople")) + '" value="' + esc(ui.f.people.q) + '" autocomplete="off" aria-label="' + esc(t("searchPeople")) + '"><button type="button" class="clr" data-a="clearQ" data-k="people" aria-label="' + esc(t("close")) + '"' + (ui.f.people.q ? "" : " hidden") + ">" + IC.close + "</button></div>";
   h += '<ul class="plist" id="list-people">';
   acc.forEach((a) => {
@@ -176,6 +183,7 @@ export function openLedger(id: string): void {
     '<label class="fld full">' + esc(t("note")) + '<input type="text" id="lp-note" autocomplete="off"></label></div>' +
     '<div class="row mt-s"><button type="button" class="btn primary grow" data-a="takePayment" data-id="' + esc(id) + '">' + IC.check + esc(t("takePayment")) + "</button>" +
     (u ? '<a class="btn grow" href="' + esc(u) + '" target="_blank" rel="noopener">' + IC.whatsapp + esc(t("remindShort")) + "</a>" : "") + "</div>" +
+    (a && a.owed > 0.004 ? '<button type="button" class="btn block mt-s" data-a="statement" data-id="' + esc(id) + '">' + IC.list + esc(t("statementSend")) + "</button>" : "") +
     (a && a.credit > 0.004 ? '<button type="button" class="linkbtn mt-s" data-a="refund" data-id="' + esc(id) + '">' + esc(t("refund")) + " (" + esc(money(a.credit)) + ")</button>" : "") +
     '<p class="small muted mt-s m0">' + esc(t("ledgerHint")) + "</p></div>";
   type Row = { at: string; html: string };
@@ -183,13 +191,13 @@ export function openLedger(id: string): void {
   a?.charges.forEach((c) => {
     const st = c.status === "paid" ? '<span class="tag ok">' + esc(t("paid")) + "</span>" : c.status === "partial" ? '<span class="tag wait">' + esc(t("partialPaid", { p: money(c.paid) })) + "</span>" : c.due ? '<span class="tag debt">' + esc(t("unpaid")) + "</span>" : "";
     const cm = c.mid ? getMatch(S, c.mid) : null;
-    const d = dayName(c.date).slice(0, 3) + " " + ddmm(c.date);
+    const d = dayShort(c.date) + " " + ddmm(c.date);
     const title = c.cid ? (c.note || t("extraCharge")) + " · " + d : cm && !isFootball(cm) ? t("eventShareRow", { d, e: eventTitle(cm) }) : t("chargeRow", { d });
     rows.push({ at: c.date + "1", html: '<li class="lrow"><div class="pname"><strong>' + esc(title) + "</strong>" + st + '</div><span class="amount neg">−' + esc(money(c.amount)) + "</span></li>" });
   });
   a?.payments.forEach((p) => {
     const m = p.mid ? getMatch(S, p.mid) : null;
-    const sub = [ddmm(p.at), m ? dayName(m.date).slice(0, 3) + " " + ddmm(m.date) : "", p.note || ""].filter(Boolean).join(" · ");
+    const sub = [ddmm(p.at), m ? dayShort(m.date) + " " + ddmm(m.date) : "", p.note || ""].filter(Boolean).join(" · ");
     rows.push({ at: p.at + "2", html: '<li class="lrow"><div class="pname"><strong>' + esc(p.amount < 0 ? t("refundNote") : t("paymentRow")) + '</strong><span class="meta">' + esc(sub) + '</span></div><span class="amount pos">' + (p.amount < 0 ? "−" : "+") + esc(money(Math.abs(p.amount))) + "</span>" +
       '<button type="button" class="tx" data-a="delPayment" data-id="' + esc(p.id) + '" data-pid="' + esc(id) + '" aria-label="' + esc(t("del")) + '">' + IC.close + "</button></li>" });
   });

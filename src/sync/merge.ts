@@ -38,8 +38,11 @@ interface Ctx {
   io: Inputs;
 }
 
-/** Sıralı küme olarak birleşen diziler ("*" = liste elemanı). queue.order bütün değerdir. */
-const SET_PATHS = new Set(["skipped", "matches.*.order"]);
+/**
+ * Sıralı küme olarak birleşen diziler ("*" = liste elemanı). queue.order bütün değerdir.
+ * Oyuncunun banka adları da küme: iki cihazın ayrı ayrı öğrendiği adların ikisi de kalır.
+ */
+const SET_PATHS = new Set(["skipped", "matches.*.order", "players.*.bank"]);
 
 /**
  * Çatışmada bütün olarak alınan nesneler: alanları birbirine bağlı anlık görüntüler
@@ -343,8 +346,8 @@ function dropResurrected(s: State, io: Inputs): void {
   });
 }
 
-const RECORDS = ["att", "exempt", "locks", "goals", "noshow", "removed", "checks", "agree"] as const;
-const LISTS = ["guests", "cars", "games"] as const;
+const RECORDS = ["att", "exempt", "locks", "goals", "noshow", "removed", "checks", "agree", "sent"] as const;
+const LISTS = ["guests", "cars", "games", "log"] as const;
 /** Tek değerli maç alanları: kalan maçta oluşturma varsayılanı duruyorsa kopyadaki düzenleme alınır. */
 const SCALARS = ["price", "fieldId", "field", "cap", "lockH", "format", "mvp", "score", "manualTeams", "draw", "queue", "clock"] as const;
 

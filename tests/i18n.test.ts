@@ -1,6 +1,7 @@
 /** Türkçe/İngilizce metinler ve Türkçe karakter işlemleri. */
 import { describe, expect, it } from "vitest";
-import { allKeys, money, setLang, t } from "../src/i18n";
+import { allKeys, DAYS_SHORT, money, setLang, t } from "../src/i18n";
+import { dayShort } from "../src/domain/messages";
 import { cleanBulkLine, norm, phoneDigits, trSort } from "../src/domain/text";
 
 describe("dil dosyaları", () => {
@@ -15,6 +16,16 @@ describe("dil dosyaları", () => {
     expect(t("spotsLeft", { n: 3 })).toBe("3 kişi eksik");
     setLang("en");
     expect(t("spotsLeft", { n: 3 })).toBe("3 spots left");
+    setLang("tr");
+  });
+  it("gün kısaltmaları karışmaz: Pazar/Pazartesi ve Cuma/Cumartesi ayrı", () => {
+    setLang("tr");
+    // 11–17 Ekim 2026: Pazar … Cumartesi
+    expect(["2026-10-11", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17"].map(dayShort)).toEqual(["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"]);
+    expect(new Set(DAYS_SHORT.tr).size).toBe(7);
+    setLang("en");
+    expect(dayShort("2026-10-17")).toBe("Sat");
+    expect(new Set(DAYS_SHORT.en).size).toBe(7);
     setLang("tr");
   });
   it("para Türk lirası biçiminde", () => {

@@ -11,10 +11,12 @@
  */
 import type { Infraction, Kind, Match, Sanction, State } from "./types";
 import type { Txt } from "./kinds";
-import { L, isFootball, kindDef } from "./kinds";
-import { getMatch, lineup, openMatches, setAtt } from "./lineup";
+import { L, eventTitle, isFootball, kindDef } from "./kinds";
+import { getMatch, getP, lineup, openMatches, setAtt } from "./lineup";
 import { newExtra } from "./ledger";
 import { uid } from "./text";
+import { DAYS_SHORT, lang, money, t } from "../i18n";
+import { ddmm, weekday } from "./dates";
 
 export type Mode = "step" | "fixed" | "repeat";
 
@@ -285,4 +287,57 @@ export function removeInfraction(s: State, id: string): void {
   }
   const ev = getMatch(s, r.mid);
   if (ev && ev.removed[r.pid] === r.rule && !s.discipline.some((x) => x.pid === r.pid && x.mid === ev.id && (x.sanction === "remove" || x.sanction === "dropDay" || x.sanction === "expel"))) delete ev.removed[r.pid];
+}
+
+/** "Sal 13.10 21:00" (etkinlikte adıyla). */
+function evLabel(m: Match): string {
+  return DAYS_SHORT[lang()][weekday(m.date)] + " " + ddmm(m.date) + " " + m.time + (isFootball(m) && !m.title ? "" : " · " + eventTitle(m));
+}
+
+/** Kişinin adı: oyuncu ya da herhangi bir etkinliğin misafiri. */
+function personName(s: State, pid: string, m: Match | null): string {
+  const n = getP(s, m, pid)?.name || s.players.find((p) => p.id === pid)?.name;
+  if (n) return n;
+  for (const x of s.matches) {
+    const g = x.guests.find((y) => y.id === pid);
+    if (g) return g.name;
+  }
+  return "";
+}
+
+/**
+ * Disiplin kararı mesajı: ihlal ve madde numarası, kademedeki yeri (Kural 9.3), yaptırım,
+ * cezanın uygulanacağı maç, zarar bedeli ve önceki kayıtlar. Karar "neden bana" itirazına
+ * karşı gerekçesiyle duyurulur; son söz organizatörün (12.1). Kayıt yoksa boş.
+ */
+export function decisionText(s: State, id: string): string {
+  const r = s.discipline.find((x) => x.id === id);
+  if (!r) return "";
+  const m = getMatch(s, r.mid);
+  const v = violation(r.type);
+  const stepTxt = r.step && r.sanction !== "warn" && r.sanction !== "bench" && r.sanction !== "ban" ? " + " + L(SANCTION_TXT[STEP_SANCTION[r.step]]) : "";
+  const lines = [
+    t("decTitle", { d: ddmm(r.at) + "." + r.at.slice(0, 4) }),
+    "",
+    t("decWho", { n: personName(s, r.pid, m) }),
+    t("decWhat", { v: L(v), r: r.rule }),
+  ];
+  if (m) lines.push(t("decWhere", { e: evLabel(m) }));
+  if (r.note) lines.push(t("decNote", { n: r.note }));
+  lines.push("");
+  if (r.step) lines.push(t("decStep", { n: r.step }));
+  lines.push(t("decSanction", { s: sanctionText(r) + stepTxt }));
+  const target = benchMatch(s, r);
+  if (target) lines.push(t("decBench", { e: evLabel(target) }));
+  const c = r.cid ? s.charges.find((x) => x.id === r.cid) : undefined;
+  if (c) lines.push(t("decAmount", { a: money(c.amount) }));
+  // Önceki kayıtlar: bu karardan önce yazılmış olanlar (en yeni üçü)
+  const all = s.discipline.filter((x) => x.pid === r.pid);
+  const prev = all.slice(0, all.indexOf(r)).filter((x) => x.at <= r.at).sort((a, b) => b.at.localeCompare(a.at));
+  if (prev.length) {
+    lines.push("", t("decHistory", { n: prev.length }));
+    for (const x of prev.slice(0, 3)) lines.push("• " + ddmm(x.at) + " " + L(violation(x.type)) + " (" + x.rule + ") – " + sanctionText(x));
+  }
+  lines.push("", t("decFooter"));
+  return lines.join("\n");
 }

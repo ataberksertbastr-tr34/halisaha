@@ -1,9 +1,9 @@
 /** Tüm kullanıcı eylemleri. Eski uygulamadaki act() / onField() ile aynı davranış. */
 import { t } from "../i18n";
-import { commit, mutate, render, replaceState, store, today, ui, type FilterKey } from "./store";
+import { commit, mutate, rebaseLog, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { back, go, route, tabOf, type RouteName, type Tab } from "./router";
 import { dispatch, registerActions } from "./actions";
-import type { Att, ExpenseCat, Guest, Match, Pos, Side } from "../domain/types";
+import type { Att, ExpenseCat, Guest, LogEv, Match, Pos, Side } from "../domain/types";
 import { defaults } from "../domain/schema";
 import { BackupError, parseBackup } from "../domain/migrate";
 import type { State } from "../domain/types";
@@ -17,29 +17,37 @@ import { isFootball, kindOf } from "../domain/kinds";
 import { gamesTally, keeperRotation } from "../domain/scoring";
 import { teamName } from "../domain/teamstyle";
 import { onEventField } from "./eventHandlers";
-import { applyFixed, blockedFor, copyLastWeek, lateCancel, type Added } from "../domain/roster";
+import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } from "../domain/roster";
+import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
+import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
-import { debtReminderText, promotedText, waLink } from "../domain/messages";
+import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
+import { openRemindSheet } from "../ui/views/remind";
+import { applyBank, parseBank, planBank, type BankRow } from "../domain/bank";
+import { openBankSheet, showBankPreview } from "../ui/views/bank";
 import { money } from "../i18n";
 import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/money";
-import { accounts, chargeOf, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
+import { accounts, chargeOf, debts, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams, swapPlayers } from "../domain/teams";
 import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
+import { orgReminders, remindersICS } from "../domain/reminders";
+import { appUrl, openRemindersSheet } from "../ui/views/reminders";
 import { ruleBook } from "../ui/views/rules";
 import { findRule, ruleShareText, stripMd } from "../domain/rules";
 import { isIOS } from "../pwa/register";
 import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
-import { shareText } from "../ui/share";
+import { shareText, type ShareResult } from "../ui/share";
+import { teamsSig } from "../domain/todo";
 import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
 import { applyFilter, blockReason } from "../ui/components";
 import { guestHistory, pastGuests } from "../domain/guests";
-import { closeModal } from "../ui/modal";
+import { closeModal, isModalOpen } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
 import { toast } from "../ui/toast";
 import { copyText } from "../ui/clipboard";
@@ -72,6 +80,8 @@ function blockedText(m: Match, ids: string[]): string {
 }
 
 let pendingImport: State | null = null;
+/** Önizlenen banka bildirimleri (Metni düzenle ile metin geri gelir). */
+let pendingBank: { text: string; rows: BankRow[] } | null = null;
 /** Önizlenen WhatsApp listesi (Metni düzenle ile metin geri gelir). */
 let pendingPaste: { mid: string; text: string; rows: PlanRow[] } | null = null;
 
@@ -82,10 +92,8 @@ function scoreFromGoals(m: Match): Match["score"] {
   return { a: sum(m.teams.a), b: sum(m.teams.b) };
 }
 
-/** .ics dosyasını kaydeder / açar (iPhone'da doğrudan takvim ekranı). */
-function saveICS(ms: Match[]): void {
-  if (!ms.length) return;
-  const ics = buildICS(ms.map((m) => eventOf(store.s, m, t("calEventTitle"))));
+/** .ics metnini kaydeder / açar (iPhone'da doğrudan takvim ekranı). */
+function saveICSText(ics: string, name: string): void {
   if (isIOS()) {
     window.open("data:text/calendar;charset=utf-8," + encodeURIComponent(ics), "_blank");
     return;
@@ -93,11 +101,16 @@ function saveICS(ms: Match[]): void {
   const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = (ms.length === 1 ? "halisaha-" + ms[0].date : "halisaha-maclar") + ".ics";
+  a.download = name + ".ics";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function saveICS(ms: Match[]): void {
+  if (!ms.length) return;
+  saveICSText(buildICS(ms.map((m) => eventOf(store.s, m, t("calEventTitle")))), ms.length === 1 ? "halisaha-" + ms[0].date : "halisaha-maclar");
 }
 
 function openLink(u: string): void {
@@ -135,6 +148,55 @@ function coverToast(m: Match, by: string, late: string): void {
 
 function nameOf(m: Match, id: string): string {
   return getP(store.s, m, id)?.name || "";
+}
+
+/**
+ * Geç iptal sayılmasın: dokunulan yanıt geri gelir (Yok, Belki ya da yanıtsız). Günlükteki
+ * "geç iptal" kaydı ayrı bir satır eklenmeden o yanıta çevrilir; said: oyuncunun haber verdiği an.
+ */
+function undoLate(m: Match, id: string, tapped: string, said?: number): void {
+  if (m.att[id] !== "late") return;
+  if (tapped === "in") delete m.att[id];
+  else setAtt(m, id, tapped as Att, true);
+  delete m.exempt[id];
+  const e = lastEntry(m, id);
+  if (e && e.ev === "late") {
+    e.ev = tapped === "in" ? "clear" : (tapped as LogEv);
+    if (said) setSaid(m, id, said);
+    rebaseLog();
+  }
+  commit();
+}
+
+/**
+ * Mesaj paylaşıldıysa ya da kopyalandıysa etkinlikte "gönderildi" diye işaretler (iş listesi).
+ * Takımlarda paylaşılan kadronun imzası da tutulur: takımlar sonradan değişirse yeniden paylaşmak gerekir.
+ */
+function sentIf(r: ShareResult, mid: string | undefined, k: string | undefined): void {
+  if ((r !== "shared" && r !== "copied") || !mid || !k) return;
+  const m = getMatch(store.s, mid);
+  if (!m) return;
+  m.sent[k] = Date.now();
+  if (k === "teams") m.sent.teamsSig = teamsSig(m);
+  // Açık bir pencere (önizleme) ve yazılmakta olan metin bozulmasın: yalnızca kaydet
+  commit(isModalOpen());
+}
+
+/**
+ * Borçluya gidecek mesajı açar: kısa hatırlatma (mevcut şablon) ya da kalem kalem döküm.
+ * Misafirin mesajı getirenine gider (Kural 1.8). Telefon varsa doğrudan WhatsApp, yoksa paylaşım menüsü.
+ */
+function sendDebtMsg(id: string, kind: string | undefined): boolean {
+  const S = store.s;
+  const a = accounts(S, today()).get(id);
+  if (!a || a.owed <= 0.004) return false;
+  const host = a.guest && a.host ? S.players.find((p) => p.id === a.host) : null;
+  const text = kind === "statement" ? statementText(S, id, today()) : host ? guestPayText(S, host.name, a.name, a.owed) : personalPayText(S, a.name, a.owed);
+  if (!text) return false;
+  const u = waLink(a.phone || host?.phone, text);
+  if (u) openLink(u);
+  else void shareText(text);
+  return true;
 }
 
 function markExported(): void {
@@ -277,15 +339,12 @@ registerActions({
     const up = promoted(before, lineup(store.s, m).playing).filter((x) => x !== id);
     if (up.length) return promotedToast(m, up[0]);
     if (autoLate) {
-      return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), {
-        label: t("notLate"),
-        // Geç iptal sayılmasın: dokunulan yanıt geri gelir (Yok, Belki ya da yanıtsız)
-        run: () => {
-          if (tapped === "in") delete m.att[id];
-          else setAtt(m, id, tapped, true);
-          commit();
-        },
-      }, 8000);
+      // Oyuncu kesinleşmeden önce haber verdiyse (organizatör sonradan işlediyse) saati girilir;
+      // "Geç iptal sayma" organizatörün takdiridir (12.1).
+      return toast(t(free ? "autoLateFree" : "autoLate", { n: name, r: lateRule(m) }), [
+        { label: t("saidAsk"), run: () => openSaidSheet(m, id, tapped) },
+        { label: t("notLate"), run: () => undoLate(m, id, tapped) },
+      ], 9000);
     }
     if (cover) return coverToast(m, id, cover);
     if (m.att[id] === "in" && !ds.force) {
@@ -297,6 +356,41 @@ registerActions({
         toast(t("debtWarn", { n: name, a: money(owe.total) + (g ? " (" + t("guestDebtIncl", { g }) + ")" : "") }), u ? { label: t("remindShort"), run: () => openLink(u) } : undefined, 6000);
       }
     }
+  },
+  attLog: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) openLogSheet(m);
+  },
+  shareLog: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (m) shareText(logShareText(store.s, m, t("attLog") + " – " + logTitle(m), Date.now()));
+  },
+  saidOpen: (ds) => {
+    const m = getMatch(store.s, ds.mid);
+    if (m) openSaidSheet(m, ds.id!, ds.s || "out");
+  },
+  /** Geç iptalde haber saati: kesinleşmeden önceyse geç iptal sayılmaz (Kural 1.4–1.5, 15.3). */
+  saidSave: (ds) => {
+    const m = getMatch(store.s, ds.mid);
+    const id = ds.id!;
+    if (!m) return closeModal();
+    const v = val("#said-at");
+    const said = v ? new Date(v).getTime() : NaN;
+    if (!Number.isFinite(said)) return toast(t("saidBad"));
+    if (said > Date.now() + 60_000) return toast(t("saidFuture"));
+    const name = nameOf(m, id);
+    const lock = lockAt(m);
+    const early = !!lock && said < lock.getTime() && m.att[id] === "late";
+    closeModal(false, () => {
+      if (early) {
+        undoLate(m, id, ds.s || "out", said);
+        toast(t("saidBefore", { n: name, d: stamp(said) }), undefined, 6000);
+      } else {
+        setSaid(m, id, said);
+        commit();
+        toast(t("saidAfter", { n: name, d: stamp(said), r: lateRule(m) }), undefined, 6000);
+      }
+    });
   },
   /** Sonucu girilmemiş maç uyarısından: o maçı açıp sonuç bölümüne kaydırır. */
   openResult: (ds) => {
@@ -326,6 +420,12 @@ registerActions({
   },
   icsAll: () => {
     saveICS(store.s.matches.filter((m) => m.status === "open" && m.date >= today()));
+  },
+  remOpen: () => openRemindersSheet(),
+  /** Organizatör hatırlatmaları: haftalık tekrarlı takvim dosyası. */
+  remIcs: () => {
+    const list = orgReminders(store.s, new Date(), appUrl());
+    if (list.length) saveICSText(remindersICS(list), "predators-hatirlatmalar");
   },
   goal: (ds) => {
     const m = cur();
@@ -547,17 +647,50 @@ registerActions({
   msg: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
-    shareText(buildMessage(ds.k || "invite", mm).text);
+    const k = ds.k || "invite";
+    shareText(buildMessage(k, mm).text).then((r) => sentIf(r, mm.id, k));
   },
   msgPreview: (ds) => {
     const mm = ds.id ? getMatch(store.s, ds.id) : cur();
     if (!mm) return;
-    const { title, text } = buildMessage(ds.k || "invite", mm);
-    openShareSheet(title, text);
+    const k = ds.k || "invite";
+    const { title, text } = buildMessage(k, mm);
+    openShareSheet(title, text, k, mm.id);
   },
-  shareSheet: () => {
+  shareSheet: (ds) => {
     const ta = $<HTMLTextAreaElement>("#mtext");
-    if (ta) shareText(ta.value);
+    if (ta) shareText(ta.value).then((r) => sentIf(r, ds.id, ds.k));
+  },
+  /** Takım dengesi özeti: önizlenir, sonra paylaşılır (Kural 3.1). */
+  balanceShare: () => {
+    const m = cur();
+    if (!m) return;
+    const text = balanceText(store.s, m);
+    if (text) openShareSheet(t("balShare"), text);
+  },
+  /** İş listesinden: takımları kurar ve Takımlar sekmesini açar (Kural 3.1). */
+  todoBuild: (ds) => {
+    const m = getMatch(store.s, ds.id) || cur();
+    if (!m) return;
+    ui.matchId = m.id;
+    go({ name: "teams" });
+    window.scrollTo(0, 0);
+    let broken = 0;
+    mutate(() => (broken ? t("rulesBroken", { n: broken }) : t("teamsDone")), () => {
+      broken = generateTeams(store.s, m).broken.length;
+    });
+  },
+  todoToggle: () => {
+    ui.open.todo = !ui.open.todo;
+    render();
+  },
+  /** İş listesinden: o etkinliğin ödemelerini açar. */
+  todoPay: (ds) => {
+    const m = getMatch(store.s, ds.id);
+    if (!m) return;
+    ui.payId = m.id;
+    ui.payTab = "match";
+    goTab("pay");
   },
   tplEdit: (ds) => openTemplateSheet(ds.k as TemplateKey),
   tplIns: (ds) => {
@@ -591,6 +724,7 @@ registerActions({
     if (!ta) return;
     copyText(ta.value).then((ok) => {
       if (ok && ds.backup) markExported();
+      if (ok) sentIf("copied", ds.id, ds.k);
     });
   },
   copyIban: () => copyText(store.s.settings.iban),
@@ -684,6 +818,54 @@ registerActions({
     render();
   },
   ledger: (ds) => openLedger(ds.id!),
+  bankOpen: () => openBankSheet(pendingBank?.text || ""),
+  bankPreview: () => {
+    const text = val("#bank-text");
+    const lines = parseBank(text, today());
+    if (!lines.length) return toast(t("bankNone"));
+    pendingBank = { text, rows: planBank(store.s, lines, today()) };
+    showBankPreview(store.s, pendingBank.rows, today());
+  },
+  /** Onaylanan havaleler deftere genel ödeme olarak yazılır, en eski borçtan kapanır (Kural 2.3). */
+  bankApply: () => {
+    const p = pendingBank;
+    if (!p) return closeModal();
+    const choices = p.rows.map((row, i) => ({ row, pid: val("#bk-" + i) }));
+    pendingBank = null;
+    closeModal(false, () => {
+      let n = 0;
+      mutate(() => t("bankDone", { n }), () => {
+        n = applyBank(store.s, choices);
+        if (!n) {
+          toast(t("pasteNothing"));
+          return false;
+        }
+      });
+    });
+  },
+  /** Kalem kalem borç dökümü (Kural 2.4, 1.8) */
+  statement: (ds) => {
+    if (!sendDebtMsg(ds.id!, "statement")) toast(t("noDebts"));
+  },
+  remindAll: () => {
+    const ids = debts(store.s, today()).map((d) => d.id);
+    if (!ids.length) return;
+    ui.remind = { ids, i: 0, sent: 0 };
+    openRemindSheet();
+  },
+  remindSend: (ds) => {
+    const q = ui.remind;
+    if (!q) return closeModal();
+    if (sendDebtMsg(q.ids[q.i], ds.k)) q.sent++;
+    q.i++;
+    openRemindSheet();
+  },
+  remindSkip: () => {
+    const q = ui.remind;
+    if (!q) return closeModal();
+    q.i++;
+    openRemindSheet();
+  },
   takePayment: (ds) => {
     const id = ds.id!;
     const amount = Number(String(val("#lp-amount")).replace(",", "."));
@@ -952,7 +1134,9 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
   if (f.startsWith("s.")) {
     const k = f.slice(2);
     const st = S.settings as unknown as Record<string, unknown>;
-    st[k] = k === "price" ? Number(v) || 0 : k === "format" ? Number(v) : v;
+    // Hatırlatma saati boş bırakılamaz
+    if (k === "remindAt" && !v) return render();
+    st[k] = k === "price" ? Number(v) || 0 : k === "format" || k === "inviteDays" ? Number(v) : v;
     commit();
     toast(t("saved"));
     return;

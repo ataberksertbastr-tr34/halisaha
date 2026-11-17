@@ -5,8 +5,9 @@
 import { defaults } from "../domain/schema";
 import type { State } from "../domain/types";
 import { todayISO } from "../domain/dates";
+import { attSnapshot, logChanges, pruneLogs, type AttSnap } from "../domain/attlog";
 import { setLang, t } from "../i18n";
-import { toast } from "../ui/toast";
+import { toast, type ToastAction } from "../ui/toast";
 
 export type FilterKey = "att" | "roster" | "team" | "people";
 export interface Filter {
@@ -42,6 +43,8 @@ export interface UIState {
   drawPairs: boolean;
   /** Disiplin sayfasında arama */
   discQ: string;
+  /** Borçlulara sırayla hatırlatma: sıradaki kişiler, kaçıncıda olunduğu, gönderilen sayısı */
+  remind: { ids: string[]; i: number; sent: number } | null;
   /** Yeni oyun için seçilen taraflar (grup indeksleri) */
   pickA: number;
   pickB: number;
@@ -52,7 +55,7 @@ export const store: { s: State } = { s: defaults() };
 
 export const ui: UIState = {
   matchId: null, payId: null, editId: null, refocus: null, fieldTarget: null, detailsOpen: false, payTab: "match", month: "", open: {}, swapPick: null, ruleTogether: true, season: "", ruleQ: "",
-  drawGame: "okey", drawPairs: false, discQ: "", pickA: 0, pickB: 1,
+  drawGame: "okey", drawPairs: false, discQ: "", pickA: 0, pickB: 1, remind: null,
   f: { att: { q: "", pos: "", st: "" }, roster: { q: "", pos: "" }, team: { q: "", pos: "" }, people: { q: "", pos: "" } },
 };
 
@@ -80,8 +83,25 @@ export function render(): void {
   renderFn();
 }
 
+/**
+ * Katılım günlüğünün karşılaştırma tabanı: son kayıttan sonraki katılım görüntüsü. Her
+ * commit'te o andaki durumla karşılaştırılır ve değişenler günlüğe yazılır (domain/attlog).
+ */
+let logBase: AttSnap = {};
+
+/**
+ * Tabanı şimdiki duruma çeker: bundan önceki değişiklikler günlüğe yazılmaz. Dışarıdan gelen
+ * veride (yükleme, eşitleme, geri alma) ve günlük kaydını elle düzelten işlemlerde kullanılır.
+ */
+export function rebaseLog(): void {
+  logBase = attSnapshot(store.s);
+}
+
 /** Değişikliği kaydeder ve (istenirse) ekranı yeniler. */
 export function commit(noRender?: boolean): void {
+  logChanges(store.s, logBase, Date.now());
+  pruneLogs(store.s, todayISO());
+  logBase = attSnapshot(store.s);
   store.s.updatedAt = Date.now();
   version++;
   setLang(store.s.settings.lang);
@@ -98,6 +118,7 @@ export function replaceState(next: State): void {
   ui.matchId = null;
   ui.payId = null;
   ui.editId = null;
+  rebaseLog();
 }
 
 /**
@@ -111,6 +132,7 @@ export function applyExternal(next: State, note?: string): void {
   store.s = next;
   setLang(next.settings.lang);
   ui.editId = null;
+  rebaseLog();
   persistFn(next);
   renderFn();
   if (note) toast(note);
@@ -124,6 +146,7 @@ function restore(json: string): void {
   store.s = JSON.parse(json) as State;
   setLang(store.s.settings.lang);
   ui.editId = null;
+  rebaseLog();
 }
 
 let lockHook: (s: State, reason: string) => Promise<void> = async () => undefined;
@@ -136,7 +159,7 @@ export function setLockHook(fn: (s: State, reason: string) => Promise<void>): vo
  * Geri al, işlemden önceki duruma döner. lock: riskli işlemlerde (silme,
  * iptal) önceki durum kilitli yerel sürüm olarak da saklanır.
  */
-export function mutate(labelIn: string | null | (() => string | null), fn: () => void | false, opts: { lock?: string } = {}): void {
+export function mutate(labelIn: string | null | (() => string | null), fn: () => void | false, opts: { lock?: string; extra?: () => ToastAction | null } = {}): void {
   const before = JSON.stringify(store.s);
   if (fn() === false) return;
   const label = typeof labelIn === "function" ? labelIn() : labelIn;
@@ -144,14 +167,17 @@ export function mutate(labelIn: string | null | (() => string | null), fn: () =>
   if (opts.lock) lockHook(JSON.parse(before) as State, opts.lock).catch(() => undefined);
   commit();
   if (label) {
-    toast(label, {
+    const undo: ToastAction = {
       label: t("undo"),
       run: () => {
         restore(before);
         commit();
         toast(t("undone"));
       },
-    });
+    };
+    // İsteğe bağlı ikinci eylem (ör. "Kararı paylaş") Geri al'ın önünde durur
+    const extra = opts.extra?.();
+    toast(label, extra ? [extra, undo] : undo, extra ? 9000 : undefined);
   }
 }
 

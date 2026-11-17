@@ -284,7 +284,7 @@ test("kesinleşen kadrodan 'Belki' ya da 'Var'ı kaldırarak çıkan da geç ipt
   await expect(page.locator("#toast")).toContainText("Kadro kesinleşti: Defans Doğan geç iptal sayıldı. Yerine kimse gelmezse payını öder (Kural 15.3)");
   await expect(btn("Defans Doğan", "late")).toHaveAttribute("aria-pressed", "true");
   // Organizatör "Geç iptal sayma" derse dokunulan yanıt (yanıtsız) geri gelir
-  await page.locator("[data-toast-act]").click();
+  await page.locator("#toast [data-toast-act]", { hasText: "Geç iptal sayma" }).click();
   await expect(btn("Defans Doğan", "late")).toHaveAttribute("aria-pressed", "false");
   await expect(btn("Defans Doğan", "in")).toHaveAttribute("aria-pressed", "false");
   await expect(btn("Defans Doğan", "out")).toHaveAttribute("aria-pressed", "false");

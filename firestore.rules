@@ -1,6 +1,7 @@
 rules_version = '2';
 // Her hesap yalnızca kendi tek belgesini okur ve yazar: users/{uid}/halisaha/state.
-// Başka yol yok; belge yalnızca uygulamanın alanlarını içerir ve ~1 MB'ı geçemez.
+// Oyuncu durum sayfası (pub/{id}): bağlantıyı bilen herkes okur, yalnızca sayfayı açan hesap
+// yazar ve siler. Sayfada yalnızca kadro ve yedek sırası durur (telefon, IBAN, borç yok).
 // Firebase konsolunda: Firestore Database → Kurallar → bu içerik → Yayınla.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -10,6 +11,21 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(["fmt", "schema", "rev", "at", "dev", "enc", "data"])
         && request.resource.data.data is string
         && request.resource.data.data.size() <= 1000000;
+    }
+    match /pub/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null && id.matches("^[a-z0-9]{20,40}$") && validPub();
+      allow update: if request.auth != null && resource.data.owner == request.auth.uid && validPub();
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+
+      function validPub() {
+        return request.resource.data.keys().hasOnly(["owner", "at", "data"])
+          && request.resource.data.owner == request.auth.uid
+          && request.resource.data.at is int
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 100000;
+      }
     }
   }
 }

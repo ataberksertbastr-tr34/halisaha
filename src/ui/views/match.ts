@@ -12,7 +12,7 @@ import { dirUrl, fieldOf, mapsUrl, telHref } from "../../domain/fields";
 import { capOf, currentMatch, isGuest, lineup, penalized } from "../../domain/lineup";
 import { estShare } from "../../domain/money";
 import { liabilityMap } from "../../domain/ledger";
-import { dayName } from "../../domain/messages";
+import { dayName, dayShort } from "../../domain/messages";
 import { copyCandidates, isLocked, lockAt, lockHours, noShowLastTime, reliability } from "../../domain/roster";
 import { checkProgress, eventTitle, isFootball, kindOf, L, pendingAgreements } from "../../domain/kinds";
 import { joinBlock, statusMap } from "../../domain/discipline";
@@ -23,6 +23,7 @@ import { IC } from "../icons";
 import { prepBlock } from "./prep";
 import { carsBlock } from "./cars";
 import { resultBlock } from "./results";
+import { todoBlock } from "./todo";
 
 const ATT_KEYS: Att[] = ["in", "maybe", "out", "late"];
 const ATT_SYM: Record<Att, string> = { in: "✓", maybe: "?", out: "✕", late: "!" };
@@ -31,14 +32,14 @@ export function viewMatch(): string {
   const S = store.s;
   if (!S.players.length) return emptyState(t("bulkHint"), { a: "tab", v: "players", label: t("goPlayers") }, t("noPlayersYet"));
   const m = currentMatch(S, ui.matchId, today());
-  if (!m) return matchChips("") + emptyState(t("noEvent"), { a: "newEvent", label: t("createEvent") }) + historyBlock();
-  return matchChips(m.id) + matchCard(m) + prepBlock(m) + attendanceBlock(m) + (isFootball(m) ? "" : carsBlock(m)) + resultBlock(m) + historyBlock();
+  if (!m) return matchChips("") + todoBlock(null) + emptyState(t("noEvent"), { a: "newEvent", label: t("createEvent") }) + historyBlock();
+  return matchChips(m.id) + todoBlock(m) + matchCard(m) + prepBlock(m) + attendanceBlock(m) + (isFootball(m) ? "" : carsBlock(m)) + resultBlock(m) + historyBlock();
 }
 
 /** "Per 16.10 11:00" */
 function whenShort(d: Date): string {
   const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  return dayName(iso).slice(0, 3) + " " + ddmm(iso) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return dayShort(iso) + " " + ddmm(iso) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
 /** Kompakt etkinlik kartı: özet + kısayollar; "Düzenle" ile tüm alanlar açılır. */
@@ -158,6 +159,7 @@ function attendanceBlock(m: Match): string {
   });
   h += '</ul><p class="none-msg" id="none-att" hidden>' + esc(t("noResults")) + "</p>";
   h += '<p class="legend">' + esc(t("legend")) + "<br>" + esc(t("enterHint")) + "</p>";
+  h += '<button type="button" class="btn block ghost" data-a="attLog" data-id="' + esc(m.id) + '">' + IC.list + esc(t("attLog")) + (m.log.length ? " (" + m.log.length + ")" : "") + "</button>";
   const hosts = S.players.filter((p) => p.active !== false).slice().sort(trSort);
   // Daha önce getirilmiş misafirler adıyla önerilir; seçilince getiren, seviye ve mevki gelir (Kural 1.8)
   const here = new Set(m.guests.map((g) => norm(g.name)));

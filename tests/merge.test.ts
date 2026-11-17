@@ -8,7 +8,9 @@ import { billOf, freezeBill } from "../src/domain/money";
 import { accounts, cashAt, markPaid, settleId } from "../src/domain/ledger";
 import { swapPlayers } from "../src/domain/teams";
 import { addInfraction } from "../src/domain/discipline";
-import type { Att, Match, Payment, State } from "../src/domain/types";
+import type { Att, LogEntry, Match, Payment, State } from "../src/domain/types";
+import { SCHEMA_VERSION } from "../src/domain/schema";
+import { attSnapshot, logChanges } from "../src/domain/attlog";
 import { allIn, match, player, roster, state } from "./helpers/factory";
 import { seeded } from "./helpers/rng";
 
@@ -1166,14 +1168,117 @@ describe("şema v5 alanları: sakatlık, puan cetveli, turnuva, korner", () => {
     expect(m1(merge3(b, l, r)).corners).toEqual({ a: 0, b: 3 });
   });
 
-  it("v4 cihazının buluttaki v5 veriye dokunmaması için sürüm korunur; v4 veri birleşince v5 olur", () => {
+  it("eski sürümdeki cihazın buluttaki yeni veriye dokunmaması için sürüm korunur; v4 veri birleşince güncel sürüm olur", () => {
     const b = base();
     const old = { ...clone(b), v: 4 } as State;
     // @ts-expect-error: v4 verisinde bu alanlar yoktu
-    old.matches.forEach((m) => { delete m.injured; delete m.sheets; });
+    old.matches.forEach((m) => { delete m.injured; delete m.sheets; delete m.log; });
     const out = merge3(null, migrate(old), fork(b, TR));
-    expect(out.v).toBe(5);
+    expect(out.v).toBe(SCHEMA_VERSION);
     expect(m1(out).injured).toEqual({});
     expect(m1(out).sheets).toEqual([]);
+    expect(m1(out).log).toEqual([]);
+  });
+});
+
+describe("şema v6 alanları: katılım günlüğü", () => {
+  const entry = (id: string, pid: string, ev: LogEntry["ev"], at: number, extra: Partial<LogEntry> = {}): LogEntry => ({ id, at, pid, ev, ...extra });
+
+  it("iki cihazın yazdığı kayıtlar birleşir, hiçbiri kaybolmaz", () => {
+    const b = base();
+    m1(b).log = [entry("e0", "p0", "in", 100, { n: 1 })];
+    const l = fork(b, TL), r = fork(b, TR);
+    setAtt(m1(l), "p2", "in", true);
+    m1(l).log.push(entry("eL", "p2", "in", 200, { n: 3 }));
+    setAtt(m1(r), "p1", "out", true);
+    m1(r).log.push(entry("eR", "p1", "out", 300, { from: "in" }));
+    const out = merge3(b, l, r);
+    expect(ids(m1(out).log)).toEqual(["e0", "eL", "eR"]);
+    expect(m1(out).att).toEqual({ p0: "in", p1: "out", p2: "in" });
+  });
+
+  it("bir cihazın girdiği haber saati, diğer cihazın yeni kaydıyla birlikte korunur", () => {
+    const b = base();
+    m1(b).log = [entry("e0", "p0", "late", 100, { from: "in" })];
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).log[0].said = 40;
+    m1(r).log.push(entry("eR", "p3", "in", 300, { n: 2 }));
+    const out = m1(merge3(b, l, r)).log;
+    expect(out).toEqual([entry("e0", "p0", "late", 100, { from: "in", said: 40 }), entry("eR", "p3", "in", 300, { n: 2 })]);
+  });
+
+  it("bir cihazda süresi dolup boşaltılan günlük, diğer cihaz dokunmadıysa boş kalır", () => {
+    const b = base();
+    m1(b).status = "played";
+    m1(b).log = [entry("e0", "p0", "in", 100, { n: 1 }), entry("e1", "p1", "in", 110, { n: 2 })];
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).log = [];
+    r.players[0].rating = 5;
+    expect(m1(merge3(b, l, r)).log).toEqual([]);
+  });
+
+  it("gönderilen mesaj kayıtları mesaj mesaj birleşir; aynı mesajda yeni olan kalır", () => {
+    const b = base();
+    m1(b).sent = { invite: 100 };
+    const l = fork(b, TL), r = fork(b, TR);
+    m1(l).sent.teams = 200;
+    m1(l).sent.teamsSig = 77;
+    m1(l).sent.invite = 210;
+    m1(r).sent.squad = 300;
+    m1(r).sent.invite = 310;
+    expect(m1(merge3(b, l, r)).sent).toEqual({ invite: 310, teams: 200, teamsSig: 77, squad: 300 });
+  });
+
+  it("v5 cihazının verisi birleşince v6 olur ve günlük alanı eklenir", () => {
+    const b = base();
+    const old = { ...clone(b), v: 5 } as State;
+    // @ts-expect-error: v5 verisinde günlük yoktu
+    old.matches.forEach((m) => { delete m.log; delete m.sent; });
+    const r = fork(b, TR);
+    m1(r).log = [entry("eR", "p0", "in", 300, { n: 1 })];
+    const out = merge3(null, migrate(old), r);
+    expect(out.v).toBe(6);
+    expect(ids(m1(out).log)).toEqual(["eR"]);
+    expect(m1(out).sent).toEqual({});
+  });
+
+  it("otomatik planlanan maç açılırken günlüğe kayıt düşmez: iki cihazın ayrı ayrı açtığı maç ikilenmez", () => {
+    const mk = () => {
+      const s = migrate(state([player("f1", "Sabit Sami", 3, "", { fixed: true }), player("p9", "Diğer Deniz")], []));
+      s.settings.slots = [{ d: 2, t: "21:00" }];
+      return s;
+    };
+    const b = mk();
+    b.updatedAt = T0;
+    const now = new Date(2026, 9, 11, 12, 0);
+    const open = (t: number) => {
+      const c = fork(b, t);
+      const before = attSnapshot(c);
+      ensureUpcoming(c, now);
+      logChanges(c, before, t);
+      return c;
+    };
+    const l = open(TL), r = open(TR);
+    expect(l.matches.length).toBeGreaterThan(0);
+    expect(l.matches.every((m) => m.log.length === 0 && m.att.f1 === "in")).toBe(true);
+    const out = merge3(b, l, r);
+    expect(out.matches.length).toBe(l.matches.length);
+    expect(out.matches.every((m) => m.log.length === 0)).toBe(true);
+  });
+
+  it("iki cihazın ayrı ayrı öğrendiği banka adları birleşir; silinen ad geri gelmez", () => {
+    const b = base();
+    b.players[0].bank = ["ESKI GONDEREN"];
+    const l = fork(b, TL), r = fork(b, TR);
+    l.players[0].bank = ["ESKI GONDEREN", "DENEME KISI"];
+    r.players[0].bank = ["ORNEK AD"];
+    r.players[1].bank = ["UYDURMA SOYAD"];
+    const out = merge3(b, l, r);
+    expect(out.players[0].bank).toEqual(["DENEME KISI", "ORNEK AD"]);
+    expect(out.players[1].bank).toEqual(["UYDURMA SOYAD"]);
+    // Alanı hiç olmayan veriyle (eski cihaz) birleşince öğrenilenler kaybolmaz: düzenleme silmeye üstün
+    const old = clone(b);
+    delete old.players[0].bank;
+    expect(merge3(b, l, old).players[0].bank).toEqual(["ESKI GONDEREN", "DENEME KISI"]);
   });
 });

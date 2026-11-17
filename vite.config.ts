@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { swPlugin } from "./scripts/vite-plugin-sw";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
@@ -16,6 +17,10 @@ export default defineConfig({
     outDir: "dist",
     assetsInlineLimit: 0,
     sourcemap: false,
+    rollupOptions: {
+      // Uygulama ve oyuncuların açtığı salt okunur durum sayfası (durum.html#<kimlik>)
+      input: { main: fileURLToPath(new URL("./index.html", import.meta.url)), durum: fileURLToPath(new URL("./durum.html", import.meta.url)) },
+    },
   },
   plugins: [swPlugin()],
   test: {

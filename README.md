@@ -115,6 +115,29 @@ repoya hiçbir zaman girmez.
 `firebaseConfig` gizli değildir (apiKey bir şifre değil, projenin herkese açık
 kimliğidir); veriyi 4. adımdaki kural korur.
 
+### Oyuncu sayfası
+
+Oyuncular "kadroda mıyım, yedekte kaçıncıyım" diye sormasın diye yaklaşan
+etkinliklerin kadrosu ve yedek sırası salt okunur bir bağlantıda gösterilebilir.
+Eşitlemeye giriş yapmış olmak gerekir; sayfa senin Firebase projende durur.
+
+1. **Bir kez, bilgisayardan:** Firebase konsolu → Firestore → **Kurallar** →
+   [`firestore.rules`](firestore.rules)'ın **güncel** içeriğini yapıştır →
+   **Yayınla**. (Eşitlemeyi daha önce kurduysan bu adım yine gerekir: oyuncu
+   sayfası için yeni bir kural eklendi. Yapılmazsa uygulama "Firestore
+   kurallarını güncellemen gerekiyor" der.)
+2. Ayarlar → **Oyuncu sayfası** → **Sayfayı aç** → **Bağlantıyı paylaş** ile
+   WhatsApp grubuna gönder (grup açıklamasına sabitlemek iyi olur).
+
+- Sayfada yalnızca yaklaşan (14 gün içindeki) ilk üç etkinliğin tarihi, saati,
+  mekânı, kadrosu (misafirler etiketli), yedek sırası, Belki sayısı, kadronun
+  kesinleşme anı ve **paylaştığın** takımlar görünür. Telefon, IBAN, seviye,
+  borç ve disiplin kaydı görünmez.
+- Her değişiklikten birkaç saniye sonra kendiliğinden güncellenir (başka
+  cihazda yapılan değişiklik de).
+- Bağlantı tahmin edilemez ama bilen herkes açabilir. **Sayfayı kapat** dersen
+  bağlantı "kapalı" der; yeniden açınca yeni bir bağlantı oluşur.
+
 ---
 
 ## 4. Yedekleme (önemli)
@@ -150,6 +173,42 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 ---
 
 ## 5. Neler yapabilirsin?
+
+**Haftalık işi kısaltanlar**
+
+- **Sıradaki iş (Etkinlik sekmesi):** davet → kadro → saha → takımlar/kura →
+  sonuç → ödemeler adımları tek listede; her satırda o adımı yapan tek düğme
+  (Gönder, Kur, Gir, Aç…). Gönderilen mesajlar işaretlenir, takımlar
+  paylaşıldıktan sonra değişirse yeniden uyarır. Sonucu ya da ödemesi açık
+  kalan geçmiş etkinlikler (son 30 gün) de listede durur.
+- **Hatırlatmalar (Ayarlar):** her haftalık maç günü için daveti gönder, sahayı
+  teyit et, kadroyu tamamla, sonucu gir, ödemeleri kapat hatırlatmaları
+  telefonun takvimine haftalık tekrarlı olarak eklenir (iPhone'da takvim
+  dosyası, Android'de Google Takvim). Davet günü ve saati seçilir; uygulama
+  kapalıyken de bildirim gelir.
+- **Katılım günlüğü (Kural 1.4–1.6, 15.3):** kimin ne zaman kadroya ya da
+  yedeğe yazıldığı, çıktığı, yedekten girdiği ve geç iptal ettiği saatiyle
+  kaydedilir (etkinlikten sonra 90 gün saklanır); "Günlüğü paylaş" ile gruba
+  gönderilir. Geç iptal bildiriminde **Haber saati** (kişi önceden haber
+  verdiyse saatini yaz) ve **Geç iptal sayma** seçenekleri çıkar.
+- **Borç dökümü ve sırayla hatırlatma (Kural 2.4):** Ödemeler'de her borçlunun
+  yanında **Döküm**: hangi maçtan ne kadar, ödenenler ve toplam tek mesajda.
+  **Sırayla hatırlat** bütün borçluları tek tek açar; her birine kısa
+  hatırlatma ya da döküm gönderip sonrakine geçilir.
+- **Banka bildirimi (Kural 2.3):** Ödemeler → **Banka bildirimini yapıştır**;
+  bankanın havale/FAST bildirimleri ya da hesap hareketleri yapıştırılınca
+  tutar, tarih ve gönderen bulunur, kişiyle eşleştirilir. Önizlemede kontrol
+  edip onaylarsın; ödemeler en eski borçtan başlayarak kapanır. Giden para ve
+  daha önce işlenmiş bildirim atlanır. Metin saklanmaz; yalnızca elle
+  eşlediğin gönderen adı o oyuncuya kaydedilir.
+- **Disiplin kararı (Kural 9.3, 12.1):** ihlal kaydedilince ve disiplin
+  kaydında **Kararı paylaş**: kişi, ihlal, kural maddesi ve kademeli yaptırım
+  tek mesajda.
+- **Takım dengesi (Kural 3.1–3.2):** Takımlar'da **Denge özeti**: iki takımın
+  kişi sayısı, ortalama gücü, kalecileri, güç farkı ve geçen maçla tekrar oranı.
+- **Oyuncu sayfası:** yukarıdaki [Oyuncu sayfası](#oyuncu-sayfası) bölümü.
+
+**Her şey**
 
 - **Etkinlikler (Kısım 3):** "+ Yeni etkinlik" ile halı saha, paintball,
   airsoft, voleybol, ayak tenisi, masa tenisi, kıraathane ya da diğer etkinlik.
@@ -271,11 +330,12 @@ npx firebase-tools emulators:exec --only auth,firestore --project demo-halisaha 
 
 | Yol | İçerik |
 |---|---|
-| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), turnuva tablosu (`bracket.ts`), puan cetveli (`sheet.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`) |
+| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), turnuva tablosu (`bracket.ts`), puan cetveli (`sheet.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`), katılım günlüğü (`attlog.ts`), iş listesi (`todo.ts`), organizatör hatırlatmaları (`reminders.ts`), banka bildirimi (`bank.ts`), oyuncu sayfası verisi (`pubpage.ts`) |
 | `src/data/` | IndexedDB, otomatik yerel sürümler, yedek dosyası |
 | `src/sync/` | Cihazlar arası eşitleme: üç yönlü birleştirme (`merge.ts`), eşitleme motoru (`engine.ts`), Firestore REST (`firestore.ts`), bulut belgesi (`envelope.ts`), Firebase girişi (`auth.ts`), yapılandırma (`config.ts`) |
 | `src/ui/` | Görünümler, alt sayfalar, saha çizimi ve sürükle-bırak |
 | `src/app/` | Durum (Geri al dahil), eylemler, yönlendirme |
+| `durum.html`, `src/pub/` | Oyuncu sayfası (salt okunur, uygulamadan bağımsız küçük sayfa) |
 | `src/sw.ts`, `scripts/vite-plugin-sw.ts` | Service worker ve önbellek listesi |
 | `legacy/index.html` | Eski uygulama (yalnızca uyumluluk testleri için, yayınlanmaz) |
 | `tests/`, `e2e/` | Vitest ve Playwright testleri, uydurma isimli fikstürler |
@@ -296,6 +356,17 @@ gönderilecek değişiklik yoksa önce yalnızca belgenin `updateTime`'ı isteni
 (maskeli okuma, ~360 bayt), belge ancak bulut değiştiyse tam indirilir.
 Otomatik planlanan maçların kimliği tarih/saatten
 türetilir, iki cihaz aynı maçı ayrı ayrı oluşturmaz.
+
+**Oyuncu sayfası nasıl çalışır:** Sayfa açıkken her değişiklikten 3 sn sonra
+yalnızca paylaşılabilir alanlardan oluşan bir anlık görüntü (`pubpage.ts`)
+`pub/{rastgele kimlik}` belgesine yazılır; içerik aynıysa gönderilmez.
+Kurallar: herkes kimliğini bildiği belgeyi okuyabilir ama listeleyemez;
+yalnızca sahibi yazar ve siler, alanlar ve boyut sınırlıdır
+(`tests/emulator/firestore.emu.test.ts`).
+
+**Dokunuş bütçesi:** `e2e/taps.spec.ts` haftalık akışın (davet, kadro, takım,
+sonuç, ödeme) kaç dokunuş sürdüğünü ölçer ve bütçeyi aşarsa düşer.
+`TAPS_MEASURE=1` ile yalnızca ölçüp yazar.
 
 **Kuralları güncellemek:** `KURALLAR.md` dosyasını düzenleyip `main`'e gönder;
 uygulamanın Kurallar sayfası bir sonraki yayında güncellenir.

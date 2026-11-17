@@ -11,6 +11,15 @@ export const DAYS: Record<Lang, string[]> = {
   en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
 };
 
+/**
+ * Gün kısaltmaları. Adın ilk üç harfi kullanılamaz: Pazar/Pazartesi ikisi de "Paz",
+ * Cuma/Cumartesi ikisi de "Cum" olur.
+ */
+export const DAYS_SHORT: Record<Lang, string[]> = {
+  tr: ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"],
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+};
+
 export const MONTHS: Record<Lang, string[]> = {
   tr: ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"],
   en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],

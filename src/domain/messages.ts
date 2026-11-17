@@ -4,22 +4,28 @@
  * Hepsi düzenlenebilir şablonlardan üretilir; etkinlik türüne göre başlık,
  * ikon ve ilgili kural numaraları değişir.
  */
-import { DAYS, lang, money, t } from "../i18n";
+import { DAYS, DAYS_SHORT, lang, money, t } from "../i18n";
 import type { Match, State, TemplateKey } from "./types";
 import { render, templateOf } from "./templates";
 import { ddmm, weekday } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
 import { capOf, cleanTeams, getP, isGK, lineup } from "./lineup";
 import { billOf, estShare } from "./money";
-import { accounts, type Liability } from "./ledger";
+import { accounts, statement, type Liability, type Statement } from "./ledger";
 import { phoneDigits } from "./text";
 import { agreeLabel, agreeValue, eventTitle, isFootball, kindOf, L } from "./kinds";
 import { lockAt, lockHours } from "./roster";
 import { teamEmoji, teamName } from "./teamstyle";
+import { balanceOf, type SideBalance } from "./teams";
 import { occupants, perHead, unassigned } from "./cars";
 
 export function dayName(date: string): string {
   return DAYS[lang()][weekday(date)];
+}
+
+/** Günün kısaltması: "Pzt", "Cmt" (Pazar "Paz", Cuma "Cum"). */
+export function dayShort(date: string): string {
+  return DAYS_SHORT[lang()][weekday(date)];
 }
 
 function nameOf(s: State, m: Match, id: string): string {
@@ -38,7 +44,7 @@ function lockPhrase(m: Match): string {
   const at = lockAt(m);
   if (!at) return "";
   const iso = at.getFullYear() + "-" + p2(at.getMonth() + 1) + "-" + p2(at.getDate());
-  return t("lockSentenceEvent", { h: lockHours(m), d: dayName(iso).slice(0, 3) + " " + ddmm(iso) + " " + p2(at.getHours()) + ":" + p2(at.getMinutes()) });
+  return t("lockSentenceEvent", { h: lockHours(m), d: dayShort(iso) + " " + ddmm(iso) + " " + p2(at.getHours()) + ":" + p2(at.getMinutes()) });
 }
 
 /** Ön anlaşmaların özeti (madde işaretli). */
@@ -203,6 +209,67 @@ export function debtReminderText(s: State, name: string, l: Liability): string {
   if (!l.guests.length) return personalPayText(s, name, l.own);
   if (l.own <= 0.004) return guestPayText(s, name, l.guests.map((g) => g.name).join(", "), l.total);
   return personalPayText(s, name, l.total);
+}
+
+/** Döküm satırları: "• Sal 06.10 maçı: 150 ₺ – ödenmedi" */
+export function statementLines(s: State, st: Statement): string {
+  return st.lines.map((l) => {
+    const m = l.mid ? s.matches.find((x) => x.id === l.mid) : undefined;
+    const d = dayShort(l.date) + " " + ddmm(l.date);
+    const what = l.cid ? (l.note || t("extraCharge")) + " (" + d + ")" : m && !isFootball(m) ? t("eventShareRow", { d, e: eventTitle(m) }) : t("chargeRow", { d });
+    const left = l.amount - l.paid;
+    const status = l.paid > 0.004 ? t("stPartial", { p: money(l.paid), a: money(left) }) : t("stUnpaid");
+    const rule = [l.guest ? "1.8" : "", l.rule || ""].filter(Boolean).join(", ");
+    return "• " + (l.guest ? t("stGuest", { g: l.guest }) + ", " : "") + what + ": " + money(l.amount) + " – " + status + (rule ? " (" + t("ruleN", { n: rule }) + ")" : "");
+  }).join("\n");
+}
+
+/**
+ * Borç dökümü mesajı: kalem kalem pay, ödenen, kalan; son ödemeler ve IBAN. "Ben onu ödemiştim"
+ * itirazında kişi dökümü kendi kontrol eder (Kural 2.4; misafir payları 1.8). Borç yoksa boş.
+ */
+export function statementText(s: State, id: string, today: string): string {
+  const st = statement(s, id, today);
+  if (!st) return "";
+  return render(tpl(s, "statement"), {
+    ad: st.to.name,
+    tarih: ddmm(today) + "." + today.slice(0, 4),
+    dokum: statementLines(s, st),
+    toplam: money(st.total),
+    odemeler: st.payments.map((p) => ddmm(p.at) + " " + money(p.amount)).join(", "),
+    iban: ibanLine(s),
+  });
+}
+
+/**
+ * Takım dengesi özeti (Kural 3.1, 3.2): iki takımın kişi sayısı, ortalama gücü, kaleci ve mevki
+ * dağılımı, güç farkı. Kişisel seviyeler yazılmaz. Takımlar kurulmadıysa boş.
+ */
+export function balanceText(s: State, m: Match): string {
+  const b = balanceOf(s, m);
+  if (!b) return "";
+  const fb = isFootball(m);
+  const nf = new Intl.NumberFormat(lang() === "en" ? "en-GB" : "tr-TR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const side = (x: SideBalance, k: "a" | "b") => {
+    const parts = [t("balPeople", { n: x.n }), t("balAvg", { a: nf.format(x.avg) })];
+    if (fb) {
+      parts.push(t("balGk", { n: x.gk }));
+      const pos = (["DEF", "MID", "FWD"] as const).filter((p) => x.pos[p]).map((p) => x.pos[p] + " " + t(("pos" + p) as "posDEF").toLocaleLowerCase(lang()));
+      if (pos.length) parts.push(pos.join(", "));
+    }
+    return teamEmoji(s, k) + " " + teamName(s, k) + ": " + parts.join(" · ");
+  };
+  const lines = [
+    t("balTitle", { d: dayName(m.date) + " " + ddmm(m.date) }),
+    "",
+    side(b.a, "a"),
+    side(b.b, "b"),
+    "",
+    t("balDiff", { p: b.pct }),
+  ];
+  if (b.repeat != null) lines.push(t("balRepeat", { p: Math.round(b.repeat * 100) }));
+  lines.push("", fb && s.settings.perf ? t("balHowPerf") : t("balHow"));
+  return lines.join("\n");
 }
 
 /** Yedekten kadroya giren oyuncuya hazır mesaj. */

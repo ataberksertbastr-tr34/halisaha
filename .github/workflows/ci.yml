@@ -29,7 +29,9 @@ concurrency:
 jobs:
   test:
     name: Test ve derleme
-    runs-on: ubuntu-latest
+    # ubuntu-latest artık Ubuntu 26.04: Playwright 1.56 orada tarayıcı kuramıyor (16 Kasım haftalık
+    # çalıştırması bu yüzden düştü). Playwright yükseltilene kadar sürüm sabit.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
@@ -97,7 +99,7 @@ jobs:
   # Dış ağın anlık yavaşlığı için bir kez yeniden denenir; ikinci hata gerçektir.
   google:
     name: Google ile giriş (dış ağ)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -143,7 +145,7 @@ jobs:
     name: GitHub Pages'e yayın
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
