@@ -1265,4 +1265,20 @@ describe("şema v6 alanları: katılım günlüğü", () => {
     expect(out.matches.length).toBe(l.matches.length);
     expect(out.matches.every((m) => m.log.length === 0)).toBe(true);
   });
+
+  it("iki cihazın ayrı ayrı öğrendiği banka adları birleşir; silinen ad geri gelmez", () => {
+    const b = base();
+    b.players[0].bank = ["ESKI GONDEREN"];
+    const l = fork(b, TL), r = fork(b, TR);
+    l.players[0].bank = ["ESKI GONDEREN", "DENEME KISI"];
+    r.players[0].bank = ["ORNEK AD"];
+    r.players[1].bank = ["UYDURMA SOYAD"];
+    const out = merge3(b, l, r);
+    expect(out.players[0].bank).toEqual(["DENEME KISI", "ORNEK AD"]);
+    expect(out.players[1].bank).toEqual(["UYDURMA SOYAD"]);
+    // Alanı hiç olmayan veriyle (eski cihaz) birleşince öğrenilenler kaybolmaz: düzenleme silmeye üstün
+    const old = clone(b);
+    delete old.players[0].bank;
+    expect(merge3(b, l, old).players[0].bank).toEqual(["ESKI GONDEREN", "DENEME KISI"]);
+  });
 });

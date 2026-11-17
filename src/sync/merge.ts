@@ -38,8 +38,11 @@ interface Ctx {
   io: Inputs;
 }
 
-/** Sıralı küme olarak birleşen diziler ("*" = liste elemanı). queue.order bütün değerdir. */
-const SET_PATHS = new Set(["skipped", "matches.*.order"]);
+/**
+ * Sıralı küme olarak birleşen diziler ("*" = liste elemanı). queue.order bütün değerdir.
+ * Oyuncunun banka adları da küme: iki cihazın ayrı ayrı öğrendiği adların ikisi de kalır.
+ */
+const SET_PATHS = new Set(["skipped", "matches.*.order", "players.*.bank"]);
 
 /**
  * Çatışmada bütün olarak alınan nesneler: alanları birbirine bağlı anlık görüntüler
