@@ -92,8 +92,9 @@ test("telefondaki veriler bilgisayara gelir, değişiklikler iki yönde eşitlen
   await phone.page.goto("/#/settings");
   await synced(phone.page);
   await syncNow(pc.page);
+  // Bildirim önceki bir eşitlemeden kalmış olabilir: yeni oyuncu gelene kadar beklenir
   await expect(pc.page.locator("#toast")).toContainText("Diğer cihazdaki değişiklikler alındı");
-  expect(await rosterNames(pc.page)).toContain("Senkron Deneme");
+  await expect.poll(() => rosterNames(pc.page), { timeout: 20_000 }).toContain("Senkron Deneme");
 
   // Bilgisayarda değişiklik → telefonda görünür.
   await pc.page.goto("/#/settings");
@@ -188,7 +189,7 @@ test("yazı yazılırken gelen değişiklik yazılanı silmez; yazı bitince uyg
   await pc.page.goto("/#/settings");
   await synced(pc.page);
   await syncNow(phone.page);
-  expect(await rosterNames(phone.page)).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
+  await expect.poll(() => rosterNames(phone.page), { timeout: 20_000 }).toEqual(expect.arrayContaining(["Yarım Kalan", "Telefondan Gelen"]));
   expect(phone.errors).toEqual([]);
   expect(pc.errors).toEqual([]);
   await phone.ctx.close();
