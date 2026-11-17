@@ -7,7 +7,9 @@
 import type { State } from "../domain/types";
 import { activeConfig, builtIn, EMULATOR, EMULATOR_HOST, parseConfig, storeConfig } from "./config";
 import { createEngine, type Engine, type SyncMeta, type SyncStatus } from "./engine";
-import { firestoreRemote, firestoreBase, type Remote } from "./firestore";
+import { AuthError, firestoreRemote, firestoreBase, pubWriter, type Remote } from "./firestore";
+import { pubSnapshot } from "../domain/pubpage";
+import { todayISO } from "../domain/dates";
 import { pack, unpack } from "./envelope";
 import { hasUserData, merge3 } from "./merge";
 import type { SyncUser } from "./auth";
@@ -135,6 +137,7 @@ function onUser(u: SyncUser | null): void {
   }
   notify();
   void engine?.userChanged();
+  if (u) schedulePublish(1_000);
 }
 
 /** Giriş modülünü yükler ve Firebase'i başlatır (bir kez). */
@@ -166,6 +169,8 @@ function kick(force = false): void {
 
 function bindTriggers(): void {
   document.addEventListener("visibilitychange", () => {
+    // Zaman geçince (kesinleşme, yeni hafta) sayfa da güncellensin
+    if (document.visibilityState === "visible") schedulePublish(1_000);
     if (document.visibilityState === "visible") kick();
     else if (engine?.status().pending) kick(true);
   });
@@ -242,6 +247,7 @@ export function syncView(): SyncView {
 /** Yerel değişiklik oldu (store.commit). */
 export function syncChanged(): void {
   engine?.changed();
+  schedulePublish();
 }
 
 export function syncNow(): Promise<void> {
@@ -355,4 +361,78 @@ export function saveConfigText(text: string): boolean {
 export function clearConfig(): void {
   storeConfig(null);
   notify();
+}
+
+/* ---------- Oyuncu durum sayfası ---------- */
+
+/** Son yayınlanan içerik ("kimlik|json"): aynı içerik yeniden yazılmaz. */
+const PUB_KEY = "halisaha.pub.last";
+const PUB_DELAY = 3_000;
+
+export interface PubStatus {
+  /** idle: henüz yayınlanmadı; ok: yayında; rules: Firestore kuralları güncellenmemiş; error: ağ ya da başka hata */
+  state: "idle" | "ok" | "rules" | "error";
+  at: number;
+}
+let pubStatus: PubStatus = { state: "idle", at: 0 };
+let pubTimer: ReturnType<typeof setTimeout> | null = null;
+let pubBusy = false;
+
+export function pubView(): PubStatus {
+  return pubStatus;
+}
+
+function writer() {
+  const cfg = activeConfig();
+  const m = authMod;
+  if (!cfg || !m || !user) return null;
+  return pubWriter({ projectId: cfg.projectId, uid: user.uid, getToken: (force) => m.idToken(force), base: firestoreBase(EMULATOR ? EMULATOR_HOST : undefined) });
+}
+
+/** Durum sayfasını kısa bir gecikmeyle günceller (yalnızca içerik değiştiyse; giriş yapılmış ve çevrimiçiyken). */
+export function schedulePublish(delay = PUB_DELAY): void {
+  if (!deps || !deps.getState().settings.pubId) return;
+  if (pubTimer) clearTimeout(pubTimer);
+  pubTimer = setTimeout(() => void publishNow(), delay);
+}
+
+export async function publishNow(force = false): Promise<void> {
+  pubTimer = null;
+  if (!deps || pubBusy) return;
+  const s = deps.getState();
+  const id = s.settings.pubId;
+  const w = writer();
+  if (!id || !w || navigator.onLine === false) return;
+  const json = JSON.stringify(pubSnapshot(s, new Date(), todayISO()));
+  if (!force && ls.get(PUB_KEY) === id + "|" + json && pubStatus.state !== "error" && pubStatus.state !== "rules") return;
+  pubBusy = true;
+  try {
+    await w.write(id, json);
+    ls.set(PUB_KEY, id + "|" + json);
+    pubStatus = { state: "ok", at: Date.now() };
+  } catch (e) {
+    // Kurallar pub/ yolunu tanımıyorsa (organizatör henüz güncellemediyse) yazma reddedilir
+    pubStatus = { state: e instanceof AuthError ? "rules" : "error", at: Date.now() };
+  } finally {
+    pubBusy = false;
+    notify();
+  }
+}
+
+/** Sayfayı kapatır: buluttaki belge silinir (bağlantı artık "sayfa kapalı" der). */
+export async function unpublish(id: string): Promise<boolean> {
+  if (pubTimer) clearTimeout(pubTimer);
+  pubTimer = null;
+  ls.set(PUB_KEY, null);
+  pubStatus = { state: "idle", at: 0 };
+  const w = writer();
+  if (!w || !id) return false;
+  try {
+    await w.remove(id);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    notify();
+  }
 }

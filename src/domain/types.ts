@@ -63,6 +63,8 @@ export interface Settings {
   inviteDays: number;
   /** Gün bazlı hatırlatmaların saati (davet, saha, ödeme): "SS:DD" */
   remindAt: string;
+  /** Oyuncu durum sayfasının kimliği ("" = kapalı) */
+  pubId: string;
 }
 
 export interface Field {

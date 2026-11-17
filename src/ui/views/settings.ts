@@ -10,6 +10,7 @@ import { backupSection } from "./backup";
 import { syncSection } from "./sync";
 import { templatesSection } from "./templates";
 import { remindersSection } from "./reminders";
+import { pubSection } from "./pubpage";
 import { BIB_COLORS, teamColor, teamName } from "../../domain/teamstyle";
 import { L } from "../../domain/kinds";
 import type { Side } from "../../domain/types";
@@ -51,6 +52,7 @@ export function viewSettings(): string {
   h += '<div class="toggles mt">' + tgl("autoSchedule", t("autoSchedule")) + tgl("gkFree", t("gkFree")) + tgl("round", t("round")) + tgr("noShowPenalty", t("noShowPenalty")) + tgr("debtBlock", t("debtBlock")) + "</div>";
   h += '<label class="fld mt">' + esc(t("reserveDays")) + '<select data-f="reserveDays">' + [0, 1, 2, 3, 4, 5, 7].map((n) => '<option value="' + n + '"' + (s.reserveDays === n ? " selected" : "") + ">" + esc(n ? t("reserveDaysN", { n }) : t("reserveOff")) + "</option>").join("") + "</select></label></section>";
   h += remindersSection();
+  h += pubSection();
   const tg = (k: "avoidRepeat" | "perf", label: string) => '<button type="button" class="toggle' + (s[k] ? " on" : "") + '" data-a="tglSet" data-k="' + k + '" aria-pressed="' + s[k] + '">' + esc(label) + "</button>";
   h += '<section class="section" aria-labelledby="h-tb"><h2 id="h-tb">' + esc(t("teamOptions")) + '</h2><div class="toggles">' + tg("avoidRepeat", t("avoidRepeat")) + tg("perf", t("perfOn")) + "</div></section>";
   h += teamLooksSection();

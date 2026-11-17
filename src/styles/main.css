@@ -479,6 +479,8 @@ button.qbtn { cursor: pointer; }
 .lrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); min-height: 52px; }
 .lrow:first-child { border-top: none; }
 .lrow .pname .tag { margin-left: 0; }
+/* Oyuncu sayfası bağlantısı */
+.pub-link code { overflow-wrap: anywhere; word-break: break-all; }
 /* Banka bildirimi önizlemesi */
 .bankrow { border-top: 1px solid var(--line); padding-top: 8px; }
 .bankrow:first-child { border-top: none; padding-top: 0; }

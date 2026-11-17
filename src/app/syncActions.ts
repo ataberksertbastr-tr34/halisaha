@@ -6,7 +6,11 @@ import { renderBanners } from "../ui/banner";
 import { forceUpdate } from "../pwa/register";
 import { flush } from "../data/persist";
 import { dismissSyncBanner } from "../ui/views/sync";
-import { clearConfig, dismissLost, resetPassword, saveConfigText, setPassword, signInEmail, signInGoogle, signOutSync, signUpEmail, syncNow } from "../sync";
+import { clearConfig, dismissLost, publishNow, pubView, resetPassword, saveConfigText, setPassword, signInEmail, signInGoogle, signOutSync, signUpEmail, syncNow, syncView, unpublish } from "../sync";
+import { commit, store } from "./store";
+import { newPubId } from "../domain/pubpage";
+import { pubLink } from "../ui/views/pubpage";
+import { shareText } from "../ui/share";
 
 const val = (id: string): string => ((document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value || "").trim();
 
@@ -95,5 +99,34 @@ registerActions({
   syncLostDismiss: () => {
     dismissSyncBanner();
     dismissLost();
+  },
+});
+
+/* ---------- Oyuncu durum sayfası ---------- */
+registerActions({
+  /** Sayfayı açar: tahmin edilemeyen yeni bir kimlik alır ve hemen yayınlar. */
+  pubOn: () => {
+    if (!syncView().user) return toast(t("pubNeedSync"));
+    store.s.settings.pubId = newPubId();
+    commit();
+    void publishNow(true).then(() => {
+      const st = pubView();
+      toast(st.state === "ok" ? t("pubOnDone") : st.state === "rules" ? t("pubRules") : t("pubError"), undefined, st.state === "ok" ? undefined : 8000);
+    });
+  },
+  pubShare: () => {
+    const id = store.s.settings.pubId;
+    if (id) void shareText(t("pubShareText", { l: pubLink(id) }));
+  },
+  pubRetry: () => void publishNow(true),
+  /** Sayfayı kapatır: buluttaki belge silinir, bağlantı artık çalışmaz. */
+  pubOff: () => {
+    const id = store.s.settings.pubId;
+    if (!id) return;
+    void unpublish(id).then((ok) => {
+      store.s.settings.pubId = "";
+      commit();
+      toast(ok ? t("pubOffDone") : t("pubOffLocal"), undefined, ok ? undefined : 8000);
+    });
   },
 });

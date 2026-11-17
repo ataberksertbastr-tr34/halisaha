@@ -75,14 +75,11 @@ function fromFields(f: Record<string, Value> | undefined): Envelope | null {
   return { fmt: 1, schema: int("schema"), rev: int("rev"), at: int("at"), dev: str("dev"), enc, data: str("data") };
 }
 
-export function firestoreRemote(o: FirestoreOpts): Remote {
-  const base = (o.base || "https://firestore.googleapis.com/v1").replace(/\/$/, "");
-  const db = `projects/${encodeURIComponent(o.projectId)}/databases/(default)/documents`;
-  const name = `${db}/users/${encodeURIComponent(o.uid)}/halisaha/state`;
+/** Kimlik belirteçli istek: 401/403'te belirteci bir kez yenileyip yeniden dener. */
+function caller(o: Pick<FirestoreOpts, "getToken" | "fetch" | "timeoutMs">) {
   const doFetch = o.fetch || ((...a: Parameters<typeof fetch>) => fetch(...a));
   const timeout = o.timeoutMs ?? 20000;
-
-  async function call(url: string, init: RequestInit, retried = false): Promise<Response> {
+  return async function call(url: string, init: RequestInit, retried = false): Promise<Response> {
     let token: string;
     try {
       token = await o.getToken(retried);
@@ -111,7 +108,14 @@ export function firestoreRemote(o: FirestoreOpts): Remote {
     }
     if (r.status === 429 || r.status >= 500) throw new NetError(r.status);
     return r;
-  }
+  };
+}
+
+export function firestoreRemote(o: FirestoreOpts): Remote {
+  const base = (o.base || "https://firestore.googleapis.com/v1").replace(/\/$/, "");
+  const db = `projects/${encodeURIComponent(o.projectId)}/databases/(default)/documents`;
+  const name = `${db}/users/${encodeURIComponent(o.uid)}/halisaha/state`;
+  const call = caller(o);
 
   /** batchGet: belge yoksa 404 yerine "missing" döner (tarayıcı konsolunda hata görünmez). */
   async function batchGet(mask?: string[]): Promise<Found | undefined> {
@@ -156,3 +160,53 @@ export function firestoreRemote(o: FirestoreOpts): Remote {
 }
 
 export const firestoreBase = (emulatorHost?: string): string => (emulatorHost ? `http://${emulatorHost}:8080/v1` : "https://firestore.googleapis.com/v1");
+
+/* ---------- Oyuncu durum sayfası: pub/{id} ---------- */
+
+export interface PubDoc {
+  /** Yayın anı (ms) */
+  at: number;
+  /** Sayfa verisi (JSON) */
+  data: string;
+}
+
+/** Organizatörün durum sayfasını yazar / siler (yalnızca kendi hesabıyla; firestore.rules). */
+export function pubWriter(o: FirestoreOpts) {
+  const base = (o.base || "https://firestore.googleapis.com/v1").replace(/\/$/, "");
+  const db = `projects/${encodeURIComponent(o.projectId)}/databases/(default)/documents`;
+  const call = caller(o);
+  const nameOf = (id: string) => `${db}/pub/${encodeURIComponent(id)}`;
+  const commit = async (write: unknown) => {
+    const r = await call(`${base}/${db}:commit`, { method: "POST", body: JSON.stringify({ writes: [write] }) });
+    if (!r.ok) throw new NetError(r.status);
+  };
+  return {
+    write: (id: string, data: string, at = Date.now()) =>
+      commit({ update: { name: nameOf(id), fields: { owner: { stringValue: o.uid }, at: { integerValue: String(Math.trunc(at)) }, data: { stringValue: data } } } }),
+    remove: (id: string) => commit({ delete: nameOf(id) }),
+  };
+}
+
+/**
+ * Durum sayfasını oturumsuz okur (herkese açık; firestore.rules). Sayfa yoksa (kapatıldı ya da
+ * bağlantı yanlış) null. Ağ hatasında NetError. batchGet kullanılır: belge yoksa 404 yerine
+ * "missing" döner, oyuncunun tarayıcı konsoluna hata düşmez.
+ */
+export async function readPub(o: { projectId: string; apiKey?: string; base?: string; fetch?: typeof fetch }, id: string): Promise<PubDoc | null> {
+  const base = (o.base || "https://firestore.googleapis.com/v1").replace(/\/$/, "");
+  const db = `projects/${encodeURIComponent(o.projectId)}/databases/(default)/documents`;
+  const url = `${base}/${db}:batchGet` + (o.apiKey ? "?key=" + encodeURIComponent(o.apiKey) : "");
+  let r: Response;
+  try {
+    r = await (o.fetch || fetch)(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ documents: [`${db}/pub/${encodeURIComponent(id)}`] }) });
+  } catch {
+    throw new NetError(0);
+  }
+  if (r.status === 403) return null;
+  if (!r.ok) throw new NetError(r.status);
+  const arr = (await r.json()) as { found?: { fields?: Record<string, Value> } }[];
+  const f = Array.isArray(arr) ? arr.find((x) => x.found)?.found?.fields : undefined;
+  const data = f?.data?.stringValue;
+  if (typeof data !== "string") return null;
+  return { at: Number(f?.at?.integerValue || 0), data };
+}

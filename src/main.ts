@@ -13,8 +13,9 @@ import { guestPrefill, importFromFile, onEnter, onField, pitchHandlers } from ".
 import { bindPitchDrag } from "./ui/pitchDrag";
 import { flush, getMeta, listenOtherTabs, loadIssue, loadState, lockedSnapshot, onSaveError, onStorageBlocked, requestPersistence, saveState, storageMode } from "./data/persist";
 import { DAY, hasData, reminderDue, daysSince } from "./data/backup";
-import { initSync, onSyncChange, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
+import { initSync, onSyncChange, schedulePublish, setLanguage as setSyncLanguage, syncChanged, syncView } from "./sync";
 import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/views/sync";
+import { refreshPubSection } from "./ui/views/pubpage";
 import { dismissIosMove, iosMoveBanner } from "./ui/views/iosmove";
 import "./app/syncActions";
 import { renderApp } from "./ui/shell";
@@ -158,6 +159,8 @@ function setupSync(): void {
       if (isModalOpen() || hasDraft()) return false;
       applyExternal(next, t("syncPulled"));
       autoSchedule();
+      // Başka cihazdan gelen değişiklik de oyuncu sayfasına yansısın
+      schedulePublish();
       return true;
     },
     lock: lockedSnapshot,
@@ -168,6 +171,7 @@ function setupSync(): void {
   addBanner(syncAlertBanner);
   onSyncChange(() => {
     refreshSyncSection();
+    refreshPubSection();
     refreshHeroStatus();
     renderBanners();
   });

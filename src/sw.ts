@@ -15,6 +15,8 @@ const CACHE = "halisaha-" + __VERSION__;
 const FILES: string[] = __PRECACHE__;
 const SCOPE = new URL("./", sw.location.href).href;
 const INDEX = new URL("./index.html", SCOPE).href;
+/** Oyuncu durum sayfası: uygulama kabuğu yerine kendisi açılır. */
+const PUB = new URL("./durum.html", SCOPE).href;
 
 sw.addEventListener("install", (event) => {
   event.waitUntil(
@@ -46,14 +48,15 @@ sw.addEventListener("fetch", (event) => {
 
   // Sayfa açılışları: önbellekteki uygulama kabuğu (hash yönlendirme kullanıldığı için tek sayfa).
   if (req.mode === "navigate") {
+    const page = url.href.split("#")[0].split("?")[0] === PUB ? PUB : INDEX;
     event.respondWith(
       (async () => {
-        const cached = await caches.match(INDEX, { cacheName: CACHE });
+        const cached = await caches.match(page, { cacheName: CACHE });
         if (cached) return cached;
         try {
           return await fetch(req);
         } catch {
-          return (await caches.match(INDEX)) || Response.error();
+          return (await caches.match(page)) || Response.error();
         }
       })(),
     );
