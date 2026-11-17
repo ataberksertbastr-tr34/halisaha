@@ -25,7 +25,7 @@ function every(r: OrgReminder): string {
 export function remindersSection(): string {
   const s = store.s.settings;
   return '<section class="section" aria-labelledby="h-rem"><h2 id="h-rem">' + esc(t("remTitle")) + '</h2><p class="small muted tight">' + esc(t("remIntro")) + "</p>" +
-    '<div class="grid2"><label class="fld">' + esc(t("remInvite")) + '<select data-f="s.inviteDays">' + [1, 2, 3, 4, 5, 6].map((n) => '<option value="' + n + '"' + (s.inviteDays === n ? " selected" : "") + ">" + esc(t("reserveDaysN", { n })) + "</option>").join("") + "</select></label>" +
+    '<div class="grid2"><label class="fld">' + esc(t("remInvite")) + '<select data-f="s.inviteDays">' + [1, 2, 3, 4, 5, 6].map((n) => '<option value="' + n + '"' + (s.inviteDays === n ? " selected" : "") + ">" + esc(t("remDaysN", { n })) + "</option>").join("") + "</select></label>" +
     '<label class="fld">' + esc(t("remAt")) + '<input type="time" data-f="s.remindAt" value="' + esc(s.remindAt) + '"></label></div>' +
     '<button type="button" class="btn block mt-s" data-a="remOpen">' + IC.calendar + esc(t("remAdd")) + "</button></section>";
 }

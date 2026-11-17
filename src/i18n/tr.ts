@@ -82,7 +82,7 @@ export const tr = {
   todoNeedSquad: "kadro bekleniyor", todoNotBuilt: "kurulmadı", todoBuild: "Kur", todoTeamsBuilt: "kuruldu, paylaşılmadı", todoUnassigned: "{n} kişi takımsız", todoTeamsChanged: "paylaşıldıktan sonra değişti", todoNotDrawn: "çekilmedi", todoDrawn: "çekildi", todoDrawAct: "Çek", todoOpen: "Aç",
   todoAfterMatch: "maçtan sonra", todoAfterEvent: "etkinlikten sonra", todoNoResult: "girilmedi", todoEnter: "Gir", todoPastResult: "{d} sonucu", todoPastPay: "{d} ödemeleri",
   todoNoPayers: "ödeyen yok", todoAllPaid: "{n} kişi ödedi, kapandı", todoPaidN: "{p}/{n} ödedi", todoLeft: "kalan {a}",
-  remTitle: "Hatırlatmalar", remIntro: "Telefonunun takvimine haftalık hatırlatmalar ekle; uygulama kapalıyken de bildirim gelir.", remInvite: "Davet günü", remAt: "Hatırlatma saati", remAdd: "Takvime ekle", remNoSlots: "Önce Ayarlar'da haftalık maç günlerini seç.",
+  remTitle: "Hatırlatmalar", remIntro: "Telefonunun takvimine haftalık hatırlatmalar ekle; uygulama kapalıyken de bildirim gelir.", remInvite: "Davet günü", remDaysN: "{n} gün önce", remAt: "Hatırlatma saati", remAdd: "Takvime ekle", remNoSlots: "Önce Ayarlar'da haftalık maç günlerini seç.",
   remHint: "Her maç günü için beş hatırlatma, her hafta kendiliğinden tekrarlar. iPhone'da takvim dosyasını açıp \"Tümünü Ekle\" de. Android'de dosya açılmazsa her satırdaki Google Takvim'e dokunup \"Kaydet\" de.",
   remIcs: "Takvim dosyası (hepsi)", remFor: "{m} maçı", remEvery: "Her {d} {t}", remNote: "Maç günün ya da saatin değişirse eski hatırlatmaları takvimden sil, yenilerini buradan ekle.",
   remL_invite: "Daveti gönder", remL_field: "Sahayı teyit et", remL_lock: "Kadroyu tamamla", remL_result: "Sonucu gir", remL_pay: "Ödemeleri kapat",

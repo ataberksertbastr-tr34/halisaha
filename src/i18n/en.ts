@@ -84,7 +84,7 @@ export const en: Record<MsgKey, string> = {
   todoNeedSquad: "waiting for the squad", todoNotBuilt: "not built", todoBuild: "Build", todoTeamsBuilt: "built, not shared", todoUnassigned: "{n} without a team", todoTeamsChanged: "changed after sharing", todoNotDrawn: "not drawn", todoDrawn: "drawn", todoDrawAct: "Draw", todoOpen: "Open",
   todoAfterMatch: "after the match", todoAfterEvent: "after the event", todoNoResult: "not entered", todoEnter: "Enter", todoPastResult: "{d} result", todoPastPay: "{d} payments",
   todoNoPayers: "nobody pays", todoAllPaid: "{n} paid, closed", todoPaidN: "{p}/{n} paid", todoLeft: "{a} left",
-  remTitle: "Reminders", remIntro: "Add weekly reminders to your phone's calendar; they notify you even when the app is closed.", remInvite: "Invite day", remAt: "Reminder time", remAdd: "Add to calendar", remNoSlots: "Pick your weekly match days in Settings first.",
+  remTitle: "Reminders", remIntro: "Add weekly reminders to your phone's calendar; they notify you even when the app is closed.", remInvite: "Invite day", remDaysN: "{n} days before", remAt: "Reminder time", remAdd: "Add to calendar", remNoSlots: "Pick your weekly match days in Settings first.",
   remHint: "Five reminders per match day, repeating every week. On iPhone open the calendar file and tap \"Add All\". On Android, if the file does not open, tap Google Calendar on each row and press \"Save\".",
   remIcs: "Calendar file (all)", remFor: "{m} match", remEvery: "Every {d} {t}", remNote: "If your match day or time changes, delete the old reminders from your calendar and add the new ones here.",
   remL_invite: "Send the invite", remL_field: "Confirm the field", remL_lock: "Complete the squad", remL_result: "Enter the result", remL_pay: "Close the payments",
