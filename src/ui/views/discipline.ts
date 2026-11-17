@@ -32,7 +32,9 @@ export function viewDiscipline(): string {
     dtile(t("discExpelled"), n((x) => x.expelled)) + "</div>" +
     '<p class="small muted tight">' + esc(t("discHint")) + " " + ruleChip("9.3") + "</p>" +
     '<div class="row nowrap"><button type="button" class="btn primary grow" data-a="discNew">' + IC.gavel + esc(t("discRecord")) + '</button><button type="button" class="btn side" data-a="nav" data-v="rules" data-id="ek">' + IC.book + esc(t("sanctionTable")) + "</button></div></section>";
-  const list = S.discipline.slice().sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+  // Aynı günün kayıtları: sonra yazılan üstte (kimlik rastgele olduğundan sıraya yaramaz; karar metni de bu sırayı kullanır)
+  const order = new Map(S.discipline.map((r, i) => [r, i]));
+  const list = S.discipline.slice().sort((a, b) => b.at.localeCompare(a.at) || order.get(b)! - order.get(a)!);
   h += '<section class="section" aria-labelledby="h-dlist"><h2 id="h-dlist">' + esc(t("discLog")) + "</h2>";
   if (!list.length) return h + '<p class="muted m0">' + esc(t("discEmpty")) + "</p></section>";
   h += '<div class="search">' + IC.search + '<input type="search" id="q-disc" placeholder="' + esc(t("searchPeople")) + '" value="' + esc(ui.discQ) + '" autocomplete="off" aria-label="' + esc(t("searchPeople")) + '"></div><ul class="llist mt-s" id="list-disc">';
