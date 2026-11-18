@@ -47,7 +47,7 @@ import { teamsSig } from "../domain/todo";
 import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
 import { applyFilter, blockReason } from "../ui/components";
 import { guestHistory, pastGuests } from "../domain/guests";
-import { closeModal, isModalOpen } from "../ui/modal";
+import { afterModalClose, closeModal, isModalOpen } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
 import { toast } from "../ui/toast";
 import { copyText } from "../ui/clipboard";
@@ -172,14 +172,17 @@ function undoLate(m: Match, id: string, tapped: string, said?: number): void {
  * Mesaj paylaşıldıysa ya da kopyalandıysa etkinlikte "gönderildi" diye işaretler (iş listesi).
  * Takımlarda paylaşılan kadronun imzası da tutulur: takımlar sonradan değişirse yeniden paylaşmak gerekir.
  */
-function sentIf(r: ShareResult, mid: string | undefined, k: string | undefined): void {
+export function sentIf(r: ShareResult, mid: string | undefined, k: string | undefined): void {
   if ((r !== "shared" && r !== "copied") || !mid || !k) return;
   const m = getMatch(store.s, mid);
   if (!m) return;
   m.sent[k] = Date.now();
   if (k === "teams") m.sent.teamsSig = teamsSig(m);
-  // Açık bir pencere (önizleme) ve yazılmakta olan metin bozulmasın: yalnızca kaydet
-  commit(isModalOpen());
+  // Açık bir pencere (önizleme) ve yazılmakta olan metin bozulmasın: yalnızca kaydet,
+  // arkadaki görünüm (iş listesi) pencere kapanınca yeniden çizilsin
+  if (!isModalOpen()) return commit();
+  commit(true);
+  afterModalClose(render);
 }
 
 /**

@@ -5,6 +5,22 @@
 let opener: HTMLElement | null = null;
 let pushed = false;
 let afterBack: (() => void) | null = null;
+let onClosed: (() => void)[] = [];
+
+/**
+ * Pencere kapandıktan sonra (geri tuşu dahil) bir kez çalışır; pencere kapalıysa hemen çalışır.
+ * Pencere açıkken kaydedilen değişiklik arkadaki görünümü eskittiyse yeniden çizmek için.
+ */
+export function afterModalClose(fn: () => void): void {
+  if (!isModalOpen()) return fn();
+  if (!onClosed.includes(fn)) onClosed.push(fn);
+}
+
+function closed(): void {
+  const fns = onClosed;
+  onClosed = [];
+  fns.forEach((f) => f());
+}
 
 const md = () => document.getElementById("modal") as HTMLElement;
 const BG = ["hero", "view", "tabs", "banner"];
@@ -79,6 +95,7 @@ export function closeModal(fromPop = false, then?: () => void): void {
   }
   pushed = false;
   then?.();
+  closed();
 }
 
 /** popstate geldiğinde: açık sayfayı kapatır ya da bekleyen geri dönüşü tamamlar. true → olay tüketildi. */
@@ -87,6 +104,7 @@ export function handlePopForModal(): boolean {
     const fn = afterBack;
     afterBack = null;
     fn();
+    closed();
     return true;
   }
   if (!isModalOpen()) return false;
