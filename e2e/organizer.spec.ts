@@ -524,3 +524,52 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   await expect(page.locator("#toast")).toContainText("1 ödeme işlendi");
   expect(errors).toEqual([]);
 });
+
+test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinleştikten sonra paylaşılınca kadro duyurusu sayılır (Kural 1.4)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __files: { name: string; type: string; size: number }[] };
+    w.__files = [];
+    navigator.canShare = (d?: ShareData) => !!d?.files?.length;
+    navigator.share = async (d?: ShareData) => {
+      for (const f of d?.files || []) w.__files.push({ name: f.name, type: f.type, size: f.size });
+    };
+  });
+  const files = () => page.evaluate(() => (window as unknown as { __files: { name: string; type: string; size: number }[] }).__files);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const open = page.locator('#view [data-a="imgOpen"]');
+  await expect(open).toHaveText("Kadro görseli");
+  await open.click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Kadro görseli");
+  const img = page.locator("#sq-img");
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1350]);
+  await expect(page.locator('#modal [data-a="imgShare"]')).toBeEnabled();
+  await expect(page.locator("#modal")).toContainText("telefon, IBAN ve borç yazmaz");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "kadro görseli")).toEqual([]);
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(1);
+  const [f] = await files();
+  expect([f.name, f.type]).toEqual(["kadro-2026-10-15.png", "image/png"]);
+  expect(f.size).toBeGreaterThan(20_000);
+  await page.locator('#modal [data-a="closeModal"]').click();
+
+  // Kadro kesinleşti: görseli paylaşmak, iş listesindeki "kadroyu duyur" adımını kapatır
+  await page.clock.setSystemTime(new Date("2026-10-14T22:00:00+03:00"));
+  await page.goto("/#/settings");
+  await openThursday(page);
+  const todo = page.locator("#view .todobox");
+  await todo.locator('[data-a="todoToggle"]').click();
+  const squad = todo.locator('[data-step="squad"]');
+  await expect(squad.locator('[data-a="msg"]')).toHaveText("Paylaş");
+  await open.click();
+  await expect(page.locator('#modal [data-a="imgShare"]')).toBeEnabled();
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(2);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  await expect(squad.locator('[data-a="msg"]')).toHaveCount(0);
+  await expect(squad.locator('[data-a="pasteList"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
