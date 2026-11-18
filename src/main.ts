@@ -18,6 +18,7 @@ import { refreshSyncSection, syncAlertBanner, syncInviteBanner } from "./ui/view
 import { refreshPubSection } from "./ui/views/pubpage";
 import { dismissIosMove, iosMoveBanner } from "./ui/views/iosmove";
 import "./app/syncActions";
+import "./app/imageActions";
 import { renderApp } from "./ui/shell";
 import { closeModal, handlePopForModal, isModalOpen } from "./ui/modal";
 import { runToastAction, toast } from "./ui/toast";
