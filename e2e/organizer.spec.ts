@@ -525,7 +525,7 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   expect(errors).toEqual([]);
 });
 
-test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinleştikten sonra paylaşılınca kadro duyurusu sayılır (Kural 1.4)", async ({ page }) => {
+test("kadro görseli: armalı kare PNG önizlenir, dosya olarak paylaşılır; kesinleştikten sonra paylaşılınca kadro duyurusu sayılır (Kural 1.4)", async ({ page }) => {
   const errors = watchErrors(page);
   await page.addInitScript(() => {
     const w = window as unknown as { __files: { name: string; type: string; size: number }[] };
@@ -544,7 +544,7 @@ test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinl
   await expect(page.locator("#modal #sheet-title")).toHaveText("Kadro görseli");
   const img = page.locator("#sq-img");
   await expect(img).toBeVisible();
-  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1350]);
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
   await expect(page.locator('#modal [data-a="imgShare"]')).toBeEnabled();
   await expect(page.locator("#modal")).toContainText("telefon, IBAN ve borç yazmaz");
   await noHorizontalScroll(page);
@@ -571,5 +571,76 @@ test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinl
   await page.locator('#modal [data-a="closeModal"]').click();
   await expect(squad.locator('[data-a="msg"]')).toHaveCount(0);
   await expect(squad.locator('[data-a="pasteList"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+/** Dosya paylaşımını yakalar: paylaşılan dosyaların adı, türü ve boyutu. */
+async function stubFileShare(page: Page): Promise<() => Promise<{ name: string; type: string; size: number }[]>> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __files: { name: string; type: string; size: number }[] };
+    w.__files = [];
+    navigator.canShare = (d?: ShareData) => !!d?.files?.length;
+    navigator.share = async (d?: ShareData) => {
+      for (const f of d?.files || []) w.__files.push({ name: f.name, type: f.type, size: f.size });
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { __files: { name: string; type: string; size: number }[] }).__files);
+}
+
+test("takım görseli: iki takım yelek renkleriyle kare PNG olarak paylaşılır; iş listesinde takımlar duyurulmuş sayılır (Kural 3.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  const files = await stubFileShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  await page.locator('#tabs [data-v="teams"]').click();
+  // Takımlar kurulmadan görsel düğmesi yok
+  await expect(page.locator('#view [data-a="imgTeams"]')).toHaveCount(0);
+  await page.locator('#view [data-a="gen"]').click();
+  const open = page.locator('#view [data-a="imgTeams"]');
+  await expect(open).toHaveText("Takım görseli");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "takımlar")).toEqual([]);
+  await open.click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Takım görseli");
+  const img = page.locator("#sq-img");
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
+  await expect(page.locator("#modal")).toContainText("seviye, telefon ve borç yazmaz");
+  expect(await deadZones(page, "takım görseli")).toEqual([]);
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(1);
+  const [f] = await files();
+  expect([f.name, f.type]).toEqual(["takimlar-2026-10-15.png", "image/png"]);
+  expect(f.size).toBeGreaterThan(20_000);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  // İş listesi: takımlar paylaşıldı
+  await page.locator('#tabs [data-v="match"]').click();
+  const todo = page.locator("#view .todobox");
+  await todo.locator('[data-a="todoToggle"]').click();
+  await expect(todo.locator('[data-step="teams"]')).toContainText("gönderildi");
+  expect(errors).toEqual([]);
+});
+
+test("maç afişi: halı saha maçında arma, saha ve slogan; tarih ve saat maçtan gelir, kare PNG paylaşılır", async ({ page }) => {
+  const errors = watchErrors(page);
+  const files = await stubFileShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const open = page.locator('#view [data-a="imgPoster"]');
+  await expect(open).toHaveText("Maç afişi");
+  await open.click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Maç afişi");
+  const img = page.locator("#sq-img");
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "maç afişi")).toEqual([]);
+  await expect(page.locator('#modal [data-a="imgSave"]')).toBeEnabled();
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(1);
+  const [f] = await files();
+  expect([f.name, f.type]).toEqual(["mac-afisi-2026-10-15.png", "image/png"]);
+  expect(f.size).toBeGreaterThan(50_000);
+  await page.locator('#modal [data-a="closeModal"]').click();
   expect(errors).toEqual([]);
 });

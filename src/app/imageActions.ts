@@ -1,10 +1,16 @@
-/** Kadro görseli eylemleri: aç (çiz ve önizle), paylaş (dosya olarak), indir. */
+/** Görsel eylemleri: kadro, takımlar, maç afişi; paylaş (dosya olarak) ve indir. */
 import { registerActions } from "./actions";
 import { t } from "../i18n";
 import { toast } from "../ui/toast";
 import { store, today, ui } from "./store";
+import type { Match } from "../domain/types";
 import { currentMatch, getMatch } from "../domain/lineup";
-import { downloadImage, openSquadImage, pendingImage, type PendingImage } from "../ui/views/squadimg";
+import { squadCard } from "../domain/squadcard";
+import { posterCard, teamCard } from "../domain/matchcards";
+import { squadPng } from "../ui/squadImage";
+import { teamsPng } from "../ui/teamImage";
+import { posterPng } from "../ui/posterImage";
+import { downloadImage, openImageSheet, pendingImage, type PendingImage } from "../ui/views/imagesheet";
 import { sentIf } from "./handlers";
 
 function save(p: PendingImage): void {
@@ -12,10 +18,28 @@ function save(p: PendingImage): void {
   toast(t("imgSaved"));
 }
 
+const matchOf = (ds: DOMStringMap): Match | null => (ds.id ? getMatch(store.s, ds.id) : currentMatch(store.s, ui.matchId, today()));
+
 registerActions({
   imgOpen: (ds) => {
-    const m = ds.id ? getMatch(store.s, ds.id) : currentMatch(store.s, ui.matchId, today());
-    if (m) void openSquadImage(m, new Date());
+    const m = matchOf(ds);
+    if (!m) return;
+    const card = squadCard(store.s, m, new Date());
+    // Kadro kesinleştikten sonra paylaşılan görsel, kadro duyurusu sayılır (iş listesi)
+    void openImageSheet({ title: t("imgOpen"), hint: t("imgHint"), file: card.file, mid: m.id, sent: card.locked ? "squad" : "", render: () => squadPng(card) });
+  },
+  imgTeams: (ds) => {
+    const m = matchOf(ds);
+    if (!m) return;
+    const card = teamCard(store.s, m);
+    if (!card.ready) return;
+    void openImageSheet({ title: t("imgTeamsOpen"), hint: t("imgTeamsHint"), file: card.file, mid: m.id, sent: "teams", render: () => teamsPng(card) });
+  },
+  imgPoster: (ds) => {
+    const m = matchOf(ds);
+    if (!m) return;
+    const card = posterCard(store.s, m);
+    void openImageSheet({ title: t("posterOpen"), hint: t("posterHint"), file: card.file, mid: m.id, sent: "", render: () => posterPng(card) });
   },
   // Paylaşım dokunuşun içinde, beklemeden çağrılır (görsel önceden hazır)
   imgShare: () => {
@@ -30,8 +54,7 @@ registerActions({
     }
     if (!files) return save(p);
     navigator.share({ files: [file] }).then(
-      // Kadro kesinleştikten sonra paylaşılan görsel, kadro duyurusu sayılır (iş listesi)
-      () => p.locked && sentIf("shared", p.mid, "squad"),
+      () => p.sent && sentIf("shared", p.mid, p.sent),
       (e) => {
         if (!(e instanceof DOMException && e.name === "AbortError")) save(p);
       },

@@ -52,7 +52,8 @@ export interface SquadCard {
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 
-function names(s: State, m: Match, ids: string[], fb: boolean): CardName[] {
+/** Görsele yazılacak adlar: yalnızca ad, kaleci (halı saha) ve misafir işareti. */
+export function cardNames(s: State, m: Match, ids: string[], fb: boolean): CardName[] {
   const out: CardName[] = [];
   for (const id of ids) {
     const p = getP(s, m, id);
@@ -102,9 +103,9 @@ export function squadCard(s: State, m: Match, now: Date): SquadCard {
     full,
     locked: lk.locked,
     lockLine: lk.line,
-    playing: names(s, m, playing, fb),
+    playing: cardNames(s, m, playing, fb),
     open: cap ? Math.max(0, cap - n) : 0,
-    wait: names(s, m, wait, fb),
+    wait: cardNames(s, m, wait, fb),
     maybe: Object.keys(m.att).filter((id) => m.att[id] === "maybe" && getP(s, m, id)).length,
     file: t("imgFile") + "-" + m.date + ".png",
   };
