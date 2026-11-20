@@ -107,6 +107,14 @@ describe("yedek satırları", () => {
     expect(waitLines(["1. Aaaaaaa", "2. Bbbbbbb", "3. Ccccccc"], 250, w)).toEqual(["1. Aaaaaaa   2. Bbbbbbb", "3. Ccccccc"]);
   });
 
+  it("tek satır: sığmayanlar '+n kişi' olur (kare görsel)", () => {
+    const items = ["1. Aaaaaaa", "2. Bbbbbbb", "3. Ccccccc", "4. Ddddddd"];
+    const lines = waitLines(items, 300, w, "   ", 1);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^1\. Aaaaaaa.*\+\d kişi$/);
+    expect(w(lines[0])).toBeLessThanOrEqual(300);
+  });
+
   it("iki satıra sığmayanlar '+n kişi' olur, sıra korunur", () => {
     const items = ["1. Aaaaaaa", "2. Bbbbbbb", "3. Ccccccc", "4. Ddddddd", "5. Eeeeeee", "6. Fffffff"];
     const lines = waitLines(items, 250, w);

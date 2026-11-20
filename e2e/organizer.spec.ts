@@ -525,7 +525,7 @@ test("banka bildirimi: yapıştır, önizle, kişiyi düzelt, uygula; elle eşle
   expect(errors).toEqual([]);
 });
 
-test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinleştikten sonra paylaşılınca kadro duyurusu sayılır (Kural 1.4)", async ({ page }) => {
+test("kadro görseli: armalı kare PNG önizlenir, dosya olarak paylaşılır; kesinleştikten sonra paylaşılınca kadro duyurusu sayılır (Kural 1.4)", async ({ page }) => {
   const errors = watchErrors(page);
   await page.addInitScript(() => {
     const w = window as unknown as { __files: { name: string; type: string; size: number }[] };
@@ -544,7 +544,7 @@ test("kadro görseli: armalı PNG önizlenir, dosya olarak paylaşılır; kesinl
   await expect(page.locator("#modal #sheet-title")).toHaveText("Kadro görseli");
   const img = page.locator("#sq-img");
   await expect(img).toBeVisible();
-  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1350]);
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
   await expect(page.locator('#modal [data-a="imgShare"]')).toBeEnabled();
   await expect(page.locator("#modal")).toContainText("telefon, IBAN ve borç yazmaz");
   await noHorizontalScroll(page);
