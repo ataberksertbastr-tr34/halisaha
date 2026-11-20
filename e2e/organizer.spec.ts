@@ -573,3 +573,50 @@ test("kadro görseli: armalı kare PNG önizlenir, dosya olarak paylaşılır; k
   await expect(squad.locator('[data-a="pasteList"]')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+/** Dosya paylaşımını yakalar: paylaşılan dosyaların adı, türü ve boyutu. */
+async function stubFileShare(page: Page): Promise<() => Promise<{ name: string; type: string; size: number }[]>> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __files: { name: string; type: string; size: number }[] };
+    w.__files = [];
+    navigator.canShare = (d?: ShareData) => !!d?.files?.length;
+    navigator.share = async (d?: ShareData) => {
+      for (const f of d?.files || []) w.__files.push({ name: f.name, type: f.type, size: f.size });
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { __files: { name: string; type: string; size: number }[] }).__files);
+}
+
+test("takım görseli: iki takım yelek renkleriyle kare PNG olarak paylaşılır; iş listesinde takımlar duyurulmuş sayılır (Kural 3.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  const files = await stubFileShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  await page.locator('#tabs [data-v="teams"]').click();
+  // Takımlar kurulmadan görsel düğmesi yok
+  await expect(page.locator('#view [data-a="imgTeams"]')).toHaveCount(0);
+  await page.locator('#view [data-a="gen"]').click();
+  const open = page.locator('#view [data-a="imgTeams"]');
+  await expect(open).toHaveText("Takım görseli");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "takımlar")).toEqual([]);
+  await open.click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Takım görseli");
+  const img = page.locator("#sq-img");
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
+  await expect(page.locator("#modal")).toContainText("seviye, telefon ve borç yazmaz");
+  expect(await deadZones(page, "takım görseli")).toEqual([]);
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(1);
+  const [f] = await files();
+  expect([f.name, f.type]).toEqual(["takimlar-2026-10-15.png", "image/png"]);
+  expect(f.size).toBeGreaterThan(20_000);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  // İş listesi: takımlar paylaşıldı
+  await page.locator('#tabs [data-v="match"]').click();
+  const todo = page.locator("#view .todobox");
+  await todo.locator('[data-a="todoToggle"]').click();
+  await expect(todo.locator('[data-step="teams"]')).toContainText("gönderildi");
+  expect(errors).toEqual([]);
+});
