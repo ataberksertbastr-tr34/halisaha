@@ -3,7 +3,7 @@
  * sırayla (kaleci ve misafir işaretli); seviye, telefon, IBAN yazılmaz. İsimler uydurmadır.
  */
 import { describe, expect, it } from "vitest";
-import { teamCard } from "../src/domain/matchcards";
+import { posterCard, teamCard } from "../src/domain/matchcards";
 import { setLang } from "../src/i18n";
 import type { State } from "../src/domain/types";
 import { allIn, match, player, state } from "./helpers/factory";
@@ -62,5 +62,26 @@ describe("takım görseli içeriği", () => {
     const s = setup();
     const json = JSON.stringify(teamCard(s, s.matches[0]));
     for (const secret of ["0555", "TR11", "Gizli Sokak", "0212", "rating", "\"DEF\"", "\"GK\"", "host", "3840"]) expect(json).not.toContain(secret);
+  });
+});
+
+describe("maç afişi içeriği", () => {
+  it("slogan, gün, tarih, saat ve saha maçtan gelir", () => {
+    const s = setup();
+    expect(posterCard(s, s.matches[0])).toEqual({
+      lines: ["Halı saha var,", "Maç var,"], hit: "Çarpışacaz",
+      day: "Cuma", date: "18 Aralık", time: "22:00", venue: "Deneme Halı Saha", file: "mac-afisi-2026-12-18.png",
+    });
+  });
+
+  it("İngilizce", () => {
+    setLang("en");
+    try {
+      const s = setup();
+      const c = posterCard(s, s.matches[0]);
+      expect([c.lines, c.hit, c.day, c.date, c.file]).toEqual([["There's a pitch,", "there's a match,"], "Let's clash", "Friday", "18 December", "match-poster-2026-12-18.png"]);
+    } finally {
+      setLang("tr");
+    }
   });
 });

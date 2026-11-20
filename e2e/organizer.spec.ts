@@ -620,3 +620,27 @@ test("takım görseli: iki takım yelek renkleriyle kare PNG olarak paylaşılı
   await expect(todo.locator('[data-step="teams"]')).toContainText("gönderildi");
   expect(errors).toEqual([]);
 });
+
+test("maç afişi: halı saha maçında arma, saha ve slogan; tarih ve saat maçtan gelir, kare PNG paylaşılır", async ({ page }) => {
+  const errors = watchErrors(page);
+  const files = await stubFileShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const open = page.locator('#view [data-a="imgPoster"]');
+  await expect(open).toHaveText("Maç afişi");
+  await open.click();
+  await expect(page.locator("#modal #sheet-title")).toHaveText("Maç afişi");
+  const img = page.locator("#sq-img");
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1080]);
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "maç afişi")).toEqual([]);
+  await expect(page.locator('#modal [data-a="imgSave"]')).toBeEnabled();
+  await page.locator('#modal [data-a="imgShare"]').click();
+  await expect.poll(files).toHaveLength(1);
+  const [f] = await files();
+  expect([f.name, f.type]).toEqual(["mac-afisi-2026-10-15.png", "image/png"]);
+  expect(f.size).toBeGreaterThan(50_000);
+  await page.locator('#modal [data-a="closeModal"]').click();
+  expect(errors).toEqual([]);
+});

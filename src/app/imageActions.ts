@@ -6,9 +6,10 @@ import { store, today, ui } from "./store";
 import type { Match } from "../domain/types";
 import { currentMatch, getMatch } from "../domain/lineup";
 import { squadCard } from "../domain/squadcard";
-import { teamCard } from "../domain/matchcards";
+import { posterCard, teamCard } from "../domain/matchcards";
 import { squadPng } from "../ui/squadImage";
 import { teamsPng } from "../ui/teamImage";
+import { posterPng } from "../ui/posterImage";
 import { downloadImage, openImageSheet, pendingImage, type PendingImage } from "../ui/views/imagesheet";
 import { sentIf } from "./handlers";
 
@@ -33,6 +34,12 @@ registerActions({
     const card = teamCard(store.s, m);
     if (!card.ready) return;
     void openImageSheet({ title: t("imgTeamsOpen"), hint: t("imgTeamsHint"), file: card.file, mid: m.id, sent: "teams", render: () => teamsPng(card) });
+  },
+  imgPoster: (ds) => {
+    const m = matchOf(ds);
+    if (!m) return;
+    const card = posterCard(store.s, m);
+    void openImageSheet({ title: t("posterOpen"), hint: t("posterHint"), file: card.file, mid: m.id, sent: "", render: () => posterPng(card) });
   },
   // Paylaşım dokunuşun içinde, beklemeden çağrılır (görsel önceden hazır)
   imgShare: () => {

@@ -129,7 +129,8 @@ function attendanceBlock(m: Match): string {
       '<div class="row nowrap">' + shareButtons("squad", t("squadMsg")) + "</div></div>";
   }
   h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(kindOf(m).teams === "tables" ? t("drawTables") : t("buildTeams")) + "</button></div>";
-  h += '<div class="row nowrap mt-s"><button type="button" class="btn ghost grow" data-a="imgOpen">' + IC.image + esc(t("imgOpen")) + "</button>" + "</div>";
+  h += '<div class="row nowrap mt-s"><button type="button" class="btn ghost grow" data-a="imgOpen">' + IC.image + esc(t("imgOpen")) + "</button>" +
+    (fb ? '<button type="button" class="btn ghost grow" data-a="imgPoster">' + IC.image + esc(t("posterOpen")) + "</button>" : "") + "</div>";
   const cands = copyCandidates(S, m).length;
   if (cands) h += '<button type="button" class="btn block ghost mt-s" data-a="copyLastWeek">' + IC.copy + esc(fb ? t("copyLastWeek") : t("copyLastEvent")) + " (" + cands + ")</button>";
   h += '<button type="button" class="btn block ghost mt-s" data-a="pasteList">' + IC.whatsapp + esc(t("pasteList")) + "</button>";

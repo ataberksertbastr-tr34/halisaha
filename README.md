@@ -213,6 +213,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   yedek sırası, kesinleşme durumu). **Paylaş** resmi doğrudan WhatsApp'a
   gönderir, **İndir** galeriye kaydeder. Telefon, IBAN ve borç yazmaz. Kadro
   kesinleştikten sonra paylaşılınca iş listesinde kadro duyurusu yapılmış sayılır.
+- **Maç afişi:** halı saha maçlarında Etkinlik sekmesinde **Maç afişi**: solda
+  arma ve maçın günü, tarihi, saati, sahası; sağda gece ışıklı halı saha; sağ
+  üstte "HALI SAHA VAR, MAÇ VAR, ÇARPIŞACAZ!". Kadrodan önce gruba atmak için;
+  tarih ve gün maçtan geldiği için yanlış yazılamaz.
 - **Takım görseli (Kural 3.3):** Takımlar sekmesinde **Takım görseli**: iki takım
   yelek renginde başlıklarla, numaralı oyuncular, kaleci ve misafir etiketleri.
   Seviye yazmaz. Paylaşınca iş listesinde takımlar duyurulmuş sayılır.
@@ -340,7 +344,7 @@ npx firebase-tools emulators:exec --only auth,firestore --project demo-halisaha 
 
 | Yol | İçerik |
 |---|---|
-| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), turnuva tablosu (`bracket.ts`), puan cetveli (`sheet.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`), katılım günlüğü (`attlog.ts`), iş listesi (`todo.ts`), organizatör hatırlatmaları (`reminders.ts`), banka bildirimi (`bank.ts`), oyuncu sayfası verisi (`pubpage.ts`), görsel içerikleri (`squadcard.ts`, `matchcards.ts`; çizimler `src/ui/squadImage.ts`, `teamImage.ts`, ortak araçlar `imgkit.ts`) |
+| `src/domain/` | Saf iş mantığı: kadro, pay/borç, hesap defteri, takım kurma, Elo, planlama, takvim, şablonlar, kurallar, şema ve migration; etkinlik türleri (`kinds.ts`), skor motoru (`scoring.ts`), kura ve sıra (`draw.ts`), turnuva tablosu (`bracket.ts`), puan cetveli (`sheet.ts`), araçlar (`cars.ts`), disiplin (`discipline.ts`), takım görünümü (`teamstyle.ts`), katılım günlüğü (`attlog.ts`), iş listesi (`todo.ts`), organizatör hatırlatmaları (`reminders.ts`), banka bildirimi (`bank.ts`), oyuncu sayfası verisi (`pubpage.ts`), görsel içerikleri (`squadcard.ts`, `matchcards.ts`; çizimler `src/ui/squadImage.ts`, `teamImage.ts`, `posterImage.ts`, ortak araçlar `imgkit.ts`) |
 | `src/data/` | IndexedDB, otomatik yerel sürümler, yedek dosyası |
 | `src/sync/` | Cihazlar arası eşitleme: üç yönlü birleştirme (`merge.ts`), eşitleme motoru (`engine.ts`), Firestore REST (`firestore.ts`), bulut belgesi (`envelope.ts`), Firebase girişi (`auth.ts`), yapılandırma (`config.ts`) |
 | `src/ui/` | Görünümler, alt sayfalar, saha çizimi ve sürükle-bırak |
