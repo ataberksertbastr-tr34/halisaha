@@ -70,6 +70,25 @@ describe("otomatik takım kurma", () => {
     }
   });
 
+  it("defansif ve ofansif orta saha: orta saha hattı dengelenir, DOS ve OOS iki takıma dağılır", () => {
+    const line = (p: Pos) => (p === "DEF" ? "D" : p === "FWD" ? "F" : p === "DM" || p === "MID" || p === "AM" ? "M" : p);
+    for (let seed = 0; seed < 50; seed++) {
+      const pos: Pos[] = ["GK", "GK", "DEF", "DEF", "DEF", "DEF", "DM", "DM", "MID", "MID", "AM", "AM", "FWD", "FWD"];
+      const { s, m } = setup([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3], pos);
+      generateTeams(s, m, seeded(seed));
+      const posOf = (id: string) => s.players.find((p) => p.id === id)!.pos;
+      for (const k of ["D", "M", "F"]) {
+        const ca = m.teams.a.filter((id) => line(posOf(id)) === k).length;
+        const cb = m.teams.b.filter((id) => line(posOf(id)) === k).length;
+        expect(Math.abs(ca - cb), "hat " + k).toBeLessThanOrEqual(1);
+      }
+      for (const k of ["DM", "AM", "GK"]) {
+        const ca = m.teams.a.filter((id) => posOf(id) === k).length;
+        expect(ca, k).toBe(1);
+      }
+    }
+  });
+
   it("yalnızca oynayan kadroyu kullanır: yedek ve 'Belki' takıma girmez", () => {
     const ps = roster(20);
     const m = allIn(match("m", { format: 4 }), ps.slice(0, 12).map((p) => p.id)); // kontenjan 10
@@ -236,6 +255,21 @@ describe("takım dengesi özeti (Kural 3.1, 3.2)", () => {
     ].join("\n"));
     // Kişisel seviye ve isim yok
     for (const p of ps) expect(text).not.toContain(p.name);
+  });
+
+  it("defansif ve ofansif orta saha özete adıyla ve sırasıyla yazılır", async () => {
+    const { balanceText } = await import("../src/domain/messages");
+    const { setLang } = await import("../src/i18n");
+    setLang("tr");
+    const ps = [
+      player("a1", "Bir", 3, "AM"), player("a2", "İki", 3, "DEF"), player("a3", "Üç", 3, "DM"),
+      player("b1", "Dört", 3, "MID"), player("b2", "Beş", 3, "FWD"), player("b3", "Altı", 3, "AM"),
+    ];
+    const m = allIn(match("m1", { date: "2026-10-15", format: 2 }), ps.map((p) => p.id));
+    m.teams = { a: ["a1", "a2", "a3"], b: ["b1", "b2", "b3"] };
+    const text = balanceText(state(ps, [m], { perf: false }), m);
+    expect(text).toContain("🟡 Sarılar: 3 kişi · ortalama güç 3,0 · 0 kaleci · 1 defans, 1 defansif orta saha, 1 ofansif orta saha");
+    expect(text).toContain("🟠 Turuncular: 3 kişi · ortalama güç 3,0 · 0 kaleci · 1 orta saha, 1 ofansif orta saha, 1 forvet");
   });
 
   it("geçen maçla karşılaştırma; takımlar kurulmadıysa özet yok; etkinlikte mevki yazılmaz", async () => {

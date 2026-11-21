@@ -937,6 +937,16 @@ registerActions({
     ui.editId = ui.editId === ds.id ? null : ds.id!;
     render();
   },
+  // Yeni oyuncu formunda seviye: yalnızca seçim değişir (yazılan ad kaybolmasın diye yeniden çizilmez)
+  newRate: (ds, el) => {
+    const inp = document.getElementById("newRate") as HTMLInputElement | null;
+    if (inp) inp.value = ds.v || "3";
+    el.parentElement?.querySelectorAll("button").forEach((b) => {
+      const on = b === el;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  },
   rate: (ds) => {
     const p = store.s.players.find((x) => x.id === ds.id);
     if (!p) return;

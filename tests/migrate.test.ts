@@ -20,6 +20,38 @@ const V1 = read("backup-v1.json");
 const V2 = read("backup-v2-legacy.json");
 const FAR_FUTURE = "2099-01-01";
 
+describe("v6 → v7: defansif ve ofansif orta saha", () => {
+  const v6 = {
+    v: 6, settings: {}, fields: [],
+    players: [
+      { id: "a", name: "Ali Deneme", rating: 3, pos: "DEF" }, { id: "b", name: "Berk Deneme", rating: 3, pos: "MID" },
+      { id: "c", name: "Cem Deneme", rating: 3, pos: "XX" },
+    ],
+    matches: [{ id: "m", date: "2026-10-15", time: "21:00", att: { a: "in" }, order: ["a"], guests: [{ id: "g", name: "Misafir Deneme", pos: "FWD" }] }],
+  };
+
+  it("v6 verisi aynen v7'ye taşınır; eski mevkiler korunur, tanınmayan mevki boşalır", () => {
+    const s = migrate(v6);
+    expect(SCHEMA_VERSION).toBe(7);
+    expect(s.v).toBe(7);
+    expect(s.players.map((p) => p.pos)).toEqual(["DEF", "MID", ""]);
+    expect(s.matches[0].guests[0].pos).toBe("FWD");
+  });
+
+  it("v7'de defansif ve ofansif orta saha (oyuncu ve misafir) korunur", () => {
+    const v7 = JSON.parse(JSON.stringify(v6));
+    v7.v = 7;
+    v7.players[0].pos = "DM";
+    v7.players[1].pos = "AM";
+    v7.matches[0].guests[0].pos = "DM";
+    const s = migrate(v7);
+    expect(s.players.map((p) => p.pos)).toEqual(["DM", "AM", ""]);
+    expect(s.matches[0].guests[0].pos).toBe("DM");
+    // Yedekten geri yükleme de aynı
+    expect(parseBackup(JSON.stringify(s)).players.map((p) => p.pos)).toEqual(["DM", "AM", ""]);
+  });
+});
+
 describe("v2 yedeği (gerçek eski uygulama çıktısı)", () => {
   const raw = JSON.parse(V2);
   const s = parseBackup(V2);

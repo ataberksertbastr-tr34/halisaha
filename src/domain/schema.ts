@@ -2,7 +2,7 @@ import type { Kind, Match, State, Settings } from "./types";
 import { uid } from "./text";
 
 /** Güncel veri şeması sürümü. Değiştiğinde migrate.ts'e adım + test eklenmeli. */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export function defaultSettings(): Settings {
   return {

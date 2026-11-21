@@ -8,7 +8,8 @@
  * grupları birlikte yerleşir. Rastgele açgözlü kurulum + takas iyileştirmesi
  * birçok kez denenir; en iyi skorlulardan biri seçilir (her basışta farklı ama dengeli).
  */
-import type { Match, PairRule, Person, Pos, Side, State } from "./types";
+import type { Line, Match, PairRule, Person, Pos, Side, State } from "./types";
+import { LINE } from "./types";
 import { active, getP } from "./lineup";
 import { strengthFn } from "./elo";
 
@@ -64,6 +65,8 @@ interface Cand {
   id: string;
   r: number;
   pos: Pos;
+  /** Hattı (takım kurarken hatlar dengelenir) */
+  line: Line;
   lock?: Side;
 }
 
@@ -93,7 +96,8 @@ export function computeTeams(s: State, m: Match, rng: Rng = Math.random): TeamRe
   const ps: Cand[] = ids.map((id) => {
     const p = getP(s, m, id);
     const lock = m.locks[id];
-    return { id, r: str(id), pos: (p && p.pos) || "", ...(lock ? { lock } : {}) };
+    const pos = (p && p.pos) || "";
+    return { id, r: str(id), pos, line: LINE[pos] || "", ...(lock ? { lock } : {}) };
   });
   const byId = new Map(ps.map((p) => [p.id, p]));
   const n = ps.length;
@@ -116,8 +120,11 @@ export function computeTeams(s: State, m: Match, rng: Rng = Math.random): TeamRe
   const cost = (A: string[], B: string[]): number => {
     const sum = (x: string[]) => x.reduce((t, id) => t + byId.get(id)!.r, 0);
     const cnt = (x: string[], k: string) => x.filter((id) => byId.get(id)!.pos === k).length;
+    const lines = (x: string[], k: string) => x.filter((id) => byId.get(id)!.line === k).length;
     let c = Math.abs(sum(A) - sum(B)) * 2;
-    for (const k of ["DEF", "MID", "FWD"]) c += Math.abs(cnt(A, k) - cnt(B, k));
+    // Hatlar (savunma, orta saha, hücum) dengelenir; DOS ve OOS da iki takıma dağılsın
+    for (const k of ["D", "M", "F"]) c += Math.abs(lines(A, k) - lines(B, k));
+    for (const k of ["DM", "AM"]) c += 0.5 * Math.abs(cnt(A, k) - cnt(B, k));
     const gk = Math.abs(cnt(A, "GK") - cnt(B, "GK"));
     if (gk > 1) c += 3 * (gk - 1);
     c += 20 * brokenRules(rules, A).length;
@@ -135,8 +142,8 @@ export function computeTeams(s: State, m: Match, rng: Rng = Math.random): TeamRe
     const ca: Record<string, number> = {}, cb: Record<string, number> = {};
     const put = (g: Cand[], toA: boolean) =>
       g.forEach((p) => {
-        if (toA) { A.push(p.id); sa += p.r; ca[p.pos] = (ca[p.pos] || 0) + 1; }
-        else { B.push(p.id); sb += p.r; cb[p.pos] = (cb[p.pos] || 0) + 1; }
+        if (toA) { A.push(p.id); sa += p.r; ca[p.line] = (ca[p.line] || 0) + 1; }
+        else { B.push(p.id); sb += p.r; cb[p.line] = (cb[p.line] || 0) + 1; }
       });
     const lockOf = (g: Cand[]) => g.find((p) => p.lock)?.lock;
     const hasGK = (g: Cand[]) => g.some((p) => p.pos === "GK");
@@ -155,7 +162,7 @@ export function computeTeams(s: State, m: Match, rng: Rng = Math.random): TeamRe
       else if (g.length > roomB) toA = true;
       else if (hasGK(g) && (ca.GK || 0) !== (cb.GK || 0)) toA = (ca.GK || 0) < (cb.GK || 0);
       else {
-        const pos = g.length === 1 ? g[0].pos : "";
+        const pos = g.length === 1 ? g[0].line : "";
         const pa = ca[pos] || 0, pb = cb[pos] || 0;
         if (pos && pa !== pb && rng() < 0.6) toA = pa < pb;
         else toA = Math.abs(sa - sb) < 1e-9 ? rng() < 0.5 : sa < sb;

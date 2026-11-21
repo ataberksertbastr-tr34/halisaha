@@ -202,8 +202,7 @@ describe("şema v5 → v6", () => {
       ],
     };
     const s = migrate(v5);
-    expect(SCHEMA_VERSION).toBe(6);
-    expect(s.v).toBe(6);
+    expect(s.v).toBe(SCHEMA_VERSION);
     expect(s.matches[0].log).toEqual([]);
     expect(s.matches[0].att).toEqual({ p0: "in" });
     // v6 verisindeki günlük korunur; tanınmayan olay ve kişisiz kayıt temizlenir
