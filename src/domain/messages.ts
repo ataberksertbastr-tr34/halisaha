@@ -6,6 +6,7 @@
  */
 import { DAYS, DAYS_SHORT, lang, money, t } from "../i18n";
 import type { Match, State, TemplateKey } from "./types";
+import { POSITIONS } from "./types";
 import { render, templateOf } from "./templates";
 import { ddmm, weekday } from "./dates";
 import { fieldOf, mapsUrl } from "./fields";
@@ -254,7 +255,7 @@ export function balanceText(s: State, m: Match): string {
     const parts = [t("balPeople", { n: x.n }), t("balAvg", { a: nf.format(x.avg) })];
     if (fb) {
       parts.push(t("balGk", { n: x.gk }));
-      const pos = (["DEF", "MID", "FWD"] as const).filter((p) => x.pos[p]).map((p) => x.pos[p] + " " + t(("pos" + p) as "posDEF").toLocaleLowerCase(lang()));
+      const pos = POSITIONS.filter((p) => p !== "GK" && x.pos[p]).map((p) => x.pos[p] + " " + t(("pos" + p) as "posDEF").toLocaleLowerCase(lang()));
       if (pos.length) parts.push(pos.join(", "));
     }
     return teamEmoji(s, k) + " " + teamName(s, k) + ": " + parts.join(" · ");

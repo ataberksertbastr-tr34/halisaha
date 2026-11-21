@@ -287,6 +287,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   misafirler adıyla önerilir, getireni/seviyesi/mevkii gelir; eski gelişinden
   ödenmemiş payı ya da cezası varsa eklemeden önce sorulur. Misafire ihlal
   yazılınca getirene de kademeli 1.8 kaydı önerilir.
+- **Mevkiler:** kaleci, defans, defansif orta saha (DOS), orta saha, ofansif orta
+  saha (OOS), forvet. Takım kurarken savunma, orta saha (DOS, OS, OOS) ve hücum
+  hatları dengelenir; DOS ve OOS da iki takıma dağıtılır. Sahada DOS orta saha
+  hattının biraz gerisinde, OOS biraz önünde durur.
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans

@@ -644,3 +644,38 @@ test("maç afişi: halı saha maçında arma, saha ve slogan; tarih ve saat maç
   await page.locator('#modal [data-a="closeModal"]').click();
   expect(errors).toEqual([]);
 });
+
+test("mevkiler: defansif ve ofansif orta saha seçilir, rozet ve filtrede görünür, sahada orta saha hattında yer alır", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  const setPos = async (name: string, label: string) => {
+    const row = page.locator(".prow", { hasText: name });
+    await row.locator('[data-a="editP"]').click();
+    const sel = page.locator('[data-f="p.pos"]');
+    await expect(sel.locator("option")).toHaveText(["Mevki yok", "Kaleci", "Defans", "Defansif orta saha", "Orta saha", "Ofansif orta saha", "Forvet"]);
+    await sel.selectOption({ label });
+    await row.locator('[data-a="editP"]').click();
+    await expect(page.locator('[data-f="p.pos"]')).toHaveCount(0);
+  };
+  await setPos("Orta Ömer", "Defansif orta saha");
+  await setPos("Golcü Gökhan", "Ofansif orta saha");
+  await expect(page.locator(".prow", { hasText: "Orta Ömer" }).locator(".pos")).toHaveText("DOS");
+  await expect(page.locator(".prow", { hasText: "Golcü Gökhan" }).locator(".pos")).toHaveText("OOS");
+  // Filtre: yalnızca defansif orta sahalar
+  await page.locator('[data-a="flt"][data-t="pos"][data-v="DM"]').click();
+  await expect(page.locator("#view .prow:visible")).toHaveCount(1);
+  await expect(page.locator("#view .prow:visible")).toContainText("Orta Ömer");
+  await page.locator('[data-a="flt"][data-t="pos"][data-v=""]').click();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "oyuncular")).toEqual([]);
+
+  // Takımlar: sahada DOS ve OOS rozetleri
+  await openThursday(page);
+  await page.locator('#tabs [data-v="teams"]').click();
+  await page.locator('#view [data-a="gen"]').click();
+  const labels = await page.locator("svg.pitch .pp text").allTextContents();
+  expect(labels).toContain("DOS");
+  expect(labels).toContain("OOS");
+  expect(errors).toEqual([]);
+});

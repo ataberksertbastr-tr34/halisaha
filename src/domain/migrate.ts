@@ -23,7 +23,7 @@ export class BackupError extends Error {
   }
 }
 
-const POS_OK = new Set(["", "GK", "DEF", "MID", "FWD"]);
+const POS_OK = new Set(["", "GK", "DEF", "DM", "MID", "AM", "FWD"]);
 const ATT_OK = new Set(["in", "maybe", "out", "late"]);
 const STATUS_OK = new Set(["open", "played", "cancelled"]);
 const KIND_OK = new Set<string>(KINDS);
@@ -177,12 +177,23 @@ function v5to6(s: Raw): Raw {
   return s;
 }
 
+/**
+ * v6 → v7 (defansif ve ofansif orta saha mevkileri):
+ *  - Veri değişmez; mevki listesine "DM" ve "AM" eklendi.
+ *  - Sürüm, eski uygulamanın yeni mevkileri silmemesi için artar: v6 uygulaması v7 veriyi
+ *    görünce hiçbir şeyi değiştirmeden "Önce güncelle" der (yerelde ve eşitlemede).
+ */
+function v6to7(s: Raw): Raw {
+  return s;
+}
+
 /** Sürüm N'den N+1'e geçiş adımları (v1→v2 yukarıdaki legacyV1toV2'dir). */
 const STEPS: Record<number, (s: Raw) => Raw> = {
   2: v2to3,
   3: v3to4,
   4: v4to5,
   5: v5to6,
+  6: v6to7,
 };
 
 function detectVersion(s: Raw): number {

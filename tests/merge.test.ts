@@ -1237,7 +1237,7 @@ describe("şema v6 alanları: katılım günlüğü", () => {
     const r = fork(b, TR);
     m1(r).log = [entry("eR", "p0", "in", 300, { n: 1 })];
     const out = merge3(null, migrate(old), r);
-    expect(out.v).toBe(6);
+    expect(out.v).toBe(SCHEMA_VERSION);
     expect(ids(m1(out).log)).toEqual(["eR"]);
     expect(m1(out).sent).toEqual({});
   });

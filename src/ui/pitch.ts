@@ -2,6 +2,7 @@
 import { t } from "../i18n";
 import { store } from "../app/store";
 import type { Match, Person } from "../domain/types";
+import { LINE } from "../domain/types";
 import { esc } from "../domain/text";
 import { getP, isGK } from "../domain/lineup";
 import { posShort } from "./components";
@@ -43,10 +44,13 @@ export function pitchSVG(m: Match, pick: string | null = null): string {
     const ps = ids.map((id) => getP(store.s, m, id)).filter(Boolean) as Person[];
     const gk = ps.find(isGK);
     const rest = ps.filter((p) => p !== gk);
-    const by: Record<string, Person[]> = { DEF: [], MID: [], FWD: [] };
-    rest.forEach((p) => (by[p.pos] || by.MID).push(p));
+    // Hatlar: savunma, orta saha (DOS, OS, OOS sırasıyla), hücum; mevkisiz olan orta sahada
+    const by: Record<string, Person[]> = { D: [], M: [], F: [] };
+    const depth = (p: Person) => (p.pos === "DM" ? 0 : p.pos === "AM" ? 2 : 1);
+    rest.forEach((p) => (by[LINE[p.pos]] || by.M).push(p));
+    by.M.sort((x, y) => depth(x) - depth(y));
     const rows: Person[][] = [];
-    [by.DEF, by.MID, by.FWD].forEach((r) => {
+    [by.D, by.M, by.F].forEach((r) => {
       if (!r.length) return;
       if (r.length <= 4) rows.push(r);
       else {
@@ -56,16 +60,17 @@ export function pitchSVG(m: Match, pick: string | null = null): string {
     });
     const color = top ? "var(--bibA)" : "var(--bibB)";
     const ink = top ? "var(--on-bibA)" : "var(--on-bibB)";
-    const pts: { p: Person; x: number; y: number }[] = [];
-    if (gk) pts.push({ p: gk, x: W / 2, y: 42 });
+    const pts: { p: Person; x: number; y: number; n: number }[] = [];
+    if (gk) pts.push({ p: gk, x: W / 2, y: 42, n: 1 });
     rows.forEach((r, ri) => {
       const y = rows.length === 1 ? 140 : 92 + ri * (96 / (rows.length - 1));
-      r.forEach((p, j) => pts.push({ p, x: 30 + ((W - 60) * (j + 1)) / (r.length + 1), y }));
+      // DOS hattın biraz gerisinde, OOS biraz önünde (rakip kaleye doğru)
+      const shift = (p: Person) => (p.pos === "DM" ? -6 : p.pos === "AM" ? 6 : 0);
+      r.forEach((p, j) => pts.push({ p, x: 30 + ((W - 60) * (j + 1)) / (r.length + 1), y: y + shift(p), n: r.length }));
     });
-    const rowLen = (y: number) => pts.filter((q) => q.y === y).length;
     pts.forEach((o) => {
       const y = top ? o.y : H - o.y;
-      const max = rowLen(o.y) >= 4 ? 7 : 10;
+      const max = o.n >= 4 ? 7 : 10;
       const label = short[o.p.id] || o.p.name;
       const nm = label.length > max ? label.slice(0, max - 1) + "…" : label;
       const sel = pick === o.p.id;
@@ -75,9 +80,9 @@ export function pitchSVG(m: Match, pick: string | null = null): string {
       s += '<circle cx="' + o.x + '" cy="' + y + '" r="12" style="fill:' + color + '" stroke="#13201A" stroke-width="2"/>';
       if (o.p.pos) {
         const lbl = t(posShort(o.p.pos));
-        s += '<text x="' + o.x + '" y="' + (y + 4) + '" text-anchor="middle" font-size="' + (lbl.length > 1 ? 9 : 11) + '" font-weight="700" style="fill:' + ink + '">' + esc(lbl) + "</text>";
+        s += '<text x="' + o.x + '" y="' + (y + 4) + '" text-anchor="middle" font-size="' + (lbl.length > 2 ? 8 : lbl.length > 1 ? 9 : 11) + '" font-weight="700" style="fill:' + ink + '">' + esc(lbl) + "</text>";
       }
-      s += '<text x="' + o.x + '" y="' + (y + 27) + '" text-anchor="middle" font-size="' + (rowLen(o.y) >= 4 ? 11 : 12) + '" font-weight="600" fill="#fff" stroke="#0F3B24" stroke-width="3" paint-order="stroke">' + esc(nm) + "</text></g>";
+      s += '<text x="' + o.x + '" y="' + (y + 27) + '" text-anchor="middle" font-size="' + (o.n >= 4 ? 11 : 12) + '" font-weight="600" fill="#fff" stroke="#0F3B24" stroke-width="3" paint-order="stroke">' + esc(nm) + "</text></g>";
     });
   };
   draw(m.teams.a, true);

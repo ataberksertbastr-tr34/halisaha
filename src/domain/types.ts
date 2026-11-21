@@ -1,6 +1,6 @@
 import type { Lang } from "../i18n";
 
-export type Pos = "" | "GK" | "DEF" | "MID" | "FWD";
+export type Pos = "" | "GK" | "DEF" | "DM" | "MID" | "AM" | "FWD";
 
 /**
  * Etkinlik türü (Yönetmelik Kısım 1 ve 3). Halı saha maçı "football";
@@ -8,7 +8,14 @@ export type Pos = "" | "GK" | "DEF" | "MID" | "FWD";
  */
 export type Kind = "football" | "paintball" | "airsoft" | "volleyball" | "footvolley" | "tabletennis" | "kiraathane" | "other";
 export const KINDS: Kind[] = ["football", "paintball", "airsoft", "volleyball", "footvolley", "tabletennis", "kiraathane", "other"];
-export const POSITIONS: Exclude<Pos, "">[] = ["GK", "DEF", "MID", "FWD"];
+export const POSITIONS: Exclude<Pos, "">[] = ["GK", "DEF", "DM", "MID", "AM", "FWD"];
+
+/**
+ * Mevkinin hattı: savunma (D), orta saha (M), hücum (F). Defansif ve ofansif orta saha orta saha
+ * hattındadır; takım kurarken hatlar dengelenir, sahada DOS biraz geride, OOS biraz önde durur.
+ */
+export type Line = "" | "GK" | "D" | "M" | "F";
+export const LINE: Record<Pos, Line> = { "": "", GK: "GK", DEF: "D", DM: "M", MID: "M", AM: "M", FWD: "F" };
 
 /** Katılım: Var / Belki / Yok / Geç iptal. Yanıt yoksa anahtar hiç yoktur. */
 export type Att = "in" | "maybe" | "out" | "late";
