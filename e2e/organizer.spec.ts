@@ -679,3 +679,34 @@ test("mevkiler: defansif ve ofansif orta saha seçilir, rozet ve filtrede görü
   expect(labels).toContain("OOS");
   expect(errors).toEqual([]);
 });
+
+test("oyuncu ekleme: altı mevki ve beş seviye düğmesi; seçilen mevki ve seviyeyle kaydedilir", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  const add = page.locator('section[aria-labelledby="h-add"]');
+  await expect(add.locator("#newPos option")).toHaveText(["Mevki yok", "Kaleci", "Defans", "Defansif orta saha", "Orta saha", "Ofansif orta saha", "Forvet"]);
+  const rates = add.locator('[data-a="newRate"]');
+  await expect(rates).toHaveText(["1", "2", "3", "4", "5"]);
+  await expect(add.locator('[data-a="newRate"][aria-pressed="true"]')).toHaveText("3");
+  await expect(add).toContainText("1 zayıf · 5 çok iyi");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "oyuncu ekle")).toEqual([]);
+  // Ad yazılır, mevki ve seviye seçilir: yazılan ad seviye seçilince kaybolmaz
+  await add.locator("#newName").fill("Yeni Yıldız");
+  await add.locator("#newPos").selectOption({ label: "Ofansif orta saha" });
+  await rates.nth(4).click();
+  await expect(rates.nth(4)).toHaveAttribute("aria-pressed", "true");
+  await expect(rates.nth(2)).toHaveAttribute("aria-pressed", "false");
+  await expect(add.locator("#newName")).toHaveValue("Yeni Yıldız");
+  await add.locator('[data-a="addPlayer"]').click();
+  const row = page.locator(".prow", { hasText: "Yeni Yıldız" });
+  await expect(row.locator(".pos")).toHaveText("OOS");
+  await expect(row.locator(".pips")).toHaveText("●●●●●");
+  await row.locator('[data-a="editP"]').click();
+  await expect(page.locator('[data-f="p.pos"]')).toHaveValue("AM");
+  await expect(page.locator('.editor [data-a="rate"][aria-pressed="true"]')).toHaveText("5");
+  // Form varsayılana döner
+  await expect(add.locator('[data-a="newRate"][aria-pressed="true"]')).toHaveText("3");
+  expect(errors).toEqual([]);
+});

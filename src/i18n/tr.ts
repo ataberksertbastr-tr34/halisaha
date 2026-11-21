@@ -13,7 +13,7 @@ export const tr = {
   perPerson: "Kişi başı", collected: "Toplanan", outstanding: "Kalan", paid: "Ödedi", unpaid: "Ödemedi", free: "Ücretsiz",
   payReminder: "Ödeme hatırlatması", allPaid: "Hepsi ödedi", debts: "Biriken borçlar", noDebts: "Kimsenin borcu yok.", settle: "Ödendi say",
   noPayMatch: "Ödeme takibi için önce bir etkinlik oluştur.", matchSel: "Etkinlik", payers: "Ödeyen",
-  addPlayer: "Oyuncu ekle", name: "Ad", rating: "Seviye", bulkAdd: "Toplu ekle", bulkHint: "Her satıra bir isim yaz (WhatsApp grubundan yapıştırabilirsin).", addAll: "Hepsini ekle",
+  addPlayer: "Oyuncu ekle", name: "Ad", rating: "Seviye", rateScale: "1 zayıf · 5 çok iyi", bulkAdd: "Toplu ekle", bulkHint: "Her satıra bir isim yaz (WhatsApp grubundan yapıştırabilirsin).", addAll: "Hepsini ekle",
   active: "Aktif yap", passive: "Pasif yap", passiveTag: "pasif", del: "Sil", sure: "Emin misin?", roster: "Oyuncular",
   settingsTitle: "Genel ayarlar", defaultPrice: "Varsayılan saha ücreti (₺)", iban: "IBAN", ibanName: "Hesap sahibi",
   slots: "Haftalık maç günleri", slot: "Maç", gkFree: "Kaleciler ücret ödemez", round: "Kişi başı payı 5 ₺'ye yuvarla", language: "Dil",

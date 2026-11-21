@@ -291,6 +291,7 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   saha (OOS), forvet. Takım kurarken savunma, orta saha (DOS, OS, OOS) ve hücum
   hatları dengelenir; DOS ve OOS da iki takıma dağıtılır. Sahada DOS orta saha
   hattının biraz gerisinde, OOS biraz önünde durur.
+  Oyuncu eklerken mevki listeden, seviye 1–5 düğmelerinden seçilir (1 zayıf, 5 çok iyi).
 - **Takımlar:** güç + mevki + kaleci dengeli otomatik kurma, elle kurma, sahada
   sürükle-bırak takas, oyuncuyu takıma kilitleme, "aynı takımda olsun/olmasın"
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans

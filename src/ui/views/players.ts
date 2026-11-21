@@ -11,11 +11,14 @@ import { IC } from "../icons";
 
 export function viewPlayers(): string {
   const S = store.s;
-  let h = '<section class="section" aria-labelledby="h-add"><h2 id="h-add">' + esc(t("addPlayer")) + '</h2><div class="row add-row">' +
+  // Seviye beş düğmeyle seçilir: hepsi aynı anda görünsün (açılır kutuda yalnızca seçili olan görünüyordu)
+  let h = '<section class="section" aria-labelledby="h-add"><h2 id="h-add">' + esc(t("addPlayer")) + "</h2>" +
     '<input type="text" id="newName" placeholder="' + esc(t("name")) + '" aria-label="' + esc(t("name")) + '" autocomplete="off" enterkeyhint="done">' +
-    '<select id="newPos" aria-label="' + esc(t("position")) + '">' + posOptions("") + "</select>" +
-    '<select id="newRate" aria-label="' + esc(t("rating")) + '">' + [1, 2, 3, 4, 5].map((r) => '<option value="' + r + '"' + (r === 3 ? " selected" : "") + ">" + esc(t("rating")) + " " + r + "</option>").join("") + "</select>" +
-    '<button type="button" class="btn primary" data-a="addPlayer">' + esc(t("add")) + "</button></div>" +
+    '<label class="fld mt-s">' + esc(t("position")) + '<select id="newPos">' + posOptions("") + "</select></label>" +
+    '<div class="lbl mt-s">' + esc(t("rating")) + ' <span class="muted small">' + esc(t("rateScale")) + "</span></div>" +
+    '<div class="row nowrap add-rate"><div class="seg rate" role="group" aria-label="' + esc(t("rating")) + '">' +
+    [1, 2, 3, 4, 5].map((v) => '<button type="button" data-a="newRate" data-v="' + v + '" class="' + (v === 3 ? "on" : "") + '" aria-pressed="' + (v === 3) + '">' + v + "</button>").join("") +
+    '</div><input type="hidden" id="newRate" value="3"><button type="button" class="btn primary grow" data-a="addPlayer">' + esc(t("add")) + "</button></div>" +
     '<details class="mt"><summary>' + esc(t("bulkAdd")) + '</summary><p class="small muted">' + esc(t("bulkHint")) + '</p><textarea id="bulk" aria-label="' + esc(t("bulkAdd")) + '"></textarea><button type="button" class="btn mt-s" data-a="bulkAdd">' + esc(t("addAll")) + "</button></details></section>";
   if (!S.players.length) return h;
   const dm = debtMap(S, today()), stats = computeStats(S), rel = reliability(S), disc = statusMap(S);

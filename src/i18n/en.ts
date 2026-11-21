@@ -15,7 +15,7 @@ export const en: Record<MsgKey, string> = {
   perPerson: "Per person", collected: "Collected", outstanding: "Outstanding", paid: "Paid", unpaid: "Not paid", free: "Free",
   payReminder: "Payment reminder", allPaid: "Everyone paid", debts: "Outstanding debts", noDebts: "Nobody owes anything.", settle: "Mark paid",
   noPayMatch: "Create an event first to track payments.", matchSel: "Event", payers: "Payers",
-  addPlayer: "Add player", name: "Name", rating: "Level", bulkAdd: "Bulk add", bulkHint: "One name per line (you can paste from the WhatsApp group).", addAll: "Add all",
+  addPlayer: "Add player", name: "Name", rating: "Level", rateScale: "1 weak · 5 very strong", bulkAdd: "Bulk add", bulkHint: "One name per line (you can paste from the WhatsApp group).", addAll: "Add all",
   active: "Make active", passive: "Make inactive", passiveTag: "inactive", del: "Delete", sure: "Sure?", roster: "Players",
   settingsTitle: "General settings", defaultPrice: "Default field fee (₺)", iban: "IBAN", ibanName: "Account holder",
   slots: "Weekly match days", slot: "Match", gkFree: "Keepers play for free", round: "Round the share up to 5 ₺", language: "Language",
