@@ -1,6 +1,6 @@
 /**
  * Duyurular: grupta paylaşılacak hazır metinler.
- *  - Uygulamaya geçiş (Kural 14.3) ve test/geri bildirim (14.4)
+ *  - Uygulamaya geçiş: esas alınan kayıt (Kural 14.3) ve geri bildirim (14.4)
  *  - Kural değişikliği (12.2)
  *  - İptal duyurusu (1.9)
  *  - Altın kurallar ve grup iletişimi hatırlatması (Bölüm 13)
@@ -37,10 +37,10 @@ export function moveText(): string {
   const items = MOVE_ITEMS.filter((k) => sel[k]).map((k) => "• " + L2(MOVE_TXT[k]));
   if (lang() === "en") {
     return "📲 Moving to the Predators app\n\nFrom now on these are handled in the app:\n" + items.join("\n") +
-      "\n\nThe app's record counts from this announcement on; references to the WhatsApp group in our rules cover the app for these (Rule 14.3).\n\nIf you spot a bug or have a suggestion, tell the organiser (Rule 14.4).";
+      "\n\nFrom this announcement on, the app's record counts for these (Rule 14.3).\n\nIf you spot a bug or have a suggestion, tell the organiser (Rule 14.4).";
   }
   return "📲 Predators uygulamasına geçiyoruz\n\nBundan sonra şu işlemler uygulamadan yürütülecek:\n" + items.join("\n") +
-    "\n\nBu duyurudan sonra bu işlemlerde uygulamadaki kayıt esas alınır; yönetmelikte WhatsApp grubuna yapılan atıflar bu işlemler için uygulamayı da kapsar (Kural 14.3).\n\nFark ettiğiniz hatalar ve önerileriniz için bana yazın (Kural 14.4).";
+    "\n\nBu duyurudan sonra bu işlemlerde uygulamadaki kayıt esas alınır (Kural 14.3).\n\nFark ettiğiniz hatalar ve önerileriniz için bana yazın (Kural 14.4).";
 }
 
 export function ruleChangeText(): string {
