@@ -354,6 +354,7 @@ select { padding-right: 30px; }
 .iban code { font-family: inherit; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .payrow .btn { white-space: nowrap; }
 .sublinks { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.debt-meta { display: block; }
 
 /* ---------- alt sekmeler: iki temada da gece siyahı çerçeve, altın gösterge ---------- */
 #tabs { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(14, 16, 21, .97); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); border-top: 1px solid rgba(201, 160, 75, .34); padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; box-shadow: 0 -12px 30px -18px rgba(0, 0, 0, .6); }

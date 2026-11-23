@@ -140,7 +140,8 @@ function debtsSection(): string {
     const host = d.host ? S.players.find((p) => p.id === d.host) : null;
     // Misafirin borcu getirene misafirin adıyla hatırlatılır (Kural 1.8)
     const u = d.phone ? waPersonal(S, d.phone, d.name, d.total) : host ? waLink(host.phone, guestPayText(S, host.name, d.name, d.total)) : "";
-    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="sublinks"><span class="small muted">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + "</span>" + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remindShort")) + "</a>" : "") +
+    // Açıklama kendi satırında, bağlantılar (Hatırlat, Döküm) alttaki satırda birlikte: dar ekranda tek bağlantı aşağı kaymasın
+    h += '<div class="payrow"><div class="pname">' + personBtn(d.id, d.name) + '<span class="small muted debt-meta">' + esc(t("unpaidN", { n: d.n }) + (host ? " · " + t("guestOf", { n: host.name }) : "")) + '</span><span class="sublinks">' + (u ? '<a class="linkbtn" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t("remindShort")) + "</a>" : "") +
       '<button type="button" class="linkbtn" data-a="statement" data-id="' + esc(d.id) + '">' + esc(t("statementShort")) + "</button>" +
       '</span></div><span class="amount">' + esc(money(d.total)) + '</span><button type="button" class="btn sm" data-a="settle" data-id="' + esc(d.id) + '">' + esc(t("settle")) + "</button></div>";
   });

@@ -10,7 +10,7 @@ import type { State } from "../domain/types";
 import { backupText, DAY, downloadBackup, readFileText, REMIND_EVERY_DAYS, shareBackup } from "../data/backup";
 import { listSnapshots, readSnapshot, updateMeta } from "../data/persist";
 import { openImportConfirm, openImportSheet, openVersionsSheet } from "../ui/views/backup";
-import { cleanBulkLine, cleanName, norm, uid } from "../domain/text";
+import { cleanName, norm, uid } from "../domain/text";
 import { currentMatch, getMatch, getP, lineup, materializeOrder, promoted, setAtt } from "../domain/lineup";
 import { joinBlock, retireMatch } from "../domain/discipline";
 import { isFootball, kindOf } from "../domain/kinds";
@@ -20,6 +20,7 @@ import { onEventField } from "./eventHandlers";
 import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } from "../domain/roster";
 import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
 import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
+import { parseBulkLine, type BulkLine } from "../domain/bulk";
 import { applyPlan, choose, listDateIssues, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
@@ -925,11 +926,12 @@ registerActions({
     commit();
   },
   bulkAdd: () => {
-    const lines = val("#bulk").split(/\r?\n/).map(cleanBulkLine).filter(Boolean);
+    // "Ali Yılmaz, DOS, 4": mevki ve seviye de alınır (domain/bulk.ts)
+    const lines = val("#bulk").split(/\r?\n/).map(parseBulkLine).filter((x): x is BulkLine => !!x);
     let n = 0;
     mutate(() => (n ? t("added", { n }) : null), () => {
       lines.forEach((l) => {
-        if (addPlayerNamed(l, 3, "")) n++;
+        if (addPlayerNamed(l.name, l.rating, l.pos)) n++;
       });
       if (!n) return false;
     });

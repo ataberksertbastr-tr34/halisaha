@@ -15,7 +15,7 @@ export const en: Record<MsgKey, string> = {
   perPerson: "Per person", collected: "Collected", outstanding: "Outstanding", paid: "Paid", unpaid: "Not paid", free: "Free",
   payReminder: "Payment reminder", allPaid: "Everyone paid", debts: "Outstanding debts", noDebts: "Nobody owes anything.", settle: "Mark paid",
   noPayMatch: "Create an event first to track payments.", matchSel: "Event", payers: "Payers",
-  addPlayer: "Add player", name: "Name", rating: "Level", rateScale: "1 weak · 5 very strong", bulkAdd: "Bulk add", bulkHint: "One name per line (you can paste from the WhatsApp group).", addAll: "Add all",
+  addPlayer: "Add player", name: "Name", rating: "Level", rateScale: "1 weak · 5 very strong", bulkAdd: "Bulk add", bulkHint: "One name per line (you can paste from the WhatsApp group). Optionally add position and level after commas: Ali Smith, DM, 4", addAll: "Add all",
   active: "Make active", passive: "Make inactive", passiveTag: "inactive", del: "Delete", sure: "Sure?", roster: "Players",
   settingsTitle: "General settings", defaultPrice: "Default field fee (₺)", fixedShare: "Fixed fee per player (₺)", fixedSharePh: "Empty: split the field fee", fixedShareHint: "When set, everyone pays this fee for football matches however many turn up; any surplus or shortfall goes to the cash box. When empty, the field fee is split among payers (Rule 2.1, 2.2).", fixedShareOn: "Fixed fee per player", iban: "IBAN", ibanName: "Account holder",
   slots: "Weekly match days", slot: "Match", gkFree: "Keepers play for free", round: "Round the share up to 5 ₺", language: "Language",

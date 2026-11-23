@@ -271,6 +271,8 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler. Sonuç bölümü maç gününe kadar
   kapalı durur (sayfa kısalır; iptal ve silme her zaman görünür).
+- **Toplu oyuncu ekleme:** her satıra bir isim; istenirse virgülle mevki ve seviye
+  ("Ali Yılmaz, DOS, 4").
 - **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
   uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
   açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
