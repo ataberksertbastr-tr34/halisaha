@@ -279,8 +279,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Toplu oyuncu ekleme:** her satıra bir isim; istenirse virgülle mevki ve seviye
   ("Ali Yılmaz, DOS, 4").
 - **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
-  uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
-  açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
+  uyarısı (tek dokunuşla sonuç bölümüne götürür). Gece yarısını geçse de saati yeni
+  biten maç (başlangıçtan 6 saat boyunca) sonucu girilene kadar seçili kalır. Maç
+  bitince Ödemeler o maçı açar; ertesi günlerde de sıradaki maçın kadrosu
+  kesinleşene kadar ödemesi tamamlanmamış son maç açılır. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
   iddiası) ve günü gelmemiş iptal edilmiş maçın duyurusu paylaşılır.
 - **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
   ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı

@@ -1,6 +1,7 @@
 /** Kadro, kontenjan ve yedek listesi (Kural 1.2, 1.3, 1.6, 15.2). */
 import type { Att, Match, Person, State } from "./types";
 import { isFootball } from "./kinds";
+import { iso, matchStart } from "./dates";
 
 /** Oyuncu ya da o maçın misafiri. */
 export function getP(s: State, m: Match | null | undefined, id: string): Person | null {
@@ -103,10 +104,18 @@ export function openMatches(s: State): Match[] {
   return s.matches.filter((x) => x.status === "open").sort(byWhen);
 }
 
-/** Seçili açık maç; yoksa bugünden sonraki ilk açık maç; o da yoksa en son açık maç. */
-export function currentMatch(s: State, selectedId: string | null, today: string): Match | null {
+/** Saati geçen maç, sonucu girilmediyse bu kadar süre sıradaki maç olarak kalır (gece yarısını geçse bile). */
+const JUST_PLAYED_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Seçili açık maç; yoksa bugünden sonraki ilk açık maç; o da yoksa en son açık maç.
+ * Dünkü açık maç başlangıcından 6 saat geçmediyse (ör. 22:00 maçına gece 00:30'da
+ * bakılıyor) sonucu girilebilsin diye o seçilir.
+ */
+export function currentMatch(s: State, selectedId: string | null, today: string, now: Date = new Date()): Match | null {
   const m = getMatch(s, selectedId);
   if (m && m.status === "open") return m;
   const open = openMatches(s);
-  return open.find((x) => x.date >= today) || open[open.length - 1] || null;
+  const just = iso(now) === today ? open.find((x) => x.date < today && matchStart(x.date, x.time).getTime() + JUST_PLAYED_MS > now.getTime()) : undefined;
+  return just || open.find((x) => x.date >= today) || open[open.length - 1] || null;
 }

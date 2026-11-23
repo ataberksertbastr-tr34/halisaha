@@ -7,7 +7,7 @@
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { deadZones, importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
+import { deadZones, importBackupText, noHorizontalScroll, openResults, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 
@@ -838,5 +838,35 @@ test("maç günü Cuma 22:00'ye alınınca eski günlerdeki boş maçlar kalkar;
   await expect(page.locator(".mcard")).toContainText("6+1 · 4.480 ₺");
   // Eski günün maçı için rezervasyon uyarısı kalmaz
   await expect(page.locator("#view")).not.toContainText("Salı");
+  expect(errors).toEqual([]);
+});
+
+test("maç gecesi: gece yarısından sonra açılınca sonucu girilecek maç seçili; ertesi gün Ödemeler oynanan maçı açar (Kural 2.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto("/#/players");
+  await page.locator("details summary", { hasText: "Toplu" }).click();
+  await page.locator("#bulk").fill("Ali Deneme\nVeli Deneme\nCan Deneme\nEge Deneme");
+  await page.locator('[data-a="bulkAdd"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  for (const n of ["Ali", "Veli", "Can", "Ege"]) {
+    await page.locator("#q-att").fill(n + " Deneme");
+    await page.locator("#q-att").press("Enter");
+  }
+  await expect(page.locator(".counts .count").first()).toContainText("4");
+  // Salı 21:00 maçı bitti; organizatör gece 00:30'da uygulamayı açıyor
+  await page.clock.setSystemTime(new Date("2026-10-14T00:30:00+03:00"));
+  await page.reload();
+  await expect(page.locator("#hero")).toContainText("13.10");
+  await expect(page.locator('.chips [data-a="selMatch"].on')).toContainText("Sal 13.10");
+  await openResults(page);
+  await page.locator("#scA").fill("4");
+  await page.locator("#scB").fill("3");
+  await page.locator('[data-a="finish"]').click();
+  await expect(page.locator(".hist").first()).toContainText("4 – 3");
+  // Ertesi gün: sıradaki maçın kadrosu henüz kesinleşmedi; Ödemeler parası toplanacak maçı açar
+  await page.clock.setSystemTime(new Date("2026-10-14T12:00:00+03:00"));
+  await page.reload();
+  await page.locator('#tabs [data-v="pay"]').click();
+  await expect(page.locator('select[data-f="payId"] option:checked')).toHaveText("Salı 13.10 21:00 (Oynandı)");
   expect(errors).toEqual([]);
 });
