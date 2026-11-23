@@ -710,3 +710,29 @@ test("oyuncu ekleme: altı mevki ve beş seviye düğmesi; seçilen mevki ve sev
   await expect(add.locator('[data-a="newRate"][aria-pressed="true"]')).toHaveText("3");
   expect(errors).toEqual([]);
 });
+
+test("sabit kişi başı ücret: ayarlardan girilir; maç bilgileri, davet ve ödemeler bu ücreti gösterir (Kural 2.1, 2.2)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  // Kadro dolmadan tahmin kontenjana göre (4 kişi yazılı, 3 ödeyen): 3000 / 14 → 215
+  await expect(page.locator("#view")).toContainText("Kişi başı ~215 ₺");
+  await page.goto("/#/settings");
+  const fee = page.locator('[data-f="s.fixedShare"]');
+  await expect(fee).toHaveAttribute("placeholder", "Boş: saha ücreti bölünür");
+  await fee.fill("320");
+  await fee.press("Tab");
+  await expect(page.locator("#toast")).toContainText("Kaydedildi");
+  await expect(page.locator("#view")).toContainText("herkes bu ücreti öder");
+  await noHorizontalScroll(page);
+  await openThursday(page);
+  await expect(page.locator("#view")).toContainText("Kişi başı 320 ₺");
+  await page.locator('#view [data-a="msg"][data-k="invite"]').click();
+  expect(await lastShared(page)).toContain("Kişi başı ~320 ₺");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('select[data-f="payId"]').selectOption({ label: "Perşembe 15.10 21:00" });
+  await expect(page.locator(".money-sum .count").first()).toContainText("320 ₺");
+  await expect(page.locator("#view")).toContainText("Kişi başı sabit ücret");
+  expect(errors).toEqual([]);
+});

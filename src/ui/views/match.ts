@@ -10,7 +10,7 @@ import { esc, norm, pips, trSort } from "../../domain/text";
 import { ddmm } from "../../domain/dates";
 import { dirUrl, fieldOf, mapsUrl, telHref } from "../../domain/fields";
 import { capOf, currentMatch, isGuest, lineup, penalized } from "../../domain/lineup";
-import { estShare } from "../../domain/money";
+import { estShare, fixedShareOf } from "../../domain/money";
 import { liabilityMap } from "../../domain/ledger";
 import { dayName, dayShort } from "../../domain/messages";
 import { copyCandidates, isLocked, lockAt, lockHours, noShowLastTime, reliability } from "../../domain/roster";
@@ -57,7 +57,7 @@ function matchCard(m: Match): string {
   if (fb) meta.push(fmt + "+1");
   else meta.push(cap ? t("capN", { n: cap }) : t("capNone"));
   meta.push(money(Number(m.price) || 0));
-  meta.push(t("perPerson") + " ~" + money(estShare(S, m)));
+  meta.push(t("perPerson") + (fixedShareOf(S, m) ? " " : " ~") + money(estShare(S, m)));
   let h = '<section class="section mcard" aria-labelledby="h-info"><div class="mc-head"><div class="minw0">' +
     '<p class="mc-title">' + kindIcon(m) + "<span>" + esc(fb ? t("matchInfo") : L(k.name)) + "</span></p>" +
     (fb ? "" : '<h2 id="h-info" class="mc-name">' + esc(eventTitle(m)) + "</h2>") +

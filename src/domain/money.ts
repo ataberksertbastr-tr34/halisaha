@@ -59,7 +59,15 @@ export function roundShare(s: State, raw: number): number {
   return s.settings.round ? Math.ceil(raw / 5) * 5 : Math.round(raw * 100) / 100;
 }
 
+/** Halı sahada sabit kişi başı ücret (ayarlarda; 0 = kapalı). Etkinliklerde saha/organizasyon ücreti bölünür. */
+export function fixedShareOf(s: State, m: Match): number {
+  const f = Number(s.settings.fixedShare) || 0;
+  return f > 0 && isFootball(m) ? f : 0;
+}
+
 export function shareOf(s: State, m: Match): number {
+  const fixed = fixedShareOf(s, m);
+  if (fixed) return fixed;
   const n = payersOf(s, m).length;
   return n ? roundShare(s, (Number(m.price) || 0) / n) : 0;
 }
@@ -72,6 +80,8 @@ export function shareOf(s: State, m: Match): number {
  * (en iyi durum), kontenjan yoksa yazılanlara.
  */
 export function estShare(s: State, m: Match, now: Date = new Date()): number {
+  const fixed = fixedShareOf(s, m);
+  if (fixed) return fixed;
   const n = payersOf(s, m).length;
   if (isFootball(m)) {
     const locked = now.getTime() >= matchStart(m.date, m.time).getTime() - 24 * 60 * 60 * 1000;

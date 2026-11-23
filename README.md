@@ -297,6 +297,9 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   kuralları, geçen maçın takımlarını tekrar etmeme, maç sonuçlarından performans
   puanı (Elo, senin verdiğin seviyeyle harmanlanır, kapatılabilir). Halı sahada
   iki takım eşit sayıda değilse (ör. 8–7) uyarı çıkar (Kural 4.2).
+- **Kişi başı ücret:** saha ücreti ödeyenlere bölünür; kadro kesinleşene kadar tahmin
+  kontenjana göre yapılır (az kişi yazılıyken şişmez). İstersen Ayarlar → **Sabit kişi başı
+  ücret** (ör. 320 ₺): kaç kişi gelirse gelsin herkes bunu öder, fazla/eksik kasaya yazılır.
 - **Ödemeler:** maç bazlı takip, muafiyet, kişi bazlı hesap defteri (kısmi
   ödeme, avans, iade), biriken borçlar, kişiye özel WhatsApp hatırlatma, aylık
   özet, organizatör giderleri (top, yelek, su) ve kasa durumu. Etkinliklerde

@@ -10,7 +10,7 @@ import type { ExpenseCat, Match } from "../../domain/types";
 import { esc, norm } from "../../domain/text";
 import { ddmm, monthKey, parseISO } from "../../domain/dates";
 import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
-import { billOf, estShare, isDue, isFree } from "../../domain/money";
+import { billOf, estShare, fixedShareOf, isDue, isFree } from "../../domain/money";
 import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
 import { eventTitle, isFootball } from "../../domain/kinds";
 import { dayShort, guestPayText, waLink, waPersonal } from "../../domain/messages";
@@ -57,8 +57,8 @@ function matchPayView(): string {
   const expected = payers.length * sh;
   let h = '<section class="section"><label class="fld">' + esc(t("matchSel")) + '<select data-f="payId">' +
     list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === mm.id ? " selected" : "") + ">" + esc(eventOption(x)) + (x.status === "played" ? " (" + esc(t("played")) + ")" : "") + "</option>").join("") + "</select></label>";
-  h += '<div class="money-sum"><div class="count"><b>' + esc((due ? "" : "~") + money(sh)) + "</b><span>" + esc(t("perPerson")) + '</span></div><div class="count"><b>' + esc(money(collected)) + "</b><span>" + esc(t("collected")) + '</span></div><div class="count"><b>' + esc(money(Math.max(0, expected - collected))) + "</b><span>" + esc(t("outstanding")) + "</span></div></div>";
-  h += '<p class="small muted tight">' + esc(isFootball(mm) ? t("priceLbl") : t("totalCost")) + ": " + esc(money(Number(mm.price) || 0)) + ". " + esc(t("payers")) + ": " + payers.length + (isFootball(mm) ? "" : " " + ruleChip("15.4")) + "</p>";
+  h += '<div class="money-sum"><div class="count"><b>' + esc((due || fixedShareOf(S, mm) ? "" : "~") + money(sh)) + "</b><span>" + esc(t("perPerson")) + '</span></div><div class="count"><b>' + esc(money(collected)) + "</b><span>" + esc(t("collected")) + '</span></div><div class="count"><b>' + esc(money(Math.max(0, expected - collected))) + "</b><span>" + esc(t("outstanding")) + "</span></div></div>";
+  h += '<p class="small muted tight">' + esc(isFootball(mm) ? t("priceLbl") : t("totalCost")) + ": " + esc(money(Number(mm.price) || 0)) + ". " + esc(t("payers")) + ": " + payers.length + (fixedShareOf(S, mm) ? ". " + esc(t("fixedShareOn")) : "") + (isFootball(mm) ? "" : " " + ruleChip("15.4")) + "</p>";
   if (S.settings.iban) h += '<div class="iban"><code>' + esc(S.settings.iban) + '</code><button type="button" class="btn xs" data-a="copyIban">' + esc(t("copyIban")) + "</button></div>";
   h += '<div class="row nowrap mb">' + shareButtons("pay", t("payReminder"), mm.id) + '<button type="button" class="btn side" data-a="allPaid" data-id="' + esc(mm.id) + '">' + esc(t("allPaid")) + "</button></div>";
   const { playing } = lineup(S, mm);

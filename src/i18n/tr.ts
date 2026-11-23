@@ -15,7 +15,7 @@ export const tr = {
   noPayMatch: "Ödeme takibi için önce bir etkinlik oluştur.", matchSel: "Etkinlik", payers: "Ödeyen",
   addPlayer: "Oyuncu ekle", name: "Ad", rating: "Seviye", rateScale: "1 zayıf · 5 çok iyi", bulkAdd: "Toplu ekle", bulkHint: "Her satıra bir isim yaz (WhatsApp grubundan yapıştırabilirsin).", addAll: "Hepsini ekle",
   active: "Aktif yap", passive: "Pasif yap", passiveTag: "pasif", del: "Sil", sure: "Emin misin?", roster: "Oyuncular",
-  settingsTitle: "Genel ayarlar", defaultPrice: "Varsayılan saha ücreti (₺)", iban: "IBAN", ibanName: "Hesap sahibi",
+  settingsTitle: "Genel ayarlar", defaultPrice: "Varsayılan saha ücreti (₺)", fixedShare: "Sabit kişi başı ücret (₺)", fixedSharePh: "Boş: saha ücreti bölünür", fixedShareHint: "Sabit kişi başı ücret doluysa halı saha maçlarında herkes bu ücreti öder, kaç kişi gelirse gelsin; fazla ya da eksik kasaya yazılır. Boşsa saha ücreti ödeyenlere bölünür (Kural 2.1, 2.2).", fixedShareOn: "Kişi başı sabit ücret", iban: "IBAN", ibanName: "Hesap sahibi",
   slots: "Haftalık maç günleri", slot: "Maç", gkFree: "Kaleciler ücret ödemez", round: "Kişi başı payı 5 ₺'ye yuvarla", language: "Dil",
   backup: "Yedekleme", exportData: "Yedeği kopyala", importData: "Yedekten yükle", importHint: "Daha önce kopyaladığın yedeği buraya yapıştır.", load: "Yükle",
   resetAll: "Tüm verileri sil", saved: "Kaydedildi", copied: "Kopyalandı", copy: "Kopyala", whatsapp: "WhatsApp'ta aç", close: "Kapat",

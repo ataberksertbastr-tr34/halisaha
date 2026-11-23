@@ -1149,7 +1149,7 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
     const st = S.settings as unknown as Record<string, unknown>;
     // Hatırlatma saati boş bırakılamaz
     if (k === "remindAt" && !v) return render();
-    st[k] = k === "price" ? Number(v) || 0 : k === "format" || k === "inviteDays" ? Number(v) : v;
+    st[k] = k === "price" ? Number(v) || 0 : k === "fixedShare" ? Math.max(0, Number(v) || 0) : k === "format" || k === "inviteDays" ? Number(v) : v;
     commit();
     toast(t("saved"));
     return;
