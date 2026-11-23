@@ -92,3 +92,14 @@ export async function deadZones(page: Page, where: string): Promise<string[]> {
     return [...out];
   })).map((x) => where + ": " + x);
 }
+
+/**
+ * Sonuç bölümü maç gününden önce kapalı durur; testler etkinliği maç gününden önce oynatır.
+ * Kapalıysa başlığına dokunup açar (organizatörün "istersen şimdi aç" yaptığı gibi).
+ */
+export async function openResults(page: Page): Promise<void> {
+  const d = page.locator("details.res-later");
+  if (!(await d.count())) return;
+  if ((await d.getAttribute("open")) === null) await d.locator(":scope > summary").click();
+  await expect(d).toHaveAttribute("open", "");
+}

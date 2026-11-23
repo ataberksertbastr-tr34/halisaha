@@ -216,6 +216,48 @@ describe("ödeyenler ve kişi başı pay", () => {
     expect(estShare(s, m)).toBe(190); // 3000 / 16 = 187,5
   });
 
+  it("kadro kesinleşene kadar tahmini pay kontenjana göre: az kişi yazılıyken şişmez; kesinleşince gerçek pay (Kural 1.4)", () => {
+    const ps = roster(4, { pos: ["GK", "", "", ""] });
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", price: 3000, format: 7 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { gkFree: true, round: true });
+    // Maçtan 3 gün önce: 4 kişi (1 kaleci) yazılı, 3 ödeyen; yine de 14 ödeyene bölünür
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(215);
+    // Kadro kesinleşti (maçtan 24 saatten az): gerçek pay
+    expect(estShare(s, m, new Date(2026, 9, 14, 22, 0))).toBe(1000);
+    // Oynanmış maç: gerçek pay
+    m.status = "played";
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(1000);
+  });
+
+  it("kontenjandan çok ödeyen varsa tahmin ödeyen sayısına bölünür", () => {
+    const ps = roster(16);
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", price: 3000, format: 7 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { gkFree: true, round: true });
+    // Kalecisi olmayan 16 kişi: 14'e değil 16'ya bölünür
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(190);
+  });
+
+  it("sabit kişi başı ücret: kaç kişi gelirse gelsin herkes aynı öder; kaleci ve muaf yine ödemez; etkinlikte uygulanmaz", () => {
+    const ps = roster(13, { pos: ["GK", "", "", "", "", "", "", "", "", "", "", "", ""] });
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", price: 4480, format: 6 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { gkFree: true, round: true, fixedShare: 320 });
+    m.exempt.p12 = true;
+    expect(payersOf(s, m)).toHaveLength(11);
+    expect(shareOf(s, m)).toBe(320);
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(320);
+    // Oynanınca borçlar sabit ücretten: 11 kişi × 320
+    m.status = "played";
+    const d = debts(s, "2026-10-16");
+    expect(d).toHaveLength(11);
+    expect(d.every((x) => x.total === 320)).toBe(true);
+    // Etkinlikte organizasyon ücreti bölünür
+    const ev = allIn(match("e", { kind: "paintball", cap: 10, date: "2026-10-15", price: 1000 }), ["p1", "p2"]);
+    expect(shareOf(state(ps, [ev], { fixedShare: 320, round: true }), ev)).toBe(500);
+    // Kapalıyken (0) eskisi gibi bölünür
+    s.settings.fixedShare = 0;
+    expect(shareOf(s, m)).toBe(410); // 4480 / 11 = 407,3 → 410
+  });
+
   it("ücreti olmayan maçta pay 0", () => {
     const m = allIn(match("m", { price: 0 }), ["p0"]);
     expect(shareOf(state(roster(1), [m]), m)).toBe(0);

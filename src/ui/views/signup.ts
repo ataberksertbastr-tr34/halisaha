@@ -35,11 +35,14 @@ function note(m: Match, r: PlanRow, debts: Record<string, Liability>): string {
 }
 
 /** Önizleme: her satırda listede yazılan ad, eşleşen kişi, neden ve seçilebilir iş. */
-export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string): void {
+export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string, issues: string[] = []): void {
   const debts = liabilities(s, today);
   const opt = (v: string, label: string, sel: boolean) => '<option value="' + esc(v) + '"' + (sel ? " selected" : "") + ">" + esc(label) + "</option>";
   const players = s.players.filter((p) => p.active !== false).slice().sort(trSort);
-  let h = sheetHead(t("pasteTitle")) + '<p class="small muted tight">' + esc(t("pasteCheck", { n: rows.length })) + '</p><div class="stackf">';
+  let h = sheetHead(t("pasteTitle"));
+  // Yanlış etkinliğe yapıştırma ya da yanlış gün: uyarır, engellemez
+  if (issues.length) h += '<div class="notice warn" role="alert" id="paste-date"><div class="notice-tx"><strong>' + esc(t("pasteDateTitle")) + "</strong>" + issues.map((x) => "<span>" + esc(x) + "</span>").join("") + "</div></div>";
+  h += '<p class="small muted tight">' + esc(t("pasteCheck", { n: rows.length })) + '</p><div class="stackf">';
   rows.forEach((r, i) => {
     const who = r.id ? getP(s, m, r.id)?.name || r.name : r.name;
     const why = note(m, r, debts);

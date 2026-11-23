@@ -31,7 +31,7 @@ describe("şema v3 → v4", () => {
   const s = migrate(v3);
   it("güncel sürüme taşınır, eski maçlar halı saha olur", () => {
     expect(s.v).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(7);
+    expect(SCHEMA_VERSION).toBe(8);
     const m = s.matches[0];
     expect(m.kind).toBe("football");
     expect(m.lockH).toBe(24);

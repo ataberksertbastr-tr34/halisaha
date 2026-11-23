@@ -1266,6 +1266,15 @@ describe("şema v6 alanları: katılım günlüğü", () => {
     expect(out.matches.every((m) => m.log.length === 0)).toBe(true);
   });
 
+  it("sabit kişi başı ücret bir cihazda, IBAN öbüründe değişirse ikisi de kalır", () => {
+    const b = base();
+    const l = fork(b, TL), r = fork(b, TR);
+    l.settings.fixedShare = 320;
+    r.settings.iban = "TR00 DENEME";
+    const out = merge3(b, l, r);
+    expect([out.settings.fixedShare, out.settings.iban]).toEqual([320, "TR00 DENEME"]);
+  });
+
   it("iki cihazın ayrı ayrı öğrendiği banka adları birleşir; silinen ad geri gelmez", () => {
     const b = base();
     b.players[0].bank = ["ESKI GONDEREN"];

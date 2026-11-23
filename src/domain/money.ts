@@ -2,6 +2,7 @@
 import type { Match, State } from "./types";
 import { capOf, getP, isGK, lineup, promoted } from "./lineup";
 import { isFootball } from "./kinds";
+import { matchStart } from "./dates";
 
 /** Kaleciler ücretsizse (Kural 2.1) halı saha maçında kaleci ödemez. */
 export function isFree(s: State, m: Match, id: string): boolean {
@@ -58,22 +59,35 @@ export function roundShare(s: State, raw: number): number {
   return s.settings.round ? Math.ceil(raw / 5) * 5 : Math.round(raw * 100) / 100;
 }
 
+/** Halı sahada sabit kişi başı ücret (ayarlarda; 0 = kapalı). Etkinliklerde saha/organizasyon ücreti bölünür. */
+export function fixedShareOf(s: State, m: Match): number {
+  const f = Number(s.settings.fixedShare) || 0;
+  return f > 0 && isFootball(m) ? f : 0;
+}
+
 export function shareOf(s: State, m: Match): number {
+  const fixed = fixedShareOf(s, m);
+  if (fixed) return fixed;
   const n = payersOf(s, m).length;
   return n ? roundShare(s, (Number(m.price) || 0) / n) : 0;
 }
 
 /**
- * Tahmini pay. Halı saha: henüz kimse yokken kontenjana (kaleciler hariç) bölünür.
- * Etkinlik: kontenjan doluysa kesin pay; değilse kontenjana bölünür (en iyi durum),
- * kontenjan yoksa yazılanlara.
+ * Tahmini pay. Halı saha: kadro kesinleşene kadar (Kural 1.4, maçtan 24 saat önce) en az
+ * kontenjandaki ödeyen sayısına (kaleciler ayara göre hariç) bölünür; haftanın başında az kişi
+ * yazılıyken pay şişmez (eski uygulama 4 kişiyle "~1.000 ₺" diyordu). Kadro kesinleşince ya da
+ * maç oynanınca gerçek pay. Etkinlik: kontenjan doluysa kesin pay; değilse kontenjana bölünür
+ * (en iyi durum), kontenjan yoksa yazılanlara.
  */
-export function estShare(s: State, m: Match): number {
+export function estShare(s: State, m: Match, now: Date = new Date()): number {
+  const fixed = fixedShareOf(s, m);
+  if (fixed) return fixed;
   const n = payersOf(s, m).length;
   if (isFootball(m)) {
-    if (n) return shareOf(s, m);
+    const locked = now.getTime() >= matchStart(m.date, m.time).getTime() - 24 * 60 * 60 * 1000;
+    if (n && (m.status !== "open" || locked)) return shareOf(s, m);
     const c = (m.format || s.settings.format) * 2 + 2 - (s.settings.gkFree ? 2 : 0);
-    return roundShare(s, (Number(m.price) || 0) / Math.max(1, c));
+    return roundShare(s, (Number(m.price) || 0) / Math.max(1, c, n));
   }
   const cap = capOf(s, m);
   return roundShare(s, (Number(m.price) || 0) / Math.max(1, cap || n));

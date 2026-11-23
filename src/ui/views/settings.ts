@@ -36,12 +36,13 @@ export function viewSettings(): string {
   h += '<section class="section" aria-labelledby="h-gen"><h2 id="h-gen">' + esc(t("settingsTitle")) + '</h2><div class="grid2 stack">' +
     '<label class="fld">' + esc(t("defaultField")) + '<select data-f="s.defaultFieldId">' + fieldOptions(s.defaultFieldId) + "</select></label>" +
     '<label class="fld">' + esc(t("defaultPrice")) + '<input type="number" min="0" inputmode="decimal" data-f="s.price" value="' + esc(s.price) + '"></label>' +
+    '<label class="fld">' + esc(t("fixedShare")) + '<input type="number" min="0" inputmode="decimal" data-f="s.fixedShare" value="' + esc(s.fixedShare || "") + '" placeholder="' + esc(t("fixedSharePh")) + '"></label>' +
     '<label class="fld">' + esc(t("iban")) + '<input type="text" data-f="s.iban" value="' + esc(s.iban) + '" placeholder="TR00 0000 0000 0000 0000 0000 00" autocomplete="off"></label>' +
     '<label class="fld">' + esc(t("ibanName")) + '<input type="text" data-f="s.ibanName" value="' + esc(s.ibanName) + '" autocomplete="off"></label>' +
     '<label class="fld">' + esc(t("format")) + '<select data-f="s.format">' + fmtOpts + "</select></label>" +
     '<label class="fld">' + esc(t("language")) + '<select data-f="s.lang"><option value="tr"' + (s.lang === "tr" ? " selected" : "") + ' lang="tr">Türkçe</option><option value="en"' + (s.lang === "en" ? " selected" : "") + ' lang="en">English</option></select></label>' +
     '<label class="fld">' + esc(t("theme")) + '<select data-f="s.theme">' + (["system", "light", "dark"] as const).map((v) => '<option value="' + v + '"' + (s.theme === v ? " selected" : "") + ">" + esc(t(v === "system" ? "themeSystem" : v === "light" ? "themeLight" : "themeDark")) + "</option>").join("") + "</select></label>" +
-    "</div><h3>" + esc(t("slots")) + "</h3>";
+    '</div><p class="small muted tight mt-s">' + esc(t("fixedShareHint")) + "</p><h3>" + esc(t("slots")) + "</h3>";
   [0, 1].forEach((i) => {
     const sl = s.slots[i] || { d: "", t: "21:00" };
     h += '<div class="grid2 mb"><label class="fld">' + esc(t("slot")) + " " + (i + 1) + '<select data-f="slot.' + i + '.d">' + dayOpts(sl.d) + "</select></label>" +

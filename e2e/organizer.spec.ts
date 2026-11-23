@@ -710,3 +710,101 @@ test("oyuncu ekleme: altı mevki ve beş seviye düğmesi; seçilen mevki ve sev
   await expect(add.locator('[data-a="newRate"][aria-pressed="true"]')).toHaveText("3");
   expect(errors).toEqual([]);
 });
+
+test("sabit kişi başı ücret: ayarlardan girilir; maç bilgileri, davet ve ödemeler bu ücreti gösterir (Kural 2.1, 2.2)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  // Kadro dolmadan tahmin kontenjana göre (4 kişi yazılı, 3 ödeyen): 3000 / 14 → 215
+  await expect(page.locator("#view")).toContainText("Kişi başı ~215 ₺");
+  await page.goto("/#/settings");
+  const fee = page.locator('[data-f="s.fixedShare"]');
+  await expect(fee).toHaveAttribute("placeholder", "Boş: saha ücreti bölünür");
+  await fee.fill("320");
+  await fee.press("Tab");
+  await expect(page.locator("#toast")).toContainText("Kaydedildi");
+  await expect(page.locator("#view")).toContainText("herkes bu ücreti öder");
+  await noHorizontalScroll(page);
+  await openThursday(page);
+  await expect(page.locator("#view")).toContainText("Kişi başı 320 ₺");
+  await page.locator('#view [data-a="msg"][data-k="invite"]').click();
+  expect(await lastShared(page)).toContain("Kişi başı ~320 ₺");
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('select[data-f="payId"]').selectOption({ label: "Perşembe 15.10 21:00" });
+  await expect(page.locator(".money-sum .count").first()).toContainText("320 ₺");
+  await expect(page.locator("#view")).toContainText("Kişi başı sabit ücret");
+  expect(errors).toEqual([]);
+});
+
+test("liste yapıştırma: listedeki tarih ya da gün seçili etkinlikle tutmuyorsa önizlemede uyarır, engellemez", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  await page.locator('#view [data-a="pasteList"]').click();
+  // Çok satırlı yapıştırma kendiliğinden önizlenir
+  await page.locator("#plist").fill("20.12.2026\nCUMA AKŞAM\n22.00-23.00\n\n1-Zeki Zorlu\n2-\n");
+  await expect(page.locator('#modal [data-a="pasteApply"]')).toBeVisible();
+  const warn = page.locator("#paste-date");
+  await expect(warn).toContainText("Tarihi kontrol et");
+  await expect(warn).toContainText("Listede 20.12.2026 yazıyor, seçili etkinlik ise Perşembe 15.10.");
+  await expect(warn).toContainText("Listede 20.12.2026 CUMA yazıyor, ama bu tarih Pazar gününe denk geliyor.");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "liste önizleme")).toEqual([]);
+  // Uyarıya rağmen uygulanabilir
+  await page.locator('#modal [data-a="pasteApply"]').click();
+  await expect(page.locator("#list-att li", { hasText: "Zeki Zorlu" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "true");
+  // Doğru gün ve tarihli listede uyarı yok
+  await page.locator('#view [data-a="pasteList"]').click();
+  await page.locator("#plist").fill("Perşembe 15.10\n1-Zeki Zorlu\n2-Defans Doğan\n");
+  await expect(page.locator('#modal [data-a="pasteApply"]')).toBeVisible();
+  await expect(page.locator("#paste-date")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("etkinlik sayfası: sonuç bölümü maç gününe kadar kapalı, iptal her zaman görünür; maç günü açık", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const res = page.locator("details.res-later");
+  await expect(res).toBeVisible();
+  await expect(res).not.toHaveAttribute("open", "");
+  await expect(res.locator(":scope > summary")).toContainText("Maç günü açılır");
+  await expect(page.locator('[data-a="finish"]')).toBeHidden();
+  await expect(page.locator('[data-a="cancelMatch"]')).toBeVisible();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "kapalı sonuç")).toEqual([]);
+  // İstenirse önceden açılır ve açık kalır
+  await res.locator(":scope > summary").click();
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  // Maç günü: bölüm kendiliğinden açık (katlanmaz)
+  await page.clock.setSystemTime(new Date("2026-10-15T18:00:00+03:00"));
+  await page.reload();
+  await openThursday(page);
+  await expect(page.locator("details.res-later")).toHaveCount(0);
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("toplu ekleme: satırdaki mevki ve seviye alınır; rakamlı ad bozulmaz", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  const add = page.locator('section[aria-labelledby="h-add"]');
+  await add.locator("summary", { hasText: "Toplu ekle" }).click();
+  await expect(add).toContainText("Ali Yılmaz, DOS, 4");
+  await add.locator("#bulk").fill("Toplu Bir, DOS, 4\nToplu İki - Forvet - 2\n7-Toplu Amca 1\n");
+  await add.locator('[data-a="bulkAdd"]').click();
+  await expect(page.locator("#toast")).toContainText("3");
+  const row = (n: string) => page.locator(".prow", { hasText: n });
+  await expect(row("Toplu Bir").locator(".pos")).toHaveText("DOS");
+  await expect(row("Toplu Bir").locator(".pips")).toHaveText("●●●●○");
+  await expect(row("Toplu İki").locator(".pos")).toHaveText("F");
+  await expect(row("Toplu İki").locator(".pips")).toHaveText("●●○○○");
+  await expect(row("Toplu Amca 1").locator(".pos")).toHaveCount(0);
+  await expect(row("Toplu Amca 1").locator(".pips")).toHaveText("●●●○○");
+  expect(errors).toEqual([]);
+});

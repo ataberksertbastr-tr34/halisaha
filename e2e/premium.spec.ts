@@ -6,7 +6,7 @@
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { deadZones, importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
+import { deadZones, importBackupText, noHorizontalScroll, openResults, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const CLEAN = ["Kaleci Kemal", "Orta Ömer", "Defans Doğan", "Eldiven Ercan"];
@@ -16,6 +16,8 @@ async function newEvent(page: Page, kind: string): Promise<void> {
   await page.locator('[data-a="newEvent"]').first().click();
   await page.locator(`[data-a="createEvent"][data-v="${kind}"]`).click();
   await expect(page.locator("#modal")).toBeHidden();
+  // Etkinlik ileride: sonuç bölümü kapalı, testte açılır
+  await openResults(page);
 }
 
 async function signUp(page: Page, names: string[]): Promise<void> {
@@ -139,6 +141,7 @@ test("halı saha: korner serisi, sakatlık ve kapanış listesi (Kural 7.6, 8.3,
   await expect(page.locator(".hero-count b")).toHaveText("4/16");
   await page.locator(".prep summary").click();
   await page.locator('select[data-f="m.agree"][data-k="corners"]').selectOption("yes");
+  await openResults(page);
   const ca = page.locator('[data-a="corner"][data-side="a"]');
   await ca.click();
   await ca.click();

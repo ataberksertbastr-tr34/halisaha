@@ -32,8 +32,7 @@ describe("v6 → v7: defansif ve ofansif orta saha", () => {
 
   it("v6 verisi aynen v7'ye taşınır; eski mevkiler korunur, tanınmayan mevki boşalır", () => {
     const s = migrate(v6);
-    expect(SCHEMA_VERSION).toBe(7);
-    expect(s.v).toBe(7);
+    expect(s.v).toBe(SCHEMA_VERSION);
     expect(s.players.map((p) => p.pos)).toEqual(["DEF", "MID", ""]);
     expect(s.matches[0].guests[0].pos).toBe("FWD");
   });
@@ -49,6 +48,20 @@ describe("v6 → v7: defansif ve ofansif orta saha", () => {
     expect(s.matches[0].guests[0].pos).toBe("DM");
     // Yedekten geri yükleme de aynı
     expect(parseBackup(JSON.stringify(s)).players.map((p) => p.pos)).toEqual(["DM", "AM", ""]);
+  });
+});
+
+describe("v7 → v8: sabit kişi başı ücret", () => {
+  it("eski veride sabit ücret yok (0): saha ücreti bölünür; geçerli değer korunur, geçersiz 0 olur", () => {
+    const v7 = { v: 7, settings: { price: 3840 }, players: [], matches: [] };
+    const s = migrate(v7);
+    expect(SCHEMA_VERSION).toBe(8);
+    expect(s.v).toBe(8);
+    expect(s.settings.fixedShare).toBe(0);
+    expect(s.settings.price).toBe(3840);
+    expect(migrate({ ...v7, v: 8, settings: { fixedShare: 320 } }).settings.fixedShare).toBe(320);
+    expect(migrate({ ...v7, v: 8, settings: { fixedShare: -5 } }).settings.fixedShare).toBe(0);
+    expect(migrate({ ...v7, v: 8, settings: { fixedShare: "abc" } }).settings.fixedShare).toBe(0);
   });
 });
 

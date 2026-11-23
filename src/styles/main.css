@@ -354,6 +354,7 @@ select { padding-right: 30px; }
 .iban code { font-family: inherit; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .payrow .btn { white-space: nowrap; }
 .sublinks { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.debt-meta { display: block; }
 
 /* ---------- alt sekmeler: iki temada da gece siyahı çerçeve, altın gösterge ---------- */
 #tabs { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(14, 16, 21, .97); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); border-top: 1px solid rgba(201, 160, 75, .34); padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; box-shadow: 0 -12px 30px -18px rgba(0, 0, 0, .6); }
@@ -556,6 +557,10 @@ details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 details > summary::after { content: ""; width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-left: auto; margin-right: 6px; transition: transform .15s; flex: 0 0 auto; }
 details[open] > summary::after { transform: rotate(-135deg); }
+/* Maç gününden önce kapalı sonuç bölümü */
+.res-later > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; }
+.res-later > summary .meta { display: block; font-size: 13px; color: var(--muted); }
+.res-later[open] > summary { margin-bottom: 8px; }
 .seg2 { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
 .seg2 button { min-height: 44px; border: none; background: var(--surface); font-weight: 700; color: var(--muted); }
 .seg2 button + button { border-left: 1px solid var(--line-2); }

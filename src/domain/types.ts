@@ -72,6 +72,11 @@ export interface Settings {
   remindAt: string;
   /** Oyuncu durum sayfasının kimliği ("" = kapalı) */
   pubId: string;
+  /**
+   * Halı sahada sabit kişi başı ücret (₺). 0: saha ücreti ödeyenlere bölünür. Doluysa kaç kişi
+   * gelirse gelsin herkes bu ücreti öder; fazla ya da eksik kasaya yazılır.
+   */
+  fixedShare: number;
 }
 
 export interface Field {

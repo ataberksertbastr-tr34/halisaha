@@ -187,6 +187,17 @@ function v6to7(s: Raw): Raw {
   return s;
 }
 
+/**
+ * v7 → v8 (sabit kişi başı ücret):
+ *  - Ayarlara "sabit kişi başı ücret" eklendi; eski veride 0'dır (saha ücreti bölünür, eskisi gibi).
+ *  - Sürüm, eski uygulamanın bu ayarı bilmeden borçları farklı hesaplamaması için artar:
+ *    v7 uygulaması v8 veriyi görünce hiçbir şeyi değiştirmeden "Önce güncelle" der.
+ */
+function v7to8(s: Raw): Raw {
+  if (isObj(s.settings) && s.settings.fixedShare == null) s.settings.fixedShare = 0;
+  return s;
+}
+
 /** Sürüm N'den N+1'e geçiş adımları (v1→v2 yukarıdaki legacyV1toV2'dir). */
 const STEPS: Record<number, (s: Raw) => Raw> = {
   2: v2to3,
@@ -194,6 +205,7 @@ const STEPS: Record<number, (s: Raw) => Raw> = {
   4: v4to5,
   5: v5to6,
   6: v6to7,
+  7: v7to8,
 };
 
 function detectVersion(s: Raw): number {
@@ -250,6 +262,7 @@ export function normalize(s: Raw): State {
   st.inviteDays = Math.min(6, Math.max(1, Math.round(num(st.inviteDays, d.settings.inviteDays)) || d.settings.inviteDays));
   st.remindAt = /^([01]\d|2[0-3]):[0-5]\d$/.test(str(st.remindAt)) ? str(st.remindAt) : d.settings.remindAt;
   st.pubId = /^[a-z0-9]{20,40}$/.test(str(st.pubId)) ? str(st.pubId) : "";
+  st.fixedShare = Math.max(0, Math.round(num(st.fixedShare, 0) * 100) / 100);
 
   s.fields = arr(s.fields).filter(isObj).map((f: Raw): Field => ({
     ...f, id: str(f.id) || uid(), name: str(f.name), address: str(f.address), link: str(f.link), phone: str(f.phone),
