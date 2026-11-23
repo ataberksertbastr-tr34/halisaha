@@ -736,3 +736,28 @@ test("sabit kişi başı ücret: ayarlardan girilir; maç bilgileri, davet ve ö
   await expect(page.locator("#view")).toContainText("Kişi başı sabit ücret");
   expect(errors).toEqual([]);
 });
+
+test("liste yapıştırma: listedeki tarih ya da gün seçili etkinlikle tutmuyorsa önizlemede uyarır, engellemez", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  await page.locator('#view [data-a="pasteList"]').click();
+  // Çok satırlı yapıştırma kendiliğinden önizlenir
+  await page.locator("#plist").fill("20.12.2026\nCUMA AKŞAM\n22.00-23.00\n\n1-Zeki Zorlu\n2-\n");
+  await expect(page.locator('#modal [data-a="pasteApply"]')).toBeVisible();
+  const warn = page.locator("#paste-date");
+  await expect(warn).toContainText("Tarihi kontrol et");
+  await expect(warn).toContainText("Listede 20.12.2026 yazıyor, seçili etkinlik ise Perşembe 15.10.");
+  await expect(warn).toContainText("Listede 20.12.2026 CUMA yazıyor, ama bu tarih Pazar gününe denk geliyor.");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "liste önizleme")).toEqual([]);
+  // Uyarıya rağmen uygulanabilir
+  await page.locator('#modal [data-a="pasteApply"]').click();
+  await expect(page.locator("#list-att li", { hasText: "Zeki Zorlu" }).locator('[data-s="in"]')).toHaveAttribute("aria-pressed", "true");
+  // Doğru gün ve tarihli listede uyarı yok
+  await page.locator('#view [data-a="pasteList"]').click();
+  await page.locator("#plist").fill("Perşembe 15.10\n1-Zeki Zorlu\n2-Defans Doğan\n");
+  await expect(page.locator('#modal [data-a="pasteApply"]')).toBeVisible();
+  await expect(page.locator("#paste-date")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -20,7 +20,7 @@ import { onEventField } from "./eventHandlers";
 import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } from "../domain/roster";
 import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
 import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
-import { applyPlan, choose, parseList, planList, type PlanRow } from "../domain/signup";
+import { applyPlan, choose, listDateIssues, parseList, planList, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
 import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
@@ -472,7 +472,7 @@ registerActions({
     const entries = parseList(text);
     if (!entries.length) return toast(t("pasteNone"));
     pendingPaste = { mid: m.id, text, rows: planList(store.s, m, entries, today()) };
-    showPastePreview(store.s, m, pendingPaste.rows, today());
+    showPastePreview(store.s, m, pendingPaste.rows, today(), listDateIssues(text, m));
   },
   pasteApply: () => {
     const m = cur();

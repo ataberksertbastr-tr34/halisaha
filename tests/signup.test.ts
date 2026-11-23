@@ -1,6 +1,6 @@
 /** WhatsApp davet listesini yapıştırma: ayrıştırma, eşleştirme, öneri ve uygulama (Kural 1.3, 2.4, 9.1). İsimler uydurmadır. */
 import { describe, expect, it } from "vitest";
-import { applyPlan, candidates, choose, parseList, planList, type PlanRow } from "../src/domain/signup";
+import { applyPlan, candidates, choose, listDateIssues, parseList, planList, type PlanRow } from "../src/domain/signup";
 import { addInfraction } from "../src/domain/discipline";
 import { lineup, setAtt } from "../src/domain/lineup";
 import { allIn, match, player, state } from "./helpers/factory";
@@ -137,5 +137,42 @@ describe("önizlemedeki seçim", () => {
     expect(choose(r, "skip").act).toBe("skip");
     expect(choose(r, "p:kk")).toMatchObject({ id: "kk", act: "in" });
     expect(choose(r, "xyz")).toBe(r);
+  });
+});
+
+describe("listedeki tarih ve gün", () => {
+  const tue = match("u", { date: "2026-10-13", time: "21:00" });
+  const thu = match("t", { date: "2026-10-15", time: "21:00" });
+  const fri = match("f", { date: "2026-12-18", time: "22:00" });
+  const sun = match("s", { date: "2026-12-20", time: "22:00" });
+  const ORG = "20.12.2026\nCUMA AKŞAM\n22.00-23.00\n\n1-Deneme Bir\n2-Deneme İki\n3-\n\n14 kişi, kişi başı 320₺";
+
+  it("uygulamanın davet mesajından dolan liste (gün + tarih) kendi etkinliğiyle tutar; başka etkinliğe yapıştırılınca uyarır", () => {
+    expect(listDateIssues(FILLED, tue)).toEqual([]);
+    expect(listDateIssues(FILLED, thu)).toEqual(["Listede 13.10 yazıyor, seçili etkinlik ise Perşembe 15.10. Doğru etkinliğe yapıştırdığından emin ol."]);
+  });
+
+  it("başka tarihin listesi: tarih uyarısı; yazılan gün o tarihe denk gelmiyorsa gün uyarısı", () => {
+    expect(listDateIssues(ORG, fri)).toEqual([
+      "Listede 20.12.2026 yazıyor, seçili etkinlik ise Cuma 18.12. Doğru etkinliğe yapıştırdığından emin ol.",
+      "Listede 20.12.2026 CUMA yazıyor, ama bu tarih Pazar gününe denk geliyor.",
+    ]);
+    // Tarih doğru, gün yanlış
+    expect(listDateIssues(ORG, sun)).toEqual(["Listede 20.12.2026 CUMA yazıyor, ama bu tarih Pazar gününe denk geliyor."]);
+    expect(listDateIssues("18.12.2026 Cuma\n1- Deneme", fri)).toEqual([]);
+    expect(listDateIssues("20 Aralık Pazar\n1- Deneme", sun)).toEqual([]);
+    expect(listDateIssues("20 Aralık\n1- Deneme", fri)[0]).toContain("Listede 20 Aralık yazıyor");
+  });
+
+  it("yalnızca gün yazıyorsa etkinliğin günüyle karşılaştırılır", () => {
+    expect(listDateIssues("Salı maçı\n1- Deneme", thu)).toEqual(["Listede Salı yazıyor, seçili etkinlik ise Perşembe 15.10."]);
+    expect(listDateIssues("Perşembe maçı\n1- Deneme", thu)).toEqual([]);
+  });
+
+  it("isim satırındaki gün adı, saat ve tarihsiz liste uyarı vermez", () => {
+    expect(listDateIssues("1- Cuma Yılmaz\n2- Pazar Deneme\nYedek: Salı Örnek", thu)).toEqual([]);
+    expect(listDateIssues("Saat 13.10\n1- Deneme", thu)).toEqual([]);
+    expect(listDateIssues("22.00-23.00\n1- Deneme", thu)).toEqual([]);
+    expect(listDateIssues("1- Deneme\n2- Örnek", thu)).toEqual([]);
   });
 });

@@ -5,6 +5,8 @@
  * (Kural 1.3): yeni yazılanlar listedeki sırayla eklenir, uygulamadaki sıra bozulmaz.
  */
 import type { Guest, Match, Person, State } from "./types";
+import { DAYS, lang, MONTHS, t } from "../i18n";
+import { ddmm, weekday } from "./dates";
 import { getP, setAtt } from "./lineup";
 import { cleanBulkLine, cleanName, norm, uid } from "./text";
 import { joinBlock, type Block } from "./discipline";
@@ -182,3 +184,81 @@ export function applyPlan(s: State, m: Match, rows: PlanRow[]): number {
   }
   return n;
 }
+
+/* ---------- Listedeki tarih ve gün (yanlış etkinliğe yapıştırmayı önlemek için) ---------- */
+
+const lower = (x: string) => x.toLocaleLowerCase("tr");
+const DAY_IDX = new Map<string, number>([...DAYS.tr, ...DAYS.en].map((d, i) => [lower(d), i % 7]));
+const MONTH_IDX = new Map<string, number>([...MONTHS.tr, ...MONTHS.en].map((mo, i) => [lower(mo), (i % 12) + 1]));
+const DATE_NUM = /(?<!\d)(\d{1,2})[./](\d{1,2})(?:[./](\d{4}|\d{2}))?(?!\d)/u;
+const DATE_TXT = /(?<!\d)(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?/u;
+const p2 = (n: number) => String(n).padStart(2, "0");
+
+interface Found {
+  day: number;
+  month: number;
+  year?: number;
+  /** Listede yazılan haliyle */
+  raw: string;
+}
+
+/** Başlık satırlarından (numaralı liste satırları ve Yedek/Belki hariç) ilk tarih ve ilk gün adı. */
+function headerInfo(text: string): { date?: Found; dayIdx?: number; dayRaw?: string } {
+  const out: { date?: Found; dayIdx?: number; dayRaw?: string } = {};
+  for (const line of String(text || "").split(/\r?\n/)) {
+    if (NUMBERED.test(line) || LABEL.test(line)) continue;
+    const words = line.split(/[^\p{L}]+/u).filter(Boolean);
+    const dw = words.find((w) => DAY_IDX.has(lower(w)));
+    if (dw && out.dayIdx === undefined) {
+      out.dayIdx = DAY_IDX.get(lower(dw));
+      out.dayRaw = dw;
+    }
+    if (out.date) continue;
+    // "20.12.2026", "20/12"; yıl ya da gün adı yoksa "13.10" saat olabilir, tarih sayılmaz
+    const n = DATE_NUM.exec(line);
+    if (n && (n[3] || dw)) {
+      const day = Number(n[1]), month = Number(n[2]);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        out.date = { day, month, year: n[3] ? (n[3].length === 2 ? 2000 + Number(n[3]) : Number(n[3])) : undefined, raw: n[0] };
+        continue;
+      }
+    }
+    // "20 Aralık", "20 Aralık 2026"
+    const tx = DATE_TXT.exec(line);
+    if (tx && MONTH_IDX.has(lower(tx[2]))) {
+      const day = Number(tx[1]);
+      if (day >= 1 && day <= 31) out.date = { day, month: MONTH_IDX.get(lower(tx[2]))!, year: tx[3] ? Number(tx[3]) : undefined, raw: tx[0] };
+    }
+  }
+  return out;
+}
+
+/**
+ * Yapıştırılan listedeki tarih ve gün seçili etkinlikle tutuyor mu. Uyarılar döner (boşsa sorun
+ * yok): listede başka bir tarih yazıyorsa, yazılan gün o tarihe denk gelmiyorsa ("20.12.2026
+ * Cuma" aslında Pazar) ya da yalnızca gün yazıyor ve etkinliğin günü değilse. Engellemez.
+ */
+export function listDateIssues(text: string, m: Match): string[] {
+  const { date, dayIdx, dayRaw } = headerInfo(text);
+  const [my, mm, md] = m.date.split("-").map(Number);
+  if (!my || !mm || !md) return [];
+  const mWd = weekday(m.date);
+  const event = dayNameOf(mWd) + " " + ddmm(m.date);
+  const out: string[] = [];
+  if (date) {
+    const year = date.year ?? my;
+    if (date.day !== md || date.month !== mm || (date.year !== undefined && date.year !== my)) {
+      out.push(t("pasteWrongDate", { l: date.raw, e: event }));
+    }
+    if (dayIdx !== undefined) {
+      const iso = year + "-" + p2(date.month) + "-" + p2(date.day);
+      const actual = weekday(iso);
+      if (!Number.isNaN(actual) && actual !== dayIdx) out.push(t("pasteWrongDay", { l: date.raw + " " + dayRaw, a: dayNameOf(actual) }));
+    }
+  } else if (dayIdx !== undefined && dayIdx !== mWd) {
+    out.push(t("pasteWrongDayOnly", { s: dayRaw || "", e: event }));
+  }
+  return out;
+}
+
+const dayNameOf = (i: number): string => DAYS[lang()][i];
