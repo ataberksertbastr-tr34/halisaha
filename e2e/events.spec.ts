@@ -199,6 +199,7 @@ test("disiplin ve duyuru sayfaları; oyuncu kartında sicil", async ({ page }) =
   await page.goto("/#/announce");
   await page.locator('[data-a="shareArea"][data-v="ann-move"]').click();
   expect(await lastShared(page)).toContain("Kural 14.3");
+  expect(await lastShared(page)).not.toContain("WhatsApp grubuna yapılan atıflar");
   await page.locator('input[data-f="ann.ruleText"]').fill("Borcu olan oyuncu ödeme yapana kadar yedekte bekler.");
   await expect(page.locator("#ann-rule")).toHaveValue(/ödeme yapana kadar/);
   await noHorizontalScroll(page);

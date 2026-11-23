@@ -47,6 +47,19 @@ describe("kural kitabı", () => {
     const total = book.sections.reduce((n, s) => n + s.items.length, 0);
     expect(total).toBe(122); // grep -c "^\*\*N.N " KURALLAR.md
   });
+  it("Bölüm 14: uygulama kullanımda, esas alınan kayıt (Kural 14.1–14.4)", () => {
+    expect(book.sections[13].items.map((i) => i.id + " " + i.title)).toEqual([
+      "14.1 Uygulama", "14.2 Katılım ve duyurular", "14.3 Esas alınan kayıt", "14.4 Test ve geri bildirim",
+    ]);
+    expect(findRule(book, "14.1")!.text).not.toMatch(/yapım aşaması/);
+    expect(findRule(book, "14.3")!.text).toMatch(/uygulamadaki kayıt esas alınır/);
+  });
+  it("metindeki her \"Kural N.N\" atfı var olan bir maddeye gider", () => {
+    const ids = new Set(book.sections.flatMap((s) => s.items.map((i) => i.id)));
+    const refs = [...md.matchAll(/Kural (\d+\.\d+)(?:[–-](\d+\.\d+))?/g)].flatMap((m) => [m[1], m[2]]).filter(Boolean) as string[];
+    expect(refs.length).toBeGreaterThan(20);
+    expect(refs.filter((r) => !ids.has(r))).toEqual([]);
+  });
   it("arama Türkçe karakterden bağımsız ve numarayla çalışır", () => {
     const all = book.sections.flatMap((s) => s.items);
     expect(all.filter((i) => matchesRule(i, "kucuk")).length).toBeGreaterThan(0);

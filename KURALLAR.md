@@ -183,11 +183,11 @@ Bu kurallar gruptaki herkes, getirilen misafirler ve grubun düzenlediği tüm e
 
 ### 14. Halı Saha Uygulaması
 
-**14.1 Uygulama:** Grubun halı saha organizasyonu için kendi uygulaması yapım aşamasındadır.
+**14.1 Uygulama:** Halı saha ve etkinlik organizasyonu Predators uygulamasıyla yürütülür. Uygulamayı organizatör kullanır; üyeler kadroyu, yedek sırasını ve paylaşılan takımları organizatörün grupta paylaştığı oyuncu sayfası bağlantısından her an görebilir.
 
-**14.2 Geçiş dönemi:** Uygulama kullanıma açılana kadar duyurular, kadro listesi ve ödemeler bu yönetmelikte anlatıldığı şekilde WhatsApp grubu üzerinden yürütülür.
+**14.2 Katılım ve duyurular:** Katılım WhatsApp grubundaki listeye isim yazılarak bildirilir (Kural 1.2); organizatör listeyi uygulamaya işler. Davet, kadro, takımlar ve ödeme hatırlatmaları uygulamadan gruba gönderilir.
 
-**14.3 Uygulamaya geçiş:** Uygulama açıldığında hangi işlemlerin (kadro kaydı, ödeme takibi, duyurular vb.) uygulamaya taşınacağını organizatör grupta duyurur. Duyurudan sonra bu işlemlerde uygulamadaki kayıt esas alınır; yönetmelikte WhatsApp grubuna yapılan atıflar bu işlemler için uygulamayı da kapsar.
+**14.3 Esas alınan kayıt:** Kadro ve yedek sırası, geç iptal ve haber saatleri (Kural 1.3–1.6) ile ödemelerde uygulamadaki kayıt esas alınır. Kayda itirazlar organizatöre iletilir; son söz organizatöründür (Kural 12.1).
 
 **14.4 Test ve geri bildirim:** Test sürecinde üyelerden uygulamayı denemeleri istenebilir; fark edilen hatalar ve öneriler organizatöre iletilir.
 
