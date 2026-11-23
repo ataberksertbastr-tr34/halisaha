@@ -808,3 +808,35 @@ test("toplu ekleme: satırdaki mevki ve seviye alınır; rakamlı ad bozulmaz", 
   await expect(row("Toplu Amca 1").locator(".pips")).toHaveText("●●●○○");
   expect(errors).toEqual([]);
 });
+
+test("maç günü Cuma 22:00'ye alınınca eski günlerdeki boş maçlar kalkar; format ve ücret yaklaşan maçlara geçer", async ({ page }) => {
+  const errors = watchErrors(page);
+  // Boş uygulama: varsayılan Salı ve Perşembe 21:00 maçları kendiliğinden planlanır
+  await page.goto("/#/players");
+  await page.locator("details summary", { hasText: "Toplu" }).click();
+  await page.locator("#bulk").fill("Ali Deneme\nVeli Deneme");
+  await page.locator('[data-a="bulkAdd"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(page.locator('.chips [data-a="selMatch"]')).toHaveText(["Sal 13.10", "Per 15.10", "Sal 20.10", "Per 22.10"]);
+  await page.goto("/#/settings");
+  const time = page.locator('input[data-f="slot.0.t"]');
+  await time.fill("22:00");
+  await time.press("Tab");
+  await page.locator('select[data-f="slot.0.d"]').selectOption("5");
+  await expect(page.locator("#toast")).toContainText("eski günlerdeki 2 boş maç kaldırıldı");
+  await page.locator('select[data-f="slot.1.d"]').selectOption("");
+  await page.locator('select[data-f="s.format"]').selectOption("6");
+  await expect(page.locator("#toast")).toContainText("yaklaşan 4 maç güncellendi");
+  const price = page.locator('input[data-f="s.price"]');
+  await price.fill("4480");
+  await price.press("Tab");
+  await expect(page.locator("#toast")).toContainText("yaklaşan 4 maç güncellendi");
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(page.locator('.chips [data-a="selMatch"]')).toHaveText(["Cum 16.10", "Cum 23.10", "Cum 30.10", "Cum 06.11"]);
+  await expect(page.locator("#hero")).toContainText("Cuma 22:00");
+  await expect(page.locator("#hero")).toContainText("0/14");
+  await expect(page.locator(".mcard")).toContainText("6+1 · 4.480 ₺");
+  // Eski günün maçı için rezervasyon uyarısı kalmaz
+  await expect(page.locator("#view")).not.toContainText("Salı");
+  expect(errors).toEqual([]);
+});

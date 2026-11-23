@@ -263,7 +263,12 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9; iptal edilmiş maçlar
   da seçilebilir), kural değişikliği (12.2) ve grup kuralları hatırlatması için
   hazır, düzenlenebilir metinler.
-- **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
+- **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır. Maç günü ya da
+  saati değişince (ör. Salı/Perşembe 21:00 → Cuma 22:00) eski günlere açılmış, el
+  sürülmemiş boş maçlar kendiliğinden kalkar; içine yazılan, rezerve edilen ya da
+  taşınan maça dokunulmaz. Ayarlar'da format, saha ücreti ya da varsayılan saha
+  değişince kadrosu henüz kesinleşmemiş maçlar da yeni değeri alır (maça özel
+  girilen değer kalır). Katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
   listesinden katılım tek seferde; önce önizlenir; listedeki tarih ya da gün seçili etkinlikle

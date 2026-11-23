@@ -2,7 +2,7 @@
 import "./styles/main.css";
 import { setLang, t } from "./i18n";
 import { applyExternal, commit, replaceState, setChangeHook, setLockHook, setPersister, setRenderer, store, storeVersion, ui } from "./app/store";
-import { ensureUpcoming, needsReservation, unfinished } from "./domain/schedule";
+import { needsReservation, reschedule, unfinished } from "./domain/schedule";
 import { fieldOf, telHref } from "./domain/fields";
 import { dayName } from "./domain/messages";
 import { ddmm } from "./domain/dates";
@@ -179,7 +179,9 @@ function setupSync(): void {
 }
 
 function autoSchedule(): void {
-  if (ensureUpcoming(store.s, new Date()).length) commit(true);
+  // Eski maç günlerinde kalmış boş maçlar da temizlenir (ayar başka cihazda değişmiş olabilir)
+  const { made, removed } = reschedule(store.s, new Date());
+  if (made.length || removed.length) commit(true);
 }
 
 function setupReservationReminder(): void {

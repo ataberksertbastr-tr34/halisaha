@@ -1,6 +1,6 @@
 /** Maç planlama, rezervasyon hatırlatması ve takvim (.ics). */
 import { describe, expect, it } from "vitest";
-import { autoMatch, ensureUpcoming, idSlot, makeMatch, needsReservation, nextSlot, rememberSkip, slotId, unfinished, upcomingSlots } from "../src/domain/schedule";
+import { applyDefaults, autoMatch, ensureUpcoming, idSlot, makeMatch, matchDefaults, needsReservation, nextSlot, pristineAuto, pruneSchedule, rememberSkip, reschedule, slotId, unfinished, upcomingSlots } from "../src/domain/schedule";
 import { buildICS, eventOf, googleCalendarUrl, icsEscape, icsFold } from "../src/domain/calendar";
 import { allIn, match, player, state } from "./helpers/factory";
 import { addInfraction } from "../src/domain/discipline";
@@ -119,6 +119,106 @@ describe("otomatik planlama", () => {
   it("ayar kapalıysa hiçbir şey oluşturmaz", () => {
     const s = state([], [], { autoSchedule: false });
     expect(ensureUpcoming(s, NOW)).toEqual([]);
+  });
+});
+
+describe("maç günü değişince plan", () => {
+  // Salı/Perşembe 21:00 ile oluşmuş plan; organizatör Cuma 22:00'ye geçiyor
+  const setup = () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Bora Deneme")]);
+    ensureUpcoming(s, NOW); // 13, 15, 20, 22 Ekim 21:00
+    s.settings.slots = [{ d: 5, t: "22:00" }, { d: "", t: "21:00" }];
+    return s;
+  };
+  const byDate = (s: ReturnType<typeof state>, d: string) => s.matches.find((m) => m.date === d)!;
+
+  it("eski günlerdeki el sürülmemiş maçlar kalkar, yeni güne maç planlanır; sabit oyuncunun 'Var'ı dokunulmuşluk sayılmaz", () => {
+    const s = setup();
+    expect(pristineAuto(s, byDate(s, "2026-10-13"))).toBe(true);
+    const { made, removed } = reschedule(s, NOW);
+    expect(removed.map((m) => m.date)).toEqual(["2026-10-13", "2026-10-15", "2026-10-20", "2026-10-22"]);
+    expect(made.map((m) => m.date + " " + m.time)).toEqual(["2026-10-09 22:00", "2026-10-16 22:00", "2026-10-23 22:00", "2026-10-30 22:00"]);
+    expect(s.matches.map((m) => m.date)).toEqual(["2026-10-09", "2026-10-16", "2026-10-23", "2026-10-30"]);
+    // Tekrar çalışınca hiçbir şey değişmez
+    expect(reschedule(s, NOW)).toEqual({ made: [], removed: [] });
+  });
+
+  it("içine yazılan, rezerve edilen, mesajı gönderilen, notu olan, misafirli, taşınan ya da kaydı bağlı maç kalır", () => {
+    const s = setup();
+    const keep = (d: string) => byDate(s, d);
+    keep("2026-10-13").att.b = "in";
+    keep("2026-10-13").order.push("b");
+    keep("2026-10-15").reserved = true;
+    keep("2026-10-20").sent = { invite: 1 };
+    const moved = keep("2026-10-22");
+    moved.date = "2026-10-21";
+    const extra = autoMatch(s, "2026-10-27", "21:00", slotId("2026-10-27", "21:00"));
+    extra.guests.push({ id: "g1", name: "Misafir Mert", rating: 3, pos: "", host: "a" });
+    const paid = autoMatch(s, "2026-10-29", "21:00", slotId("2026-10-29", "21:00"));
+    const noted = autoMatch(s, "2026-11-03", "21:00", slotId("2026-11-03", "21:00"));
+    noted.note = "Krampon şart";
+    s.matches.push(extra, paid, noted);
+    s.payments.push({ id: "pay1", pid: "a", amount: 100, at: "2026-10-01", mid: paid.id });
+    expect(pruneSchedule(s)).toEqual([]);
+    expect(s.matches).toHaveLength(7);
+  });
+
+  it("elle açılan, oynanan ya da iptal edilen maça ve etkinliklere dokunulmaz", () => {
+    const s = state([], [match("elle", { date: "2026-10-13" }), match(slotId("2026-10-15", "21:00"), { date: "2026-10-15", auto: true, status: "played" }),
+      match(slotId("2026-10-20", "21:00"), { date: "2026-10-20", auto: true, status: "cancelled" }),
+      match(slotId("2026-10-22", "21:00"), { date: "2026-10-22", auto: true, kind: "paintball" })], { slots: [{ d: 5, t: "22:00" }] });
+    expect(pruneSchedule(s)).toEqual([]);
+  });
+
+  it("maç günleri boşaltılırsa el sürülmemiş otomatik maçlar kalkar, yenisi oluşturulmaz", () => {
+    const s = setup();
+    s.settings.slots = [{ d: "", t: "21:00" }, { d: "", t: "21:00" }];
+    const { made, removed } = reschedule(s, NOW);
+    expect([made.length, removed.length, s.matches.length]).toEqual([0, 4, 0]);
+  });
+});
+
+describe("ayar değişince yaklaşan maçlar", () => {
+  const field = { id: "f1", name: "Deneme Halı Saha", address: "", link: "", phone: "", price: 4480, lat: null, lng: null };
+
+  it("format ve ücret: kesinleşmemiş açık maçlar yeni değeri alır; maça özel değer, kesinleşmiş ve bitmiş maç kalır (Kural 1.4)", () => {
+    const s = state([], [], { format: 7, price: 3000 });
+    ensureUpcoming(s, NOW); // 13, 15, 20, 22 Ekim
+    const [m13, m15, m20] = s.matches;
+    m15.price = 3500; // organizatör bu maçın ücretini elle girdi
+    s.matches.push(match("eski", { date: "2026-10-06", status: "played", format: 7, price: 3000 }));
+    const before = matchDefaults(s);
+    s.settings.format = 6;
+    s.settings.price = 4480;
+    // 12 Ekim 22:00: 13 Ekim maçının kadrosu kesinleşti
+    const n = applyDefaults(s, before, new Date(2026, 9, 12, 22, 0));
+    expect(n).toBe(3);
+    expect([m13.format, m13.price]).toEqual([7, 3000]);
+    expect([m15.format, m15.price]).toEqual([6, 3500]);
+    expect([m20.format, m20.price]).toEqual([6, 4480]);
+    expect(s.matches.find((m) => m.id === "eski")).toMatchObject({ format: 7, price: 3000 });
+  });
+
+  it("varsayılan saha seçilince sahası boş maçlar o sahayı ve ücretini alır; başka sahalı maç kalır", () => {
+    const s = state([], [], { price: 3000 });
+    ensureUpcoming(s, NOW);
+    const other = { ...field, id: "f2", name: "Öbür Saha", price: 2500 };
+    s.fields.push(field, other);
+    s.matches[1].fieldId = "f2";
+    s.matches[1].price = 2500;
+    const before = matchDefaults(s);
+    s.settings.defaultFieldId = "f1";
+    expect(applyDefaults(s, before, NOW)).toBe(3);
+    expect(s.matches.map((m) => m.fieldId + " " + m.price)).toEqual(["f1 4480", "f2 2500", "f1 4480", "f1 4480"]);
+  });
+
+  it("etkinliklere dokunulmaz; değişiklik yoksa 0", () => {
+    const s = state([], [match("pb", { kind: "paintball", date: "2026-10-17", format: 7, price: 3000 })], { format: 7, price: 3000 });
+    const before = matchDefaults(s);
+    expect(applyDefaults(s, before, NOW)).toBe(0);
+    s.settings.format = 6;
+    expect(applyDefaults(s, before, NOW)).toBe(0);
+    expect(s.matches[0].format).toBe(7);
   });
 });
 

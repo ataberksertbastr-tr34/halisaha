@@ -137,7 +137,7 @@ export const tr = {
   autoSchedule: "Önümüzdeki 4 maçı otomatik oluştur", reserveDays: "Saha rezervasyonu hatırlatması", reserveOff: "Kapalı", reserveDaysN: "Maçtan {n} gün önce",
   goalsTitle: "Goller ve maçın oyuncusu", goalsHint: "+ ile golü yaz, yıldızla maçın oyuncusunu seç. Skoru boş bırakırsan gollerden hesaplanır.",
   mvp: "Maçın oyuncusu", goalSum: "Gol toplamı: {ta} {a} · {tb} {b}", goalMismatch: "Skorla tutmuyor (kendi kalesine gol olabilir).", noTeam: "Takımsız",
-  goalsN: "{n} gol", scheduled: "{n} maç planlandı", addGoal: "{n}: gol ekle", removeGoal: "{n}: gol sil", matchPlan: "Maç planı",
+  goalsN: "{n} gol", scheduled: "{n} maç planlandı", rescheduled: "{n} maç planlandı · eski günlerdeki {r} boş maç kaldırıldı", savedUpcoming: "Kaydedildi · yaklaşan {n} maç güncellendi", addGoal: "{n}: gol ekle", removeGoal: "{n}: gol sil", matchPlan: "Maç planı",
   rulesBroken: "Takımlar kuruldu; {n} eşleşme kuralı uygulanamadı",
   lockTo: "{n}: {t} takımına kilitle", unlock: "{n}: kilidi aç", locked1: "{n} {t} takımına kilitlendi", unlocked1: "{n} kilidi açıldı",
   swapped: "{a} ⇄ {b}", dragHint: "Sahada oyuncuyu sürükleyip karşı takımdan birinin üstüne bırak ya da iki oyuncuya sırayla dokun: yer değiştirsinler. Listede isme dokununca karşı takıma geçer; kilit, otomatik kurmada oyuncuyu takımında tutar.",

@@ -33,7 +33,7 @@ import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/
 import { accounts, chargeOf, debts, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams, swapPlayers } from "../domain/teams";
-import { ensureUpcoming, makeMatch, rememberSkip } from "../domain/schedule";
+import { applyDefaults, ensureUpcoming, makeMatch, matchDefaults, rememberSkip, reschedule } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
 import { orgReminders, remindersICS } from "../domain/reminders";
@@ -977,7 +977,7 @@ registerActions({
     const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf" | "debtBlock" | "noShowPenalty";
     store.s.settings[k] = !store.s.settings[k];
     let made = 0;
-    if (k === "autoSchedule" && store.s.settings.autoSchedule) made = ensureUpcoming(store.s, new Date()).length;
+    if (k === "autoSchedule" && store.s.settings.autoSchedule) made = reschedule(store.s, new Date()).made.length;
     commit();
     if (made) toast(t("scheduled", { n: made }));
   },
@@ -1006,6 +1006,7 @@ registerActions({
   saveField: (ds) => {
     const name = cleanName(val("#fe-name"));
     if (!name) return toast(t("fieldNeedName"));
+    const before = matchDefaults(store.s);
     const lat = val("#fe-lat"), lng = val("#fe-lng");
     const data = {
       name, address: val("#fe-address").trim(), link: val("#fe-link").trim(), phone: val("#fe-phone").trim(), price: Number(val("#fe-price")) || 0,
@@ -1025,9 +1026,11 @@ registerActions({
     }
     if (ui.fieldTarget === "default") store.s.settings.defaultFieldId = f.id;
     ui.fieldTarget = null;
+    // Varsayılan saha ya da ücreti değiştiyse henüz kesinleşmemiş maçlar da alır
+    const n = applyDefaults(store.s, before, new Date());
     closeModal();
     commit();
-    toast(t("saved"));
+    toast(n ? t("savedUpcoming", { n }) : t("saved"));
   },
   delField: (ds) => {
     const f = getField(store.s, ds.id);
@@ -1153,9 +1156,12 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
     const st = S.settings as unknown as Record<string, unknown>;
     // Hatırlatma saati boş bırakılamaz
     if (k === "remindAt" && !v) return render();
+    const before = matchDefaults(S);
     st[k] = k === "price" ? Number(v) || 0 : k === "fixedShare" ? Math.max(0, Number(v) || 0) : k === "format" || k === "inviteDays" ? Number(v) : v;
+    // Format, ücret ya da varsayılan saha: henüz kesinleşmemiş maçlar da yeni ayarı alır
+    const n = k === "format" || k === "price" || k === "defaultFieldId" ? applyDefaults(S, before, new Date()) : 0;
     commit();
-    toast(t("saved"));
+    toast(n ? t("savedUpcoming", { n }) : t("saved"));
     return;
   }
   if (f.startsWith("slot.")) {
@@ -1164,9 +1170,10 @@ export function onField(el: HTMLInputElement | HTMLSelectElement): void {
     S.settings.slots[i] = S.settings.slots[i] || { d: "", t: "21:00" };
     if (k === "d") S.settings.slots[i].d = v === "" ? "" : Number(v);
     else S.settings.slots[i].t = v;
-    const made = ensureUpcoming(S, new Date());
+    // Eski günlere oluşturulmuş boş maçlar kalkar, yeni günlere maç planlanır
+    const { made, removed } = reschedule(S, new Date());
     commit();
-    toast(made.length ? t("scheduled", { n: made.length }) : t("saved"));
+    toast(removed.length ? t("rescheduled", { n: made.length, r: removed.length }) : made.length ? t("scheduled", { n: made.length }) : t("saved"));
     return;
   }
   if (f === "reserveDays") {
