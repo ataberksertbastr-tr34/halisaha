@@ -216,6 +216,27 @@ describe("ödeyenler ve kişi başı pay", () => {
     expect(estShare(s, m)).toBe(190); // 3000 / 16 = 187,5
   });
 
+  it("kadro kesinleşene kadar tahmini pay kontenjana göre: az kişi yazılıyken şişmez; kesinleşince gerçek pay (Kural 1.4)", () => {
+    const ps = roster(4, { pos: ["GK", "", "", ""] });
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", price: 3000, format: 7 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { gkFree: true, round: true });
+    // Maçtan 3 gün önce: 4 kişi (1 kaleci) yazılı, 3 ödeyen; yine de 14 ödeyene bölünür
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(215);
+    // Kadro kesinleşti (maçtan 24 saatten az): gerçek pay
+    expect(estShare(s, m, new Date(2026, 9, 14, 22, 0))).toBe(1000);
+    // Oynanmış maç: gerçek pay
+    m.status = "played";
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(1000);
+  });
+
+  it("kontenjandan çok ödeyen varsa tahmin ödeyen sayısına bölünür", () => {
+    const ps = roster(16);
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", price: 3000, format: 7 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { gkFree: true, round: true });
+    // Kalecisi olmayan 16 kişi: 14'e değil 16'ya bölünür
+    expect(estShare(s, m, new Date(2026, 9, 12, 12, 0))).toBe(190);
+  });
+
   it("ücreti olmayan maçta pay 0", () => {
     const m = allIn(match("m", { price: 0 }), ["p0"]);
     expect(shareOf(state(roster(1), [m]), m)).toBe(0);
