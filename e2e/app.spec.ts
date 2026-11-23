@@ -2,7 +2,7 @@
 import { expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { deadZones, importBackupText, noHorizontalScroll, test, watchErrors } from "./helpers";
+import { deadZones, importBackupText, noHorizontalScroll, openResults, test, watchErrors } from "./helpers";
 
 const V2 = readFileSync(resolve("tests/fixtures/backup-v2-legacy.json"), "utf8");
 const TABS = ["match", "teams", "pay", "players", "more"];
@@ -152,6 +152,7 @@ test("katılım, misafir, takım kurma ve maçı bitirme akışı", async ({ pag
   // Kural 4.2: 11 kişide takımlar 6–5; sahada eşit sayıda olmadığı söylenir
   await expect(page.locator(".warnline", { hasText: "Takımlar eşit değil" })).toContainText("6–5");
   await page.locator('#tabs [data-v="match"]').click();
+  await openResults(page);
   await page.locator("#scA").fill("3");
   await page.locator("#scB").fill("2");
   await page.locator('[data-a="finish"]').click();
@@ -562,6 +563,7 @@ test("Kural 3.5: '2 golde bir' kaleci değişimi, gol yiyen takıma hatırlatıl
   await page.locator('#tabs [data-v="match"]').click();
   await page.locator(".prep summary").click();
   await page.locator('select[data-f="m.agree"][data-k="gk"]').selectOption("2g");
+  await openResults(page);
   await page.locator("summary", { hasText: "Goller ve maçın oyuncusu" }).click();
   const plus = page.locator(`[data-a="goal"][data-d="1"][aria-label*="${scorer}"]`);
   await plus.click();

@@ -761,3 +761,50 @@ test("liste yapıştırma: listedeki tarih ya da gün seçili etkinlikle tutmuyo
   await expect(page.locator("#paste-date")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("etkinlik sayfası: sonuç bölümü maç gününe kadar kapalı, iptal her zaman görünür; maç günü açık", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  const res = page.locator("details.res-later");
+  await expect(res).toBeVisible();
+  await expect(res).not.toHaveAttribute("open", "");
+  await expect(res.locator(":scope > summary")).toContainText("Maç günü açılır");
+  await expect(page.locator('[data-a="finish"]')).toBeHidden();
+  await expect(page.locator('[data-a="cancelMatch"]')).toBeVisible();
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "kapalı sonuç")).toEqual([]);
+  // İstenirse önceden açılır ve açık kalır
+  await res.locator(":scope > summary").click();
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('#tabs [data-v="match"]').click();
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  // Maç günü: bölüm kendiliğinden açık (katlanmaz)
+  await page.clock.setSystemTime(new Date("2026-10-15T18:00:00+03:00"));
+  await page.reload();
+  await openThursday(page);
+  await expect(page.locator("details.res-later")).toHaveCount(0);
+  await expect(page.locator('[data-a="finish"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("toplu ekleme: satırdaki mevki ve seviye alınır; rakamlı ad bozulmaz", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.locator('#tabs [data-v="players"]').click();
+  const add = page.locator('section[aria-labelledby="h-add"]');
+  await add.locator("summary", { hasText: "Toplu ekle" }).click();
+  await expect(add).toContainText("Ali Yılmaz, DOS, 4");
+  await add.locator("#bulk").fill("Toplu Bir, DOS, 4\nToplu İki - Forvet - 2\n7-Toplu Amca 1\n");
+  await add.locator('[data-a="bulkAdd"]').click();
+  await expect(page.locator("#toast")).toContainText("3");
+  const row = (n: string) => page.locator(".prow", { hasText: n });
+  await expect(row("Toplu Bir").locator(".pos")).toHaveText("DOS");
+  await expect(row("Toplu Bir").locator(".pips")).toHaveText("●●●●○");
+  await expect(row("Toplu İki").locator(".pos")).toHaveText("F");
+  await expect(row("Toplu İki").locator(".pips")).toHaveText("●●○○○");
+  await expect(row("Toplu Amca 1").locator(".pos")).toHaveCount(0);
+  await expect(row("Toplu Amca 1").locator(".pips")).toHaveText("●●●○○");
+  expect(errors).toEqual([]);
+});
