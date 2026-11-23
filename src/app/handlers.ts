@@ -401,6 +401,8 @@ registerActions({
     if (!m || m.status !== "open") return;
     ui.matchId = m.id;
     ui.payId = m.id;
+    // Maç gününden önce kapalı duran sonuç bölümü de açılsın
+    ui.open["res-" + m.id] = true;
     go({ name: "match" });
     render();
     document.getElementById("h-res")?.scrollIntoView({ block: "start" });

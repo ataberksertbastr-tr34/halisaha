@@ -22,9 +22,24 @@ import { ruleChip } from "../components";
 import { IC } from "../icons";
 import { clockHTML } from "../clock";
 
+/**
+ * Maç gününden önce sonuç bölümü kapalı durur (sayfa kısalır): skor, saat, goller, gelmeyenler,
+ * sakatlar, kapanış listesi ve "Maçı bitir" maç günü açılır; istenirse önceden de açılabilir.
+ * İptal ve silme her zaman görünür (hava ya da saha nedeniyle iptal, Kural 1.9).
+ */
 export function resultBlock(m: Match): string {
+  const title = esc(isFootball(m) ? t("result") : t("eventDay"));
+  const inner = resultInner(m);
+  const danger = '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch">' + esc(isFootball(m) ? t("cancelMatch") : t("cancelEvent")) + '</button><button type="button" class="btn danger sm" data-a="delMatch">' + esc(isFootball(m) ? t("deleteMatch") : t("deleteEvent")) + "</button></div>";
+  if (m.date <= today()) return '<section class="section" aria-labelledby="h-res"><h2 id="h-res">' + title + "</h2>" + inner + danger + "</section>";
+  const key = "res-" + m.id;
+  return '<section class="section" aria-labelledby="h-res"><details class="res-later" data-keep="' + esc(key) + '"' + (isOpen(key, false) ? " open" : "") + "><summary>" +
+    '<span class="minw0"><h2 id="h-res" class="inline">' + title + '</h2><span class="meta">' + esc(t("resLater")) + "</span></span></summary>" + inner + "</details>" + danger + "</section>";
+}
+
+function resultInner(m: Match): string {
   const k = kindOf(m);
-  let h = '<section class="section" aria-labelledby="h-res"><h2 id="h-res">' + esc(isFootball(m) ? t("result") : t("eventDay")) + "</h2>";
+  let h = "";
   if (k.score === "goals") h += footballScore(m);
   else if (k.score === "rounds") h += roundsScore(m);
   else if (k.score === "sets") h += setsScore(m);
@@ -34,8 +49,7 @@ export function resultBlock(m: Match): string {
   if (!isFootball(m)) h += mvpBlock(m);
   h += closingBlock(m);
   h += '<button type="button" class="btn block mt" data-a="discNew" data-mid="' + esc(m.id) + '">' + IC.gavel + esc(t("discRecord")) + "</button>";
-  h += '<button type="button" class="btn primary block mt" data-a="finish">' + esc(isFootball(m) ? t("finish") : t("finishEvent")) + "</button>" +
-    '<div class="row center mt"><button type="button" class="btn danger sm" data-a="cancelMatch">' + esc(isFootball(m) ? t("cancelMatch") : t("cancelEvent")) + '</button><button type="button" class="btn danger sm" data-a="delMatch">' + esc(isFootball(m) ? t("deleteMatch") : t("deleteEvent")) + "</button></div></section>";
+  h += '<button type="button" class="btn primary block mt" data-a="finish">' + esc(isFootball(m) ? t("finish") : t("finishEvent")) + "</button>";
   return h;
 }
 

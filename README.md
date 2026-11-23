@@ -266,9 +266,11 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
-  listesinden katılım tek seferde; önce önizlenir), sabit oyuncular, saha haritası/yol tarifi/arama,
+  listesinden katılım tek seferde; önce önizlenir; listedeki tarih ya da gün seçili etkinlikle
+  tutmuyorsa uyarır), sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
-  gol ve maçın oyuncusu, habersiz gelmeyenler.
+  gol ve maçın oyuncusu, habersiz gelmeyenler. Sonuç bölümü maç gününe kadar
+  kapalı durur (sayfa kısalır; iptal ve silme her zaman görünür).
 - **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
   uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
   açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
