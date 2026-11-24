@@ -72,4 +72,16 @@ describe("kontenjan ve yedek listesi", () => {
     expect(currentMatch(s, "d", "2026-10-09")!.id).toBe("b");
     expect(currentMatch(s, null, "2026-12-01")!.id).toBe("c");
   });
+
+  it("gece yarısını geçince saati yeni geçen maç sonucu girilene kadar seçili kalır; 6 saat sonra sıradaki maça geçer", () => {
+    const fri = match("fri", { date: "2026-11-27", time: "22:00" });
+    const next = match("next", { date: "2026-12-04", time: "22:00" });
+    const s = state([], [next, fri]);
+    expect(currentMatch(s, null, "2026-11-27", new Date(2026, 10, 27, 23, 30))!.id).toBe("fri");
+    expect(currentMatch(s, null, "2026-11-28", new Date(2026, 10, 28, 0, 30))!.id).toBe("fri");
+    expect(currentMatch(s, null, "2026-11-28", new Date(2026, 10, 28, 4, 30))!.id).toBe("next");
+    // Sonuç girildi (oynandı): sıradaki maç
+    fri.status = "played";
+    expect(currentMatch(s, null, "2026-11-28", new Date(2026, 10, 28, 0, 30))!.id).toBe("next");
+  });
 });

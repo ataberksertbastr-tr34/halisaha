@@ -263,7 +263,12 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Duyurular:** uygulamaya geçiş (Kural 14.3), iptal (1.9; iptal edilmiş maçlar
   da seçilebilir), kural değişikliği (12.2) ve grup kuralları hatırlatması için
   hazır, düzenlenebilir metinler.
-- **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır; katılım
+- **Maç:** haftalık günlere göre ileriye 4 maç otomatik planlanır. Maç günü ya da
+  saati değişince (ör. Salı/Perşembe 21:00 → Cuma 22:00) eski günlere açılmış, el
+  sürülmemiş boş maçlar kendiliğinden kalkar; içine yazılan, rezerve edilen ya da
+  taşınan maça dokunulmaz. Ayarlar'da format, saha ücreti ya da varsayılan saha
+  değişince kadrosu henüz kesinleşmemiş maçlar da yeni değeri alır (maça özel
+  girilen değer kalır). Katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
   listesinden katılım tek seferde; önce önizlenir; listedeki tarih ya da gün seçili etkinlikle
@@ -274,8 +279,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
 - **Toplu oyuncu ekleme:** her satıra bir isim; istenirse virgülle mevki ve seviye
   ("Ali Yılmaz, DOS, 4").
 - **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
-  uyarısı (tek dokunuşla sonuç bölümüne götürür); maç bitince Ödemeler o maçı
-  açar. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
+  uyarısı (tek dokunuşla sonuç bölümüne götürür). Gece yarısını geçse de saati yeni
+  biten maç (başlangıçtan 6 saat boyunca) sonucu girilene kadar seçili kalır. Maç
+  bitince Ödemeler o maçı açar; ertesi günlerde de sıradaki maçın kadrosu
+  kesinleşene kadar ödemesi tamamlanmamış son maç açılır. Geçmiş maçlardan sonuç mesajı (skor, goller, maçın oyuncusu, tatlı
   iddiası) ve günü gelmemiş iptal edilmiş maçın duyurusu paylaşılır.
 - **Kurallarla uyum:** kadro kesinleştikten sonra kadrodan çıkan ("Yok", "Belki"
   ya da "Var"ı kaldırarak) geç iptal sayılır; yerine yedekten biri girerse payı

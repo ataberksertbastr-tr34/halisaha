@@ -12,6 +12,7 @@ import { ddmm, monthKey, parseISO } from "../../domain/dates";
 import { currentMatch, getMatch, getP, lineup } from "../../domain/lineup";
 import { billOf, estShare, fixedShareOf, isDue, isFree } from "../../domain/money";
 import { accounts, cashAt, debts, extraStatus, monthSummary, months, type Account } from "../../domain/ledger";
+import { isLocked } from "../../domain/roster";
 import { eventTitle, isFootball } from "../../domain/kinds";
 import { dayShort, guestPayText, waLink, waPersonal } from "../../domain/messages";
 import { emptyState, eventOption, ruleChip, shareButtons } from "../components";
@@ -39,19 +40,38 @@ function personBtn(id: string, name: string): string {
 }
 
 /* ---------- Maç ---------- */
+/**
+ * Ödemeler açılınca gösterilen maç: sıradaki maçın kadrosu kesinleştiyse ya da maç bugünse
+ * o (ücret maça çıkmadan önce toplanır, Kural 1.4, 2.3); değilse ödemesi tamamlanmamış en
+ * son oynanan maç; o da yoksa sıradaki maç.
+ */
+function defaultPayMatch(list: Match[], acc: ReturnType<typeof accounts>): Match {
+  const S = store.s;
+  const td = today();
+  const next = currentMatch(S, ui.matchId, td);
+  if (next && (next.date <= td || isLocked(next, new Date()))) return next;
+  const last = list.find((x) => x.status === "played");
+  const unpaid = (x: Match) => billOf(S, x).payers.some((id) => {
+    const c = acc.get(id)?.charges.find((ch) => ch.mid === x.id && !ch.cid);
+    return !!c && c.paid < c.amount;
+  });
+  if (last && unpaid(last)) return last;
+  return next || list[0];
+}
+
 function matchPayView(): string {
   const S = store.s;
   const list = S.matches.filter((m) => m.status !== "cancelled").sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   if (!list.length) return emptyState(t("noPayMatch"), { a: "newEvent", label: t("createEvent") });
+  const acc = accounts(S, today());
   let m = getMatch(S, ui.payId);
-  if (!m || m.status === "cancelled") m = currentMatch(S, ui.matchId, today()) || list[0];
+  if (!m || m.status === "cancelled") m = defaultPayMatch(list, acc);
   const mm: Match = m;
   const bill = billOf(S, mm);
   const { payers } = bill;
   // Günü gelmemiş maçta pay henüz tahmin: kadro dolmadan az kişiye bölünüp şişmesin
   const due = isDue(mm, today());
   const sh = due ? bill.share : estShare(S, mm);
-  const acc = accounts(S, today());
   const chargeOf = (id: string) => acc.get(id)?.charges.find((c) => c.mid === mm.id && !c.cid);
   const collected = payers.reduce((tot, id) => tot + (chargeOf(id)?.paid || 0), 0);
   const expected = payers.length * sh;

@@ -1,7 +1,7 @@
 /** Maç planlama: haftalık günlere göre sıradaki maç; diğer etkinliklerin oluşturulması. */
 import type { Kind, Match, State } from "./types";
 import { addDays, iso, matchStart, parseISO } from "./dates";
-import { applyFixed, sanctioned, type Skip } from "./roster";
+import { applyFixed, lockAt, sanctioned, type Skip } from "./roster";
 import { getField } from "./fields";
 import { blankMatch } from "./schema";
 import { inheritAgreements, isFootball, kindDef } from "./kinds";
@@ -137,6 +137,118 @@ export function ensureUpcoming(s: State, now: Date, n = UPCOMING): Match[] {
     created.push(m);
   }
   return created;
+}
+
+/** İki değer aynı mı (düz JSON verisi; nesnelerde anahtar sırası önemsiz). */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b || Array.isArray(a) !== Array.isArray(b)) return false;
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
+  for (const k of keys) if (!same(x[k], y[k])) return false;
+  return true;
+}
+
+/** Oluşturulurken ayarlardan ve sabit oyunculardan dolan alanlar. */
+const FROM_SETTINGS = new Set(["id", "date", "time", "auto", "fieldId", "price", "format", "agree", "att", "order"]);
+
+/** Ödeme, ek borç ya da disiplin kaydı bağlı maçlar. */
+function linkedMatches(s: State): Set<string> {
+  const out = new Set<string>();
+  for (const p of s.payments) if (p.mid) out.add(p.mid);
+  for (const c of s.charges) if (c.mid) out.add(c.mid);
+  for (const r of s.discipline) {
+    if (r.mid) out.add(r.mid);
+    if (r.target) out.add(r.target);
+  }
+  return out;
+}
+
+/**
+ * Organizatörün hiç el sürmediği otomatik halı saha maçı: hiç taşınmamış (kimliği hâlâ
+ * zamanından türetilmiş), boş maçtan farkı yalnızca oluşturma alanları (saha, ücret, format,
+ * ön anlaşmalar) ve sabit oyuncuların "Var" yanıtları; katılım günlüğü, misafir, takım,
+ * rezervasyon, gönderilen mesaj ve bağlı kayıt yok.
+ */
+export function pristineAuto(s: State, m: Match, linked: Set<string> = linkedMatches(s)): boolean {
+  if (m.auto !== true || m.status !== "open" || !isFootball(m) || m.id !== slotId(m.date, m.time) || linked.has(m.id)) return false;
+  const blank = blankMatch("football", m.date, m.time) as unknown as Record<string, unknown>;
+  const o = m as unknown as Record<string, unknown>;
+  for (const k of new Set([...Object.keys(blank), ...Object.keys(o)])) {
+    if (!FROM_SETTINGS.has(k) && !same(o[k], blank[k])) return false;
+  }
+  const fixed = new Set(s.players.filter((p) => p.fixed).map((p) => p.id));
+  return Object.keys(m.att).every((id) => m.att[id] === "in" && fixed.has(id));
+}
+
+/** Maç, ayarlardaki haftalık maç günlerinden birine (gün ve saat) düşüyor mu. */
+function onSlot(s: State, m: Match): boolean {
+  const day = parseISO(m.date).getDay();
+  return activeSlots(s).some((x) => Number(x.d) === day && (x.t || "21:00") === m.time);
+}
+
+/**
+ * Haftalık maç günü ya da saati değişince eski günlere oluşturulmuş, el sürülmemiş
+ * otomatik maçları kaldırır (ör. Salı/Perşembe 21:00 → Cuma 22:00). İçine yazılan,
+ * rezerve edilen, taşınan ya da kaydı bağlı maça dokunulmaz. Kaldırılanları döndürür.
+ */
+export function pruneSchedule(s: State): Match[] {
+  const linked = linkedMatches(s);
+  const gone = s.matches.filter((m) => pristineAuto(s, m, linked) && !onSlot(s, m));
+  if (gone.length) {
+    const ids = new Set(gone.map((m) => m.id));
+    s.matches = s.matches.filter((m) => !ids.has(m.id));
+  }
+  return gone;
+}
+
+/** Planı ayarlara uydurur: eski günlerdeki el sürülmemiş maçlar kalkar, eksik maçlar oluşturulur. */
+export function reschedule(s: State, now: Date): { made: Match[]; removed: Match[] } {
+  const removed = pruneSchedule(s);
+  return { made: ensureUpcoming(s, now), removed };
+}
+
+/** Yeni halı saha maçının ayarlardan aldığı varsayılanlar. */
+export interface MatchDefaults {
+  format: number;
+  fieldId: string;
+  price: number;
+}
+
+export function matchDefaults(s: State): MatchDefaults {
+  const f = getField(s, s.settings.defaultFieldId);
+  return { format: Number(s.settings.format), fieldId: f ? f.id : "", price: (f && Number(f.price)) || Number(s.settings.price) || 0 };
+}
+
+/**
+ * Ayarlarda format, saha ücreti ya da varsayılan saha değişince henüz kesinleşmemiş açık
+ * halı saha maçları yeni değeri alır. Yalnızca eski varsayılanı taşıyan alan değişir: maça
+ * özel girilen saha, ücret ya da formata dokunulmaz. Kesinleşmiş (Kural 1.4) ve bitmiş
+ * maçlar olduğu gibi kalır. Değişen maç sayısını döndürür.
+ */
+export function applyDefaults(s: State, before: MatchDefaults, now: Date): number {
+  const after = matchDefaults(s);
+  let n = 0;
+  for (const m of s.matches) {
+    if (!isFootball(m) || m.status !== "open") continue;
+    const lock = lockAt(m);
+    if (lock && now.getTime() >= lock.getTime()) continue;
+    let changed = false;
+    if (Number(m.format) === before.format && after.format !== before.format) {
+      m.format = after.format;
+      changed = true;
+    }
+    if (m.fieldId === before.fieldId && !m.field && after.fieldId !== before.fieldId) {
+      m.fieldId = after.fieldId;
+      changed = true;
+    }
+    if (Number(m.price) === before.price && after.price !== before.price) {
+      m.price = after.price;
+      changed = true;
+    }
+    if (changed) n++;
+  }
+  return n;
 }
 
 /** Silinen ya da taşınan otomatik maçın zamanını hatırlar (tekrar oluşturulmasın). */
