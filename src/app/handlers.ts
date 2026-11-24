@@ -52,7 +52,8 @@ import { guestHistory, pastGuests } from "../domain/guests";
 import { afterModalClose, closeModal, isModalOpen } from "../ui/modal";
 import { openFieldEditor, openText } from "../ui/sheets";
 import { toast } from "../ui/toast";
-import { copyText } from "../ui/clipboard";
+import { copyText, readClipText } from "../ui/clipboard";
+import { clipKind } from "../domain/clip";
 
 const $ = <T extends HTMLElement = HTMLInputElement>(sel: string) => document.querySelector(sel) as T | null;
 const val = (sel: string) => ($(sel) as HTMLInputElement | null)?.value ?? "";
@@ -227,6 +228,29 @@ export function importFromFile(input: HTMLInputElement): void {
 }
 
 /** İsim boşsa false, aynı isim varsa null, eklenirse true. */
+/**
+ * Panodaki metni türüne göre doğru önizlemeye götürür (Kural 1.2, 2.3). Liste seçili
+ * etkinliğe işlenir; banka bildirimi ödemelere. Pano boşsa, okunamazsa ya da tanınmazsa
+ * çağıranın kutusu açılır. Organizatör başka bir düğmeden geldiyse bildirimle söylenir.
+ */
+async function fromClipboard(from: "list" | "bank", fallback: () => void): Promise<void> {
+  const text = await readClipText();
+  const kind = clipKind(text, today());
+  if (kind === "list" && cur()) {
+    openPasteSheet(text);
+    dispatch("pastePreview", {} as DOMStringMap, document.body);
+    if (from === "bank") toast(t("clipWasList"));
+    return;
+  }
+  if (kind === "bank") {
+    openBankSheet(text);
+    dispatch("bankPreview", {} as DOMStringMap, document.body);
+    if (from === "list") toast(t("clipWasBank"));
+    return;
+  }
+  fallback();
+}
+
 export function addPlayerNamed(name: string, rating: number, pos: Pos): boolean | null {
   const n = cleanName(name);
   if (!n) return false;
@@ -467,10 +491,14 @@ registerActions({
       }
     });
   },
-  pasteList: () => {
+  // Önce panoya bakılır: liste varsa önizleme, banka bildirimi varsa banka önizlemesi doğrudan
+  // açılır; yoksa (ya da pano okunamazsa) yapıştırma kutusu. "Metni düzenle" (v=edit) panoya bakmaz.
+  pasteList: (ds) => {
     const m = cur();
     if (!m) return;
-    openPasteSheet(pendingPaste?.mid === m.id ? pendingPaste.text : "");
+    const sheet = () => openPasteSheet(pendingPaste?.mid === m.id ? pendingPaste.text : "");
+    if (ds.v === "edit") return sheet();
+    void fromClipboard("list", sheet);
   },
   pastePreview: () => {
     const m = cur();
@@ -841,7 +869,11 @@ registerActions({
     render();
   },
   ledger: (ds) => openLedger(ds.id!),
-  bankOpen: () => openBankSheet(pendingBank?.text || ""),
+  bankOpen: (ds) => {
+    const sheet = () => openBankSheet(pendingBank?.text || "");
+    if (ds.v === "edit") return sheet();
+    void fromClipboard("bank", sheet);
+  },
   bankPreview: () => {
     const text = val("#bank-text");
     const lines = parseBank(text, today());

@@ -47,6 +47,6 @@ export function showBankPreview(s: State, rows: BankRow[], today: string): void 
       // Hesaptan çıkan para ödeme değildir: seçilemez
       '<select id="bk-' + i + '" aria-label="' + esc(who + " " + money(r.amount)) + '"' + (r.out ? " disabled" : "") + ">" + (r.out ? opt("", t("pasteSkip"), true) : o) + "</select></label>";
   });
-  h += '</div><p class="small muted mt-s">' + esc(t("bankApplyHint")) + '</p><div class="row mt"><button type="button" class="btn primary grow" data-a="bankApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="bankOpen">' + esc(t("pasteEdit")) + "</button></div>";
+  h += '</div><p class="small muted mt-s">' + esc(t("bankApplyHint")) + '</p><div class="row mt"><button type="button" class="btn primary grow" data-a="bankApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="bankOpen" data-v="edit">' + esc(t("pasteEdit")) + "</button></div>";
   updateModal(h);
 }

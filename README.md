@@ -199,6 +199,12 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   yanında **Döküm**: hangi maçtan ne kadar, ödenenler ve toplam tek mesajda.
   **Sırayla hatırlat** bütün borçluları tek tek açar; her birine kısa
   hatırlatma ya da döküm gönderip sonrakine geçilir.
+- **Panodan al:** metni WhatsApp'ta ya da banka uygulamasında kopyalayıp **WhatsApp
+  listesini yapıştır** ya da **Banka bildirimini yapıştır**a dokununca uygulama panoya
+  bakar: liste varsa liste önizlemesi, banka bildirimi varsa banka önizlemesi doğrudan
+  açılır (hangi düğmeye dokunulduğu fark etmez; farklıysa bildirim söyler). Pano boşsa,
+  izin verilmezse ya da metin tanınmazsa yapıştırma kutusu açılır. Android'de ilk seferde
+  pano izni sorulur; iPhone'da her seferinde "Yapıştır" onayı çıkar.
 - **Banka bildirimi (Kural 2.3):** Ödemeler → **Banka bildirimini yapıştır**;
   bankanın havale/FAST bildirimleri ya da hesap hareketleri yapıştırılınca
   tutar, tarih ve gönderen bulunur, kişiyle eşleştirilir. Önizlemede kontrol
