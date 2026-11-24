@@ -289,12 +289,13 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   başında **Listede artık yok** altında "Yok yaz" önerisiyle çıkar, kadro kesinleştiyse geç
   iptal sayılır ve yerine giren söylenir, Kural 1.5; liste kısmiyse kimse önerilmez, sabit
   oyuncu varsayılan olarak kalır), sabit oyuncular, saha haritası/yol tarifi/arama,
-  "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
+  "Sahayı rezerve ettim" ve hatırlatması (saha ve sonuç şeritleri yalnızca Etkinlik'te çıkar;
+  diğer sayfaların üstünü kaplamaz), takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler. Sonuç bölümü maç gününe kadar
   kapalı durur (sayfa kısalır; iptal ve silme her zaman görünür).
 - **Toplu oyuncu ekleme:** her satıra bir isim; istenirse virgülle mevki ve seviye
   ("Ali Yılmaz, DOS, 4").
-- **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için üstte "Sonuç bekleniyor"
+- **Maç sonu:** saati geçtiği hâlde bitirilmeyen maç için Etkinlik sekmesinin üstünde "Sonuç bekleniyor"
   uyarısı (tek dokunuşla sonuç bölümüne götürür). Gece yarısını geçse de saati yeni
   biten maç (başlangıçtan 6 saat boyunca) sonucu girilene kadar seçili kalır. Maç
   bitince Ödemeler o maçı açar; ertesi günlerde de sıradaki maçın kadrosu
