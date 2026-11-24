@@ -870,3 +870,35 @@ test("maç gecesi: gece yarısından sonra açılınca sonucu girilecek maç se�
   await expect(page.locator('select[data-f="payId"] option:checked')).toHaveText("Salı 13.10 21:00 (Oynandı)");
   expect(errors).toEqual([]);
 });
+
+test("kısa liste biçimi: davet şablonu tek dokunuşla 1-İsim kalıbına döner; ✕ sonrası güncel liste paylaşılır (Kural 1.2, 1.5)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await stubShare(page);
+  await importBackupText(page, V2);
+  await page.goto("/#/settings");
+  await page.locator('[data-a="tplEdit"][data-k="invite"]').click();
+  await page.locator('[data-a="tplPreset"]').click();
+  await expect(page.locator("#tpl-text")).toHaveValue(/^\{tamtarih\} \{GUN\} \{saat\}-\{bitis\}/);
+  await expect(page.locator("#tpl-preview")).toContainText("1-");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "şablon")).toEqual([]);
+  await page.locator('[data-a="tplSave"]').click();
+  await expect(page.locator("#toast")).toContainText("kaydedildi");
+  await openThursday(page);
+  const invite = page.locator('#view [data-a="msg"][data-k="invite"]').last();
+  await invite.click();
+  const first = await lastShared(page);
+  const lines = first.split("\n");
+  expect(lines[0]).toBe("15.10.2026 PERŞEMBE 21:00-22:00");
+  expect(lines[2]).toMatch(/^1-\S/);
+  expect(first).toMatch(/\n16-$/m);
+  // Gönderildikten sonra aynı düğme güncel listeyi paylaşır
+  await expect(invite).toContainText("Güncel listeyi paylaş");
+  const name = lines[2].slice(2).replace(" 🧤", "");
+  await attBtn(page, name, "out").click();
+  await invite.click();
+  const next = await lastShared(page);
+  expect(next).not.toContain(name);
+  expect(next.split("\n")[2]).toMatch(/^1-\S/);
+  expect(errors).toEqual([]);
+});

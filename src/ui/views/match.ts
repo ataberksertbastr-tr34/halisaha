@@ -128,7 +128,8 @@ function attendanceBlock(m: Match): string {
     h += '<div class="notice"><div class="notice-tx"><strong>' + IC.lock + esc(t("locked")) + "</strong><span>" + esc(fb ? t("lockedHint") : t("lockedHintEv", { h: lockHours(m) })) + "</span></div>" +
       '<div class="row nowrap">' + shareButtons("squad", t("squadMsg")) + "</div></div>";
   }
-  h += '<div class="row nowrap">' + shareButtons("invite", t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(kindOf(m).teams === "tables" ? t("drawTables") : t("buildTeams")) + "</button></div>";
+  // Davet bir kez gönderildikten sonra aynı düğme güncel listeyi paylaşır (çıkan, yedekten giren işlenmiş hâliyle)
+  h += '<div class="row nowrap">' + shareButtons("invite", m.sent.invite ? t("shareListNow") : t("inviteMsg")) + '<button type="button" class="btn side" data-a="goTeams">' + esc(kindOf(m).teams === "tables" ? t("drawTables") : t("buildTeams")) + "</button></div>";
   h += '<div class="row nowrap mt-s"><button type="button" class="btn ghost grow" data-a="imgOpen">' + IC.image + esc(t("imgOpen")) + "</button>" +
     (fb ? '<button type="button" class="btn ghost grow" data-a="imgPoster">' + IC.image + esc(t("posterOpen")) + "</button>" : "") + "</div>";
   const cands = copyCandidates(S, m).length;

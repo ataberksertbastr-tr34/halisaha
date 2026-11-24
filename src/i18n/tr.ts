@@ -70,7 +70,7 @@ export const tr = {
   unmarkedPaid: "{n}: ödeme kaldırıldı", paidFromPool: "Bu pay genel bir ödemeden karşılandı; kişinin hesap defterinden düzenle.",
   partial: "Kısmi", paidPart: "{p} / {a} ödendi", credit: "Avans", balance: "Bakiye",
   templates: "Mesaj şablonları", templatesHint: "Halı saha mesajları tek dokunuşla paylaşılır. {…} yerine bilgiler otomatik gelir; bilgisi boş kalan satır mesajdan çıkar. Diğer etkinliklerin mesajları türüne göre hazır gelir.",
-  placeholders: "Yer tutucular (dokun, imlecin yerine eklensin)", preview: "Önizleme", resetDefault: "Varsayılana dön", custom: "özel",
+  placeholders: "Yer tutucular (dokun, imlecin yerine eklensin)", preview: "Önizleme", resetDefault: "Varsayılana dön", tplPresetList: "Kısa liste biçimi (1-İsim)", tplPresetHint: "Davet şablonunu WhatsApp'ta kullandığın kalıba çevirir: tarih ve BÜYÜK harfle gün, saat aralığı, 1-İsim satırları, boş yerler, kişi sayısı ve ücret. Önizlemeye bak, beğenirsen Kaydet.", tplUpperHint: "Büyük harfle yazılan yer tutucu büyük harf yazar: {GUN} → CUMA.", shareListNow: "Güncel listeyi paylaş", custom: "özel",
   share: "Paylaş", copiedPaste: "Kopyalandı — WhatsApp'a yapıştır", previewEdit: "Önizle ve düzenle", templateSaved: "Şablon kaydedildi", templateReset: "Varsayılan şablona dönüldü",
   tplInvite: "Davet", tplSquad: "Kadro kesinleşti", tplTeams: "Takımlar", tplPay: "Ödeme hatırlatması (grup)", tplPersonalPay: "Kişisel ödeme hatırlatması", tplPromoted: "Yedekten kadroya giren",
   squadMsg: "Kadroyu paylaş", sampleName: "Ahmet",

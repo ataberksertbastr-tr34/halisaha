@@ -176,3 +176,23 @@ describe("listedeki tarih ve gün", () => {
     expect(listDateIssues("1- Deneme\n2- Örnek", thu)).toEqual([]);
   });
 });
+
+describe("uygulamanın paylaştığı kısa liste geri yapıştırılınca", () => {
+  it("isimler, sıra ve yedekler aynen okunur; tarih ve gün uyarısı çıkmaz", async () => {
+    const { msgInvite } = await import("../src/domain/messages");
+    const { LIST_PRESET } = await import("../src/domain/templates");
+    const ps = Array.from({ length: 16 }, (_, i) => player("p" + i, "Deneme Oyuncu " + (i + 1)));
+    const m = allIn(match("m1", { date: "2026-12-18", time: "22:00", format: 6 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { format: 6, fixedShare: 320, templates: { invite: LIST_PRESET.tr } });
+    const text = msgInvite(s, m);
+    expect(listDateIssues(text, m)).toEqual([]);
+    // Boş bir maça yapıştırılınca herkes aynı sırayla yazılır; 15. ve 16. yedekte kalır
+    const fresh = match("m2", { date: "2026-12-18", time: "22:00", format: 6 });
+    const s2 = state(ps.map((p) => ({ ...p })), [fresh], { format: 6 });
+    const rows = planList(s2, fresh, parseList(text), "2026-12-14");
+    expect(rows.map((r) => r.id)).toEqual(ps.map((p) => p.id));
+    expect(applyPlan(s2, fresh, rows)).toBe(16);
+    const { playing, wait } = lineup(s2, fresh);
+    expect([playing.length, wait]).toEqual([14, ["p14", "p15"]]);
+  });
+});

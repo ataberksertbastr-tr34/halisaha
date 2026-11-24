@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { parseBackup } from "../src/domain/migrate";
 import { msgInvite, msgPay, msgResult, msgTeams, personalPayText, promotedText } from "../src/domain/messages";
-import { DEFAULT_TEMPLATES, PLACEHOLDERS, render, TEMPLATE_KEYS } from "../src/domain/templates";
+import { DEFAULT_TEMPLATES, LIST_PRESET, PLACEHOLDERS, render, TEMPLATE_KEYS } from "../src/domain/templates";
 import { setLang } from "../src/i18n";
 import { legacyMigrate, makeLegacy } from "./helpers/legacy";
 import { allIn, match, player, state } from "./helpers/factory";
@@ -112,5 +112,65 @@ describe("maç sonucu mesajı", () => {
     // Yalnızca bitirilen oyun sayılır
     m.games = [{ id: "g1", done: true }, { id: "g2", done: false }] as unknown as typeof m.games;
     expect(msgResult(s, m)).toContain("🏁 1 oyun");
+  });
+});
+
+describe("kısa liste biçimi (organizatörün WhatsApp kalıbı)", () => {
+  // Cuma 18 Aralık 22:00, 6+1 (kontenjan 14), sabit kişi başı 320 ₺; isimler uydurma
+  const setup = (n: number) => {
+    const ps = Array.from({ length: n }, (_, i) => player("p" + i, "Deneme Oyuncu " + (i + 1), 3, i === 0 ? "GK" : ""));
+    const m = allIn(match("m1", { date: "2026-12-18", time: "22:00", format: 6 }), ps.map((p) => p.id));
+    const s = state(ps, [m], { format: 6, fixedShare: 320, templates: { invite: LIST_PRESET.tr } });
+    return { s, m };
+  };
+
+  it("tarih, BÜYÜK harfle gün, saat aralığı, 1-İsim satırları, boş yerler, kişi ve ücret", () => {
+    setLang("tr");
+    const { s, m } = setup(12);
+    const lines = msgInvite(s, m).split("\n");
+    expect(lines[0]).toBe("18.12.2026 CUMA 22:00-23:00");
+    expect(lines[2]).toBe("1-Deneme Oyuncu 1 🧤");
+    expect(lines.slice(13, 16)).toEqual(["12-Deneme Oyuncu 12", "13-", "14-"]);
+    // Yedek ve Belki yokken o satırlar düşer
+    expect(msgInvite(s, m)).not.toContain("Yedek");
+    expect(lines[lines.length - 1]).toBe("14 kişi, kişi başı 320 ₺");
+  });
+
+  it("kontenjan dolunca yedekler ayrı satırda", () => {
+    setLang("tr");
+    const { s, m } = setup(16);
+    const txt = msgInvite(s, m);
+    expect(txt).toContain("14-Deneme Oyuncu 14\n\n⏳ Yedek: Deneme Oyuncu 15, Deneme Oyuncu 16");
+  });
+
+  it("büyük harfli yer tutucu her şablonda çalışır; İngilizcede i harfi İ olmaz", () => {
+    setLang("en");
+    try {
+      expect(render("{GUN} {gun}", { gun: "Friday" })).toBe("FRIDAY Friday");
+    } finally {
+      setLang("tr");
+    }
+    expect(render("{GUN} {Gun} {gun}", { gun: "Çarşamba" })).toBe("ÇARŞAMBA Çarşamba Çarşamba");
+    // Türkçe klavyeyle de İngilizce klavyeyle de büyük yazılan yer tutucu bulunur
+    expect(render("{TAMTARIH} {TAMTARİH} {KİSİ} {KISI}", { tamtarih: "18.12.2026", kisi: "6+1 (12/14)" })).toBe("18.12.2026 18.12.2026 6+1 (12/14) 6+1 (12/14)");
+  });
+
+  it("bitiş saati: halı saha 60 dk, etkinlik türünün süresi; gece yarısını geçer", () => {
+    setLang("tr");
+    const ps = [player("a", "Ali Deneme")];
+    const late = allIn(match("g", { date: "2026-12-18", time: "23:30" }), ["a"]);
+    const pb = allIn(match("pb", { kind: "paintball", date: "2026-12-19", time: "11:00", cap: 12 }), ["a"]);
+    const s = state(ps, [late, pb], { templates: { invite: "{saat}-{bitis}" } });
+    expect(msgInvite(s, late)).toBe("23:30-00:30");
+    expect(render("{saat}-{bitis}", { saat: "11:00", bitis: "14:00" })).toBe("11:00-14:00");
+  });
+
+  it("varsayılan davet değişmez: {liste} hâlâ \"1. İsim\"", () => {
+    setLang("tr");
+    const { s, m } = setup(2);
+    s.settings.templates = {};
+    const txt = msgInvite(s, m);
+    expect(txt).toContain("\n1. Deneme Oyuncu 1 🧤\n2. Deneme Oyuncu 2\n3.\n");
+    expect(txt).not.toContain("1-");
   });
 });
