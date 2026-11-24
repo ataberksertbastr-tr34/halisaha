@@ -151,8 +151,8 @@ export const tr = {
   noStats: "İstatistik için en az bir maçı bitirmen gerekiyor.", attendN: "{n} maç · %{r}", goalsShort: "{n} gol", playerCard: "Oyuncu kartı",
   cardMatches: "Maç", cardWdl: "G / B / M", cardGoals: "Gol", cardRate: "Katılım", cardMvp: "Maçın oyuncusu", cardRel: "Güvenilirlik", cardPerf: "Performans", cardBalance: "Bakiye",
   recentMatches: "Son maçlar", payHistory: "Ödeme geçmişi", resultW: "G", resultD: "B", resultL: "M", editPlayer: "Oyuncuyu düzenle", notFound: "Bulunamadı.",
-  moreStats: "Sezon tablosu, en çok gelenler, gol krallığı", moreRules: "Grup kuralları, aranabilir, madde madde paylaş", moreSettings: "Sahalar, ücret, şablonlar, yedekleme",
-  rulesSearch: "Kurallarda ara (ör. geç iptal, 2.3)…", goldenRule: "Altın kural", shareRule: "Paylaş: {n}", shareGolden: "10 altın kuralı paylaş",
+  moreStats: "Sezon tablosu, en çok gelenler, gol krallığı", moreRules: "Grup kuralları, aranabilir; bölüm bölüm ya da tümü paylaşılır", moreSettings: "Sahalar, ücret, şablonlar, yedekleme",
+  rulesSearch: "Kurallarda ara (ör. geç iptal, 2.3)…", goldenRule: "Altın kural", shareRule: "Paylaş: {n}", shareGolden: "10 altın kuralı paylaş", shareBook: "Kural kitabını paylaş", shareBookHint: "Predators tanıtımı, altın kurallar, bütün bölümler ve yaptırımlar tek mesajda gider. Tek bir bölümü göndermek için o bölümün yanındaki Paylaş'a dokun.", sectionN: "Bölüm {n}",
   rulesTr: "", noRuleMatch: "Bu aramaya uyan kural yok.", ruleN: "Kural {n}", jumpTo: "Bölüme git",
   // ── Predators: etkinlikler, disiplin, duyurular ──
   newEvent: "Yeni etkinlik", newEventTitle: "Ne organize ediyoruz?",

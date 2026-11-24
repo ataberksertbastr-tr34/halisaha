@@ -1,7 +1,7 @@
 /** KURALLAR.md ayrıştırma, arama ve paylaşım metni. */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { findRule, matchesRule, parseRules, ruleShareText, sectionOf } from "../src/domain/rules";
+import { bookShareText, findRule, matchesRule, parseRules, PREDATORS_ABOUT, ruleShareText, sectionOf, sectionShareText } from "../src/domain/rules";
 
 const md = readFileSync(new URL("../KURALLAR.md", import.meta.url), "utf8");
 const book = parseRules(md);
@@ -67,6 +67,33 @@ describe("kural kitabı", () => {
     expect(all.filter((i) => matchesRule(i, "2.3")).map((i) => i.id)).toEqual(["2.3"]);
     expect(all.filter((i) => matchesRule(i, "kural 1.5")).map((i) => i.id)).toEqual(["1.5"]);
     expect(all.filter((i) => matchesRule(i, "geç iptal")).map((i) => i.id)).toContain("1.5");
+  });
+  it("bölüm paylaşımı: başlık, kısım ve bütün maddeler sırayla, tek mesajda", () => {
+    const txt = sectionShareText(book, "17");
+    expect(txt.split("\n")[0]).toBe("📖 *Bölüm 17 – Airsoft*");
+    expect(txt.split("\n")[1]).toBe("_Kısım 3 · Etkinlikler_");
+    const ids = [...txt.matchAll(/\*(17\.\d+) /g)].map((m) => m[1]);
+    expect(ids).toEqual(sectionOf(book, "17.1")!.items.map((i) => i.id));
+    // Güvenlik maddesi işaretli; markdown yıldızları kalmaz
+    expect(txt).toContain("⚠️ *17.2 ");
+    expect(txt).not.toContain("**");
+    expect(txt.trim().endsWith("— Predators · Halı Saha ve Etkinlik Kuralları")).toBe(true);
+    expect(sectionShareText(book, "99")).toBe("");
+  });
+  it("kitap paylaşımı: Predators tanıtımı, giriş, altın kurallar, 21 bölümün bütün maddeleri ve yaptırımlar", () => {
+    const txt = bookShareText(book);
+    expect(txt.split("\n")[0]).toBe("📘 *HALI SAHA VE ETKİNLİK KURALLARI*");
+    expect(txt).toContain(PREDATORS_ABOUT);
+    expect(txt).toContain(book.intro);
+    expect(txt).toContain("⭐ *ALTIN KURALLAR*");
+    expect(txt).toContain("*KISIM 3 · ETKİNLİKLER*");
+    for (const s of book.sections) expect(txt).toContain("📖 *" + s.num + ". " + s.title + "*");
+    for (const it of book.sections.flatMap((s) => s.items)) expect(txt).toContain("*" + it.id + " " + it.title);
+    expect(txt).toContain("*YAPTIRIMLAR ÖZET TABLOSU*");
+    expect(txt).toContain("(Kural 9.1)");
+    expect(txt).not.toContain("**");
+    // WhatsApp'ın tek mesaj sınırının (65.536) çok altında
+    expect(txt.length).toBeLessThan(40_000);
   });
   it("paylaşım metni", () => {
     expect(ruleShareText(findRule(book, "2.3")!, "Altın kural")).toMatch(/^📖 Kural 2\.3 – Ödeme zamanı \(IBAN disiplini\)\nSaha ücreti/);

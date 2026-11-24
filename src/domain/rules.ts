@@ -151,6 +151,56 @@ export function sectionOf(book: RuleBook, id: string): RuleSection | null {
   return book.sections.find((s) => s.num === num) || null;
 }
 
+/** Kural kitabını paylaşırken başa yazılan tanıtım: Predators ne, kitap neyi anlatır. */
+export const PREDATORS_ABOUT =
+  "Predators; halı saha maçları ile paintball, airsoft, voleybol, ayak tenisi, masa tenisi ve kıraathane etkinlikleri düzenleyen bir gruptur. " +
+  "Bu kitap grubun nasıl işlediğini anlatır: maça yazılma ve kadro, ödeme, takımlar, sahada ve grupta davranış, disiplin ve etkinlik kuralları.";
+
+/** Paylaşılan madde satırı (WhatsApp'ta *…* kalın görünür). */
+function itemLine(it: RuleItem): string {
+  return (it.flag ? "⚠️ " : "") + "*" + it.id + " " + it.title + (it.flag ? " (" + it.flag + ")" : "") + ":* " + stripMd(it.text);
+}
+
+const footer = (book: RuleBook) => "— Predators · " + book.title;
+
+/** Bir bölümün bütün maddeleri tek mesajda: "📖 *Bölüm 17 – Airsoft*", 17.1, 17.2 … */
+export function sectionShareText(book: RuleBook, num: string): string {
+  const s = book.sections.find((x) => x.num === num);
+  if (!s) return "";
+  const part = book.parts.find((p) => p.num === s.part);
+  return "📖 *Bölüm " + s.num + " – " + s.title + "*" + (part ? "\n_Kısım " + part.num + " · " + part.title + "_" : "") +
+    "\n\n" + s.items.map(itemLine).join("\n\n") + "\n\n" + footer(book);
+}
+
+/**
+ * Bütün kural kitabı tek mesajda: Predators tanıtımı, giriş, altın kurallar, notlar, üç kısım
+ * ve bütün bölümler, yaptırımlar özet tablosu.
+ */
+export function bookShareText(book: RuleBook, about: string = PREDATORS_ABOUT): string {
+  const up = (x: string) => x.toLocaleUpperCase("tr");
+  const out: string[] = ["📘 *" + up(book.title) + "*" + (book.subtitle ? "\n" + book.subtitle : "")];
+  if (about) out.push(about);
+  if (book.intro) out.push(stripMd(book.intro));
+  if (book.golden.length) {
+    out.push("⭐ *" + up(book.goldenTitle) + "*");
+    for (const g of book.goldenGroups) out.push((g.title ? "_" + g.title + "_\n" : "") + g.items.map((x) => x.id.slice(1) + ". " + stripMd(x.text)).join("\n"));
+  }
+  if (book.notes.length) out.push(book.notes.map((n) => "ℹ️ " + stripMd(n)).join("\n"));
+  const parts = book.parts.length ? book.parts : [{ num: "", title: "" }];
+  for (const p of parts) {
+    if (p.num) out.push("━━━━━━━━━━\n*KISIM " + p.num + " · " + up(p.title) + "*");
+    for (const s of book.sections.filter((x) => !p.num || x.part === p.num)) {
+      out.push("📖 *" + s.num + ". " + s.title + "*\n\n" + s.items.map(itemLine).join("\n\n"));
+    }
+  }
+  if (book.sanctions.length) {
+    out.push("━━━━━━━━━━\n*" + up(book.appendixTitle) + "*" + (book.appendixIntro ? "\n" + stripMd(book.appendixIntro) : ""));
+    out.push(book.sanctions.map((r) => "• " + r.violation + ": " + r.sanction + " (Kural " + r.rules.join(", ") + ")").join("\n"));
+  }
+  out.push(footer(book));
+  return out.join("\n\n");
+}
+
 /** Paylaşım metni: "📖 Kural 2.3 – Başlık\nMetin" */
 export function ruleShareText(item: RuleItem, goldenLabel: string): string {
   if (item.id.startsWith("A")) return "⭐ " + goldenLabel + " " + item.id.slice(1) + "\n" + stripMd(item.text);

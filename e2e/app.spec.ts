@@ -257,7 +257,7 @@ test("takımlar: sahada sürükle-bırak takas, kilit ve eşleşme kuralı", asy
   await ctx.close();
 });
 
-test("kurallar: arama, derin bağlantı ve madde paylaşımı", async ({ browser }) => {
+test("kurallar: arama, derin bağlantı; bölüm ve bütün kitap tek dokunuşla paylaşılır", async ({ browser }) => {
   const ctx = await browser.newContext();
   await ctx.addInitScript(() => {
     (window as unknown as { __shared: unknown[] }).__shared = [];
@@ -269,9 +269,26 @@ test("kurallar: arama, derin bağlantı ve madde paylaşımı", async ({ browser
   const errors = watchErrors(page);
   await page.goto("/#/rules/2.4");
   await expect(page.locator("#rule-2\\.4")).toHaveClass(/focus/);
-  await page.locator("#rule-2\\.4 [data-a=shareRule]").click();
-  const shared = await page.evaluate(() => (window as unknown as { __shared: { text: string }[] }).__shared[0].text);
-  expect(shared).toMatch(/^📖 Kural 2\.4 – Borçlu oyuncu\n/);
+  const lastText = () => page.evaluate(() => {
+    const a = (window as unknown as { __shared: { text: string }[] }).__shared;
+    return a[a.length - 1].text;
+  });
+  // Maddeler tek tek değil, bölüm bölüm paylaşılır: 2.1, 2.2 … hepsi tek mesajda
+  await expect(page.locator(".rule [data-a]")).toHaveCount(0);
+  await page.locator("#rule-s2 [data-a=shareSection]").click();
+  const sec = await lastText();
+  expect(sec).toMatch(/^📖 \*Bölüm 2 – /);
+  expect(sec).toContain("*2.1 ");
+  expect(sec).toContain("*2.4 Borçlu oyuncu:*");
+  // Bütün kural kitabı: Predators tanıtımı, altın kurallar, bütün bölümler ve yaptırımlar
+  await page.locator("[data-a=shareBook]").click();
+  const all = await lastText();
+  expect(all).toMatch(/^📘 \*HALI SAHA VE ETKİNLİK KURALLARI\*/);
+  expect(all).toContain("Predators; halı saha maçları ile paintball, airsoft");
+  expect(all).toContain("⭐ *ALTIN KURALLAR*");
+  expect(all).toContain("📖 *21. ");
+  expect(all).toContain("*YAPTIRIMLAR ÖZET TABLOSU*");
+  await noHorizontalScroll(page);
   await page.locator("#q-rules").fill("krampon");
   await expect(page.locator(".rule")).toHaveCount(3); // altın kural 5, 4.3, 10.1
   await expect(page.locator("#q-rules")).toHaveValue("krampon");

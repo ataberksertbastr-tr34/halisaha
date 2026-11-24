@@ -1,4 +1,4 @@
-/** Kurallar sayfası: KURALLAR.md'den, aranabilir, her madde numarasıyla paylaşılabilir. */
+/** Kurallar sayfası: KURALLAR.md'den, aranabilir; her bölüm ve bütün kitap tek dokunuşla paylaşılır. */
 import rulesMd from "../../../KURALLAR.md?raw";
 import { t } from "../../i18n";
 import { ui } from "../../app/store";
@@ -52,12 +52,15 @@ function linkRefs(h: string): string {
 
 function itemHTML(it: RuleItem, q: string, focus: string): string {
   const golden = it.id.startsWith("A");
-  const label = golden ? t("goldenRule") + " " + it.id.slice(1) : t("ruleN", { n: it.id });
   const text = rich(it.text, q);
   return '<li class="rule' + (focus === it.id ? " focus" : "") + (it.flag ? " flag" : "") + '" id="rule-' + esc(it.id) + '" data-n="' + esc(norm(it.id + " " + it.title + " " + it.text)) + '">' +
     '<div class="rule-tx"><span class="rnum">' + esc(golden ? it.id.slice(1).padStart(2, "0") : it.id) + "</span><div>" + (it.flag ? '<span class="rflag">' + IC.alert + esc(it.flag.toLocaleUpperCase("tr")) + "</span>" : "") +
-    (it.title ? "<strong>" + rich(it.title, q) + "</strong> " : "") + "<span>" + (q ? text : linkRefs(text)) + "</span></div></div>" +
-    '<button type="button" class="iconbtn" data-a="shareRule" data-id="' + esc(it.id) + '" aria-label="' + esc(t("shareRule", { n: label })) + '">' + IC.share + "</button></li>";
+    (it.title ? "<strong>" + rich(it.title, q) + "</strong> " : "") + "<span>" + (q ? text : linkRefs(text)) + "</span></div></div></li>";
+}
+
+/** Bölümün tamamını (ör. 17.1, 17.2, 17.3 …) tek mesajda paylaşan düğme. */
+function shareBtn(a: string, label: string, v = ""): string {
+  return '<button type="button" class="btn sm" data-a="' + a + '"' + (v ? ' data-v="' + esc(v) + '"' : "") + ' aria-label="' + esc(t("shareRule", { n: label })) + '">' + IC.share + esc(t("share")) + "</button>";
 }
 
 function sanctionsHTML(b: RuleBook, q: string): string {
@@ -79,7 +82,8 @@ export function viewRules(): string {
   if (t("rulesTr")) h += '<p class="small muted">' + esc(t("rulesTr")) + "</p>";
   if (!q) {
     h += '<section class="section cover"><div class="rulecover"><img src="brand/crest.webp" width="321" height="360" alt="' + esc(t("crestAlt")) + '" decoding="async"><div class="minw0"><div class="kicker">PREDATORS</div><h2 class="cover-t">' + esc(b.title) + "</h2>" +
-      (b.subtitle ? '<p class="small muted m0">' + esc(b.subtitle) + "</p>" : "") + "</div></div>" + (b.intro ? '<p class="cover-intro">' + esc(b.intro) + "</p>" : "") + "</section>";
+      (b.subtitle ? '<p class="small muted m0">' + esc(b.subtitle) + "</p>" : "") + "</div></div>" + (b.intro ? '<p class="cover-intro">' + esc(b.intro) + "</p>" : "") +
+      '<button type="button" class="btn gold block mt" data-a="shareBook">' + IC.share + esc(t("shareBook")) + '</button><p class="small muted mt-s m0">' + esc(t("shareBookHint")) + "</p></section>";
   }
   const chips = ['<a class="fchip gold" href="#/rules/sA" aria-label="' + esc(b.goldenTitle) + '">★</a>', ...b.sections.map((s) => '<a class="fchip" href="#/rules/s' + s.num + '" aria-label="' + esc(s.num + ". " + s.title) + '">' + s.num + "</a>"), '<a class="fchip" href="#/rules/ek">' + esc(t("appendixShort")) + "</a>"];
   h += '<div class="finder rfinder"><div class="search">' + IC.search + '<input type="search" id="q-rules" placeholder="' + esc(t("rulesSearch")) + '" value="' + esc(q) + '" autocomplete="off" enterkeyhint="search" aria-label="' + esc(t("rulesSearch")) + '">' +
@@ -90,7 +94,7 @@ export function viewRules(): string {
   const groups = b.goldenGroups.map((g) => ({ title: g.title, items: g.items.filter((x) => matchesRule(x, q)) })).filter((g) => g.items.length);
   if (groups.length) {
     shown += groups.reduce((n, g) => n + g.items.length, 0);
-    h += '<section class="section goldsec" id="rule-sA"><div class="row nowrap"><h2 class="grow">★ ' + esc(b.goldenTitle) + "</h2>" + (q ? "" : '<button type="button" class="btn sm" data-a="shareGolden">' + IC.share + esc(t("share")) + "</button>") + "</div>" +
+    h += '<section class="section goldsec" id="rule-sA"><div class="row nowrap"><h2 class="grow">★ ' + esc(b.goldenTitle) + "</h2>" + (q ? "" : shareBtn("shareGolden", b.goldenTitle)) + "</div>" +
       groups.map((g, i) => (g.title ? '<h3 class="ggroup' + (i ? " alt" : "") + '">' + esc(g.title) + "</h3>" : "") + '<ul class="rules golden' + (i ? " alt" : "") + '">' + g.items.map((x) => itemHTML(x, q, focus)).join("") + "</ul>").join("") + "</section>";
   }
   if (!q && b.notes.length) h += '<div class="callout" role="note"><ul>' + b.notes.map((n) => "<li>" + linkRefs(rich(n, "")) + "</li>").join("") + "</ul></div>";
@@ -102,7 +106,8 @@ export function viewRules(): string {
     if (p.num) h += '<div class="partband" id="rule-p' + esc(p.num) + '"><small>' + esc(t("partN", { n: p.num })) + "</small><b>" + esc(p.title) + "</b></div>";
     secs.forEach(({ s, items }) => {
       shown += items.length;
-      h += '<section class="section" id="rule-s' + s.num + '"><h2><span class="snum">' + esc(s.num) + "</span>" + esc(s.title) + '</h2><ul class="rules">' + items.map((it) => itemHTML(it, q, focus)).join("") + "</ul></section>";
+      h += '<section class="section" id="rule-s' + s.num + '"><div class="row nowrap"><h2 class="grow"><span class="snum">' + esc(s.num) + "</span>" + esc(s.title) + "</h2>" +
+        shareBtn("shareSection", t("sectionN", { n: s.num }) + " – " + s.title, s.num) + '</div><ul class="rules">' + items.map((it) => itemHTML(it, q, focus)).join("") + "</ul></section>";
     });
   });
   const sanc = sanctionsHTML(b, q);
