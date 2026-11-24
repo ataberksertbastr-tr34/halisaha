@@ -902,3 +902,30 @@ test("kısa liste biçimi: davet şablonu tek dokunuşla 1-İsim kalıbına dön
   expect(next.split("\n")[2]).toMatch(/^1-\S/);
   expect(errors).toEqual([]);
 });
+
+test("listeden düşen: yeniden yapıştırılan listede adı olmayan 'Listede artık yok' altında çıkar, Yok yazılır (Kural 1.2, 1.5)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  // Organizatör "gelemiyorum" diyen Golcü Gökhan'ı listeden silip listeyi yeniden atmış
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await page.locator("#plist").fill(["⚽ Perşembe 15.10 – 21:00", "", "1. Kaleci Kemal", "2. Orta Ömer", "3. Forvet Fırat", "4. Mehmet Yeni", "5."].join("\n"));
+  await expect(page.locator('[data-a="pasteApply"]')).toBeVisible();
+  const gone = page.locator(".paste-gone");
+  await expect(gone).toContainText("Listede artık yok");
+  await expect(gone).toContainText("Golcü Gökhan");
+  await expect(gone).toContainText("Var idi");
+  await expect(gone.locator("select")).toHaveValue("out");
+  // "4 isim bulundu": düşen kişi sayılmaz
+  await expect(page.locator("#modal")).toContainText("4 isim bulundu");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "liste önizleme")).toEqual([]);
+  await page.locator('[data-a="pasteApply"]').click();
+  await expect(page.locator("#toast")).toContainText("Listeden 2 kişi işaretlendi");
+  await expect(attBtn(page, "Golcü Gökhan", "out")).toHaveAttribute("aria-pressed", "true");
+  await expect(attBtn(page, "Orta Ömer", "in")).toHaveAttribute("aria-pressed", "true");
+  // Geri al: Gökhan yeniden Var
+  await page.locator("[data-toast-act]").first().click();
+  await expect(attBtn(page, "Golcü Gökhan", "in")).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});

@@ -1,8 +1,9 @@
 /** WhatsApp davet listesini yapıştırma: metin alanı ve önizleme (domain/signup.ts). */
 import { money, t, type MsgKey } from "../../i18n";
 import type { Match, State } from "../../domain/types";
+import { isLocked } from "../../domain/roster";
 import { esc, norm, trSort } from "../../domain/text";
-import { getP } from "../../domain/lineup";
+import { getP, lineup } from "../../domain/lineup";
 import { liabilities, type Liability } from "../../domain/ledger";
 import type { Act, PlanRow } from "../../domain/signup";
 import { showModal, updateModal } from "../modal";
@@ -17,7 +18,7 @@ export function openPasteSheet(text: string): void {
     '<div class="row mt"><button type="button" class="btn primary grow" data-a="pastePreview">' + esc(t("pastePreview")) + "</button></div>");
 }
 
-const ACT_LABEL: Record<Act, MsgKey> = { in: "pasteIn", maybe: "pasteMaybe", skip: "pasteSkip", guest: "pasteGuest", player: "pastePlayer" };
+const ACT_LABEL: Record<Act, MsgKey> = { in: "pasteIn", maybe: "pasteMaybe", skip: "pasteSkip", guest: "pasteGuest", player: "pastePlayer", out: "pasteOut" };
 
 function note(m: Match, r: PlanRow, debts: Record<string, Liability>): string {
   switch (r.note) {
@@ -34,6 +35,11 @@ function note(m: Match, r: PlanRow, debts: Record<string, Liability>): string {
   }
 }
 
+/** Kişi şu an oynayan kadroda mı (yedekte ya da Belki değil). */
+function lineupHas(s: State, m: Match, id: string): boolean {
+  return lineup(s, m).playing.includes(id);
+}
+
 /** Önizleme: her satırda listede yazılan ad, eşleşen kişi, neden ve seçilebilir iş. */
 export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string, issues: string[] = []): void {
   const debts = liabilities(s, today);
@@ -42,8 +48,24 @@ export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: str
   let h = sheetHead(t("pasteTitle"));
   // Yanlış etkinliğe yapıştırma ya da yanlış gün: uyarır, engellemez
   if (issues.length) h += '<div class="notice warn" role="alert" id="paste-date"><div class="notice-tx"><strong>' + esc(t("pasteDateTitle")) + "</strong>" + issues.map((x) => "<span>" + esc(x) + "</span>").join("") + "</div></div>";
-  h += '<p class="small muted tight">' + esc(t("pasteCheck", { n: rows.length })) + '</p><div class="stackf">';
+  // Önce değişen: uygulamada yazılı ama listede adı olmayanlar (organizatör listeden silmiş); Yok yazılır, kesinleştiyse geç iptal
+  const gone = rows.map((r, i) => ({ r, i })).filter((x) => x.r.note === "gone");
+  if (gone.length) {
+    const locked = isLocked(m, new Date());
+    h += '<section class="paste-gone" aria-labelledby="h-gone"><h3 id="h-gone">' + esc(t("pasteGoneTitle")) + '</h3><p class="small muted tight">' + esc(t(locked ? "pasteGoneLocked" : "pasteGoneHint")) + '</p><div class="stackf">';
+    gone.forEach(({ r, i }) => {
+      const fixed = !!s.players.find((p) => p.id === r.id)?.fixed;
+      const meta = [t(r.st === "maybe" ? "pasteWasMaybe" : "pasteWasIn"), fixed ? t("pasteFixed") : ""].filter(Boolean).join(" · ");
+      const o = opt("out", t(locked && lineupHas(s, m, r.id!) ? "pasteOutLate" : "pasteOut"), r.act === "out") + opt("skip", t("pasteKeep"), r.act === "skip");
+      h += '<label class="fld"><span><strong>' + esc(r.name) + '</strong> <span class="small muted">' + esc(meta) + "</span></span>" +
+        '<select id="pr-' + i + '" aria-label="' + esc(r.name) + '">' + o + "</select></label>";
+    });
+    h += "</div></section>";
+  }
+  const found = rows.filter((r) => r.note !== "gone").length;
+  h += '<p class="small muted tight">' + esc(t("pasteCheck", { n: found })) + '</p><div class="stackf">';
   rows.forEach((r, i) => {
+    if (r.note === "gone") return;
     const who = r.id ? getP(s, m, r.id)?.name || r.name : r.name;
     const why = note(m, r, debts);
     // Yazılan ad yalnızca gerçekten farklıysa gösterilir ("ali a." → Ali Aslan; büyük/küçük ve Türkçe harf farkı sayılmaz)
@@ -61,6 +83,7 @@ export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: str
     h += '<label class="fld"><span><strong>' + esc(who) + "</strong>" + (meta ? ' <span class="small muted">' + esc(meta) + "</span>" : "") + "</span>" +
       '<select id="pr-' + i + '" aria-label="' + esc(who) + '">' + o + "</select></label>";
   });
-  h += '</div><div class="row mt"><button type="button" class="btn primary grow" data-a="pasteApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="pasteList">' + esc(t("pasteEdit")) + "</button></div>";
+  h += "</div>";
+  h += '<div class="row mt"><button type="button" class="btn primary grow" data-a="pasteApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="pasteList">' + esc(t("pasteEdit")) + "</button></div>";
   updateModal(h);
 }

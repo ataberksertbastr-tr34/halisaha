@@ -276,7 +276,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
   listesinden katılım tek seferde; önce önizlenir; listedeki tarih ya da gün seçili etkinlikle
-  tutmuyorsa uyarır), sabit oyuncular, saha haritası/yol tarifi/arama,
+  tutmuyorsa uyarır; yeniden yapıştırılan listede adı olmayan "Var/Belki"ler önizlemenin
+  başında **Listede artık yok** altında "Yok yaz" önerisiyle çıkar, kadro kesinleştiyse geç
+  iptal sayılır ve yerine giren söylenir, Kural 1.5; liste kısmiyse kimse önerilmez, sabit
+  oyuncu varsayılan olarak kalır), sabit oyuncular, saha haritası/yol tarifi/arama,
   "Sahayı rezerve ettim" ve hatırlatması, takvime ekleme (Google Takvim / .ics),
   gol ve maçın oyuncusu, habersiz gelmeyenler. Sonuç bölümü maç gününe kadar
   kapalı durur (sayfa kısalır; iptal ve silme her zaman görünür).

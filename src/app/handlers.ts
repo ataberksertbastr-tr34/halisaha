@@ -21,7 +21,7 @@ import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } 
 import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
 import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { parseBulkLine, type BulkLine } from "../domain/bulk";
-import { applyPlan, choose, listDateIssues, parseList, planList, type PlanRow } from "../domain/signup";
+import { applyPlanReport, choose, listDateIssues, parseList, planList, type PlanResult, type PlanRow } from "../domain/signup";
 import { openPasteSheet, showPastePreview } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
 import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
@@ -489,10 +489,15 @@ registerActions({
     const rows = p.rows.map((r, i) => choose(r, val("#pr-" + i)));
     pendingPaste = null;
     closeModal(false, () => {
-      let n = 0;
-      mutate(() => t("pasteDone", { n }), () => {
-        n = applyPlan(store.s, m, rows);
-        if (!n) {
+      let res: PlanResult = { n: 0, late: [], covered: [] };
+      const nm = (id: string) => getP(store.s, m, id)?.name || "";
+      // Listeden düşüp geç iptal sayılanlar ve yerlerine girenler bildirimde söylenir (Kural 1.5)
+      const label = () => [t("pasteDone", { n: res.n }),
+        res.late.length ? t("pasteLateDone", { n: res.late.map(nm).join(", "), r: lateRule(m) }) : "",
+        res.covered.length ? t("pasteCovered", { n: res.covered.map(nm).join(", ") }) : ""].filter(Boolean).join(" · ");
+      mutate(label, () => {
+        res = applyPlanReport(store.s, m, rows);
+        if (!res.n) {
           toast(t("pasteNothing"));
           return false;
         }

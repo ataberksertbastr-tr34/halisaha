@@ -1,6 +1,6 @@
 /** WhatsApp davet listesini yapıştırma: ayrıştırma, eşleştirme, öneri ve uygulama (Kural 1.3, 2.4, 9.1). İsimler uydurmadır. */
 import { describe, expect, it } from "vitest";
-import { applyPlan, candidates, choose, listDateIssues, parseList, planList, type PlanRow } from "../src/domain/signup";
+import { applyPlan, applyPlanReport, candidates, choose, listDateIssues, parseList, planList, type PlanRow } from "../src/domain/signup";
 import { addInfraction } from "../src/domain/discipline";
 import { lineup, setAtt } from "../src/domain/lineup";
 import { allIn, match, player, state } from "./helpers/factory";
@@ -194,5 +194,71 @@ describe("uygulamanın paylaştığı kısa liste geri yapıştırılınca", () 
     expect(applyPlan(s2, fresh, rows)).toBe(16);
     const { playing, wait } = lineup(s2, fresh);
     expect([playing.length, wait]).toEqual([14, ["p14", "p15"]]);
+  });
+});
+
+describe("yeniden yapıştırılan listeden düşenler (Kural 1.4–1.5)", () => {
+  // 2+1 (kontenjan 6): yedi kişi Var (biri yedekte), biri Belki; 15 Ekim 21:00, kesinleşme 14 Ekim 21:00
+  const names = ["Ali Deneme", "Berk Deneme", "Cem Deneme", "Deniz Deneme", "Ege Deneme", "Fatih Deneme", "Hakan Deneme", "Kaan Deneme"];
+  const setup = () => {
+    const ps = names.map((n, i) => player("p" + i, n, 3, "", { fixed: i === 3 }));
+    const m = allIn(match("m", { date: "2026-10-15", time: "21:00", format: 2, price: 1200 }), ["p0", "p1", "p2", "p3", "p4", "p5", "p6"]);
+    m.att.p7 = "maybe";
+    return { s: state(ps, [m]), m };
+  };
+  const list = (skip: string[]) => names.slice(0, 7).filter((n) => !skip.includes(n)).map((n, i) => i + 1 + "-" + n).join("\n") + (skip.includes("Kaan Deneme") ? "" : "\n🤔 Belki: Kaan Deneme");
+  const BEFORE = new Date(2026, 9, 12, 12, 0);
+  const AFTER = new Date(2026, 9, 15, 10, 0);
+
+  it("listeden silinen Var ve Belki önerilir: Yok yaz; sabit oyuncu varsayılan olarak kalır", () => {
+    const { s, m } = setup();
+    const rows = planList(s, m, parseList(list(["Cem Deneme", "Deniz Deneme", "Kaan Deneme"])), TODAY);
+    const gone = rows.filter((r) => r.note === "gone");
+    expect(gone.map((r) => [r.id, r.st, r.act])).toEqual([["p2", "in", "out"], ["p3", "in", "skip"], ["p7", "maybe", "out"]]);
+    const res = applyPlanReport(s, m, rows, BEFORE);
+    expect([res.n, res.late]).toEqual([2, []]);
+    expect([m.att.p2, m.att.p3, m.att.p7]).toEqual(["out", "in", "out"]);
+    // Yedekteki Hakan kadroya girdi
+    expect(lineup(s, m).playing).toContain("p6");
+  });
+
+  it("kadro kesinleştikten sonra: oynayan geç iptal sayılır; yedekten giren payı öder, geç iptal eden muaf", () => {
+    const { s, m } = setup();
+    const rows = planList(s, m, parseList(list(["Berk Deneme"])), TODAY);
+    const res = applyPlanReport(s, m, rows, AFTER);
+    expect([res.late, res.covered]).toEqual([["p1"], ["p6"]]);
+    expect(m.att.p1).toBe("late");
+    expect(m.exempt.p1).toBe(true);
+  });
+
+  it("yerine kimse girmezse geç iptal eden payını öder (muaf olmaz)", () => {
+    const { s, m } = setup();
+    m.att.p6 = "out";
+    m.order = m.order.filter((x) => x !== "p6");
+    const txt = ["Ali Deneme", "Cem Deneme", "Deniz Deneme", "Ege Deneme", "Fatih Deneme"].map((n, i) => i + 1 + "-" + n).join("\n") + "\n🤔 Belki: Kaan Deneme";
+    const res = applyPlanReport(s, m, planList(s, m, parseList(txt), TODAY), AFTER);
+    expect([res.late, res.covered, m.exempt.p1]).toEqual([["p1"], [], undefined]);
+  });
+
+  it("kısmi liste (yazılıların yarısından azı) ya da tek kişi: kimse önerilmez", () => {
+    const { s, m } = setup();
+    expect(planList(s, m, parseList("1-Ali Deneme\n2-Berk Deneme\n3-Cem Deneme"), TODAY).some((r) => r.note === "gone")).toBe(false);
+    expect(planList(s, m, parseList("1-Ali Deneme"), TODAY).some((r) => r.note === "gone")).toBe(false);
+  });
+
+  it("üstü çizili (~Ad~) yazılan listeden düşmüş sayılır; belirsiz adın adayları düşmüş sayılmaz", () => {
+    const { s, m } = setup();
+    const txt = list([]).replace("3-Cem Deneme", "3-~Cem Deneme~");
+    expect(planList(s, m, parseList(txt), TODAY).filter((r) => r.note === "gone").map((r) => r.id)).toEqual(["p2"]);
+    s.players.push(player("p8", "Ege Yılmaz"));
+    const amb = list(["Ege Deneme"]) + "\n8-Ege";
+    expect(planList(s, m, parseList(amb), TODAY).filter((r) => r.note === "gone").map((r) => r.id)).toEqual([]);
+  });
+
+  it("önizlemede 'Kalsın' seçilirse dokunulmaz", () => {
+    const { s, m } = setup();
+    const rows = planList(s, m, parseList(list(["Cem Deneme"])), TODAY).map((r) => (r.note === "gone" ? choose(r, "skip") : r));
+    expect(applyPlanReport(s, m, rows, BEFORE).n).toBe(0);
+    expect(m.att.p2).toBe("in");
   });
 });
