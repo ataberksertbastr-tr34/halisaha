@@ -139,7 +139,7 @@ export const en: Record<MsgKey, string> = {
   autoSchedule: "Create the next 4 matches automatically", reserveDays: "Field booking reminder", reserveOff: "Off", reserveDaysN: "{n} days before",
   goalsTitle: "Goals and player of the match", goalsHint: "Tap + for each goal, the star picks the player of the match. Leave the score empty to fill it from the goals.",
   mvp: "Player of the match", goalSum: "Goals: {ta} {a} · {tb} {b}", goalMismatch: "Doesn't match the score (could be an own goal).", noTeam: "No team",
-  goalsN: "{n} goals", scheduled: "{n} matches scheduled", rescheduled: "{n} matches scheduled · {r} empty matches on old days removed", savedUpcoming: "Saved · {n} upcoming matches updated", addGoal: "{n}: add goal", removeGoal: "{n}: remove goal", matchPlan: "Match plan",
+  goalsN: "{n} goals", scheduled: "{n} matches scheduled", rescheduled: "{n} matches scheduled · {r} empty matches on old days removed", savedUpcoming: "Saved · {n} upcoming matches updated", unscheduled: "{r} empty auto-created matches removed", addGoal: "{n}: add goal", removeGoal: "{n}: remove goal", matchPlan: "Match plan",
   rulesBroken: "Teams built; {n} pairing rules couldn't be applied",
   lockTo: "{n}: lock to {t}", unlock: "{n}: unlock", locked1: "{n} locked to {t}", unlocked1: "{n} unlocked",
   swapped: "{a} ⇄ {b}", dragHint: "Drag a player on the pitch onto someone from the other team, or tap two players one after another: they swap. Tapping a name in the list moves them to the other team; a lock keeps them on their team when building automatically.",

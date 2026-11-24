@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { newPubId, pubSnapshot, validPubId } from "../src/domain/pubpage";
+import { ensureUpcoming } from "../src/domain/schedule";
 import { teamsSig } from "../src/domain/todo";
 import { migrate } from "../src/domain/migrate";
 import { merge3 } from "../src/sync/merge";
@@ -82,6 +83,23 @@ describe("yayınlanan veri", () => {
     // Maç günü 23:30'da hâlâ görünür, ertesi sabah görünmez
     expect(pubSnapshot(s, new Date(2026, 9, 15, 23, 30), "2026-10-15").events[0].date).toBe("2026-10-15");
     expect(pubSnapshot(s, new Date(2026, 9, 16, 9, 0), "2026-10-16").events[0].date).toBe("2026-10-17");
+  });
+});
+
+describe("otomatik açılmış maçlar", () => {
+  it("organizatörün el sürmediği otomatik maç görünmez; içine yazılan ya da daveti gönderilen görünür", () => {
+    // Salı ve Perşembe 21:00: 13, 15, 20, 22 Ekim kendiliğinden açılır
+    const s = state([player("a", "Ali Deneme"), player("s", "Sabit Selim", 3, "", { fixed: true })]);
+    ensureUpcoming(s, NOW);
+    const at = (d: string) => s.matches.find((m) => m.date === d)!;
+    expect(pubSnapshot(s, NOW, TODAY).events).toEqual([]);
+    at("2026-10-15").att.a = "in";
+    at("2026-10-15").order.push("a");
+    at("2026-10-20").sent = { invite: NOW.getTime() };
+    expect(pubSnapshot(s, NOW, TODAY).events.map((e) => e.date)).toEqual(["2026-10-15", "2026-10-20"]);
+    // Elle açılan maç boş olsa da görünür
+    s.matches.push(match("elle", { date: "2026-10-17", time: "11:00" }));
+    expect(pubSnapshot(s, NOW, TODAY).events.map((e) => e.date)).toEqual(["2026-10-15", "2026-10-17", "2026-10-20"]);
   });
 });
 

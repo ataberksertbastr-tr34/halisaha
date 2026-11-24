@@ -133,6 +133,10 @@ Eşitlemeye giriş yapmış olmak gerekir; sayfa senin Firebase projende durur.
   mekânı, kadrosu (misafirler etiketli), yedek sırası, Belki sayısı, kadronun
   kesinleşme anı ve **paylaştığın** takımlar görünür. Telefon, IBAN, seviye,
   borç ve disiplin kaydı görünmez.
+- Uygulamanın kendiliğinden açtığı ama senin hiç el sürmediğin maçlar (davet
+  gönderilmemiş, kimse yazılmamış) sayfada görünmez; oyuncular o gün maç var sanmaz.
+  Maç günlerin her hafta değişiyorsa Ayarlar → **Önümüzdeki 4 maçı otomatik oluştur**'u
+  kapat: kendiliğinden açılmış boş maçlar da kalkar.
 - Her değişiklikten birkaç saniye sonra kendiliğinden güncellenir (başka
   cihazda yapılan değişiklik de).
 - Bağlantı tahmin edilemez ama bilen herkes açabilir. **Sayfayı kapat** dersen

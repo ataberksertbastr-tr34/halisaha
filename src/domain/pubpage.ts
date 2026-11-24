@@ -13,6 +13,7 @@ import { fieldOf, mapsUrl } from "./fields";
 import { lockAt } from "./roster";
 import { teamColor, teamName } from "./teamstyle";
 import { teamsSig } from "./todo";
+import { pristineAuto } from "./schedule";
 
 /** Sayfada gösterilen etkinlik sayısı ve ne kadar ileriye bakılacağı. */
 export const PUB_EVENTS = 3;
@@ -103,11 +104,16 @@ function eventOf(s: State, m: Match): PubEvent {
   return e;
 }
 
-/** Yayınlanacak sayfa: bugünden itibaren 14 gün içindeki ilk üç açık etkinlik. */
+/**
+ * Yayınlanacak sayfa: bugünden itibaren 14 gün içindeki ilk üç açık etkinlik. Otomatik planlamanın
+ * açıp organizatörün hiç el sürmediği maç (davet gönderilmemiş, kimse yazılmamış) gösterilmez:
+ * oyuncular o gün maç var sanmasın.
+ */
 export function pubSnapshot(s: State, now: Date, today: string): PubPage {
   const until = addDays(today, PUB_DAYS);
   const events = s.matches
     .filter((m) => m.status === "open" && m.date >= today && m.date <= until && matchStart(m.date, m.time).getTime() > now.getTime() - 3 * 60 * 60 * 1000)
+    .filter((m) => !pristineAuto(s, m))
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, PUB_EVENTS)
     .map((m) => eventOf(s, m));

@@ -979,10 +979,11 @@ registerActions({
   tglSet: (ds) => {
     const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf" | "debtBlock" | "noShowPenalty";
     store.s.settings[k] = !store.s.settings[k];
-    let made = 0;
-    if (k === "autoSchedule" && store.s.settings.autoSchedule) made = reschedule(store.s, new Date()).made.length;
+    // Açılınca maçlar planlanır; kapanınca kendiliğinden açılmış boş maçlar kalkar
+    const r = k === "autoSchedule" ? reschedule(store.s, new Date()) : null;
     commit();
-    if (made) toast(t("scheduled", { n: made }));
+    if (r?.made.length) toast(t("scheduled", { n: r.made.length }));
+    else if (r?.removed.length) toast(t("unscheduled", { r: r.removed.length }));
   },
   newField: () => openFieldEditor(null, null),
   editField: (ds) => openFieldEditor(ds.id!, null),
