@@ -964,3 +964,40 @@ test("panodan al: kopyalanan liste ya da banka bildirimi düğmeye dokununca do�
   await noHorizontalScroll(page);
   expect(errors).toEqual([]);
 });
+
+test("liste tarihi: başka günün listesi o günün maçına işlenir; o gün maç yoksa tek dokunuşla açılır (Kural 1.1, 1.2)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await openThursday(page);
+  // Seçili maç Perşembe 15.10; liste bir sonraki haftanın (22.10) — o günün maçına geçilir
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await page.locator("#plist").fill(["22.10.2026 PERŞEMBE 21:00-22:00", "", "1-Orta Ömer", "2-Forvet Fırat", "3-"].join("\n"));
+  await expect(page.locator("#paste-route")).toContainText("Listedeki tarihin maçına geçildi");
+  await expect(page.locator("#paste-route")).toContainText("Perşembe 22.10 21:00");
+  await expect(page.locator("#paste-date")).toHaveCount(0);
+  await page.locator('[data-a="pasteApply"]').click();
+  await expect(page.locator('.chips [data-a="selMatch"].on')).toContainText("Per 22.10");
+  await expect(attBtn(page, "Orta Ömer", "in")).toHaveAttribute("aria-pressed", "true");
+  // Cumartesi 24.10'da maç yok: önizleme açmayı önerir
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await page.locator("#plist").fill(["24.10.2026 CUMARTESİ 11.00-12.00", "", "1-Orta Ömer", "2-Forvet Fırat"].join("\n"));
+  const open = page.locator('[data-a="pasteNewMatch"]');
+  await expect(open).toHaveText("Cumartesi 24.10 11:00 maçı aç ve listeyi işle");
+  await noHorizontalScroll(page);
+  expect(await deadZones(page, "liste tarihi")).toEqual([]);
+  await open.click();
+  await expect(page.locator("#paste-route")).toContainText("Yeni maç açıldı");
+  await expect(page.locator("#paste-date")).toHaveCount(0);
+  await page.locator('[data-a="pasteApply"]').click();
+  await expect(page.locator('.chips [data-a="selMatch"].on')).toContainText("Cmt 24.10");
+  await expect(page.locator("#hero")).toContainText("11:00");
+  // Borçlu Forvet Fırat varsayılan olarak atlanır (Kural 2.4); Orta Ömer yazılır
+  await expect(page.locator("#toast")).toContainText("Listeden 1 kişi işaretlendi");
+  await expect(attBtn(page, "Orta Ömer", "in")).toHaveAttribute("aria-pressed", "true");
+  // Geçmiş tarihin listesi: maç açma önerilmez, yalnızca uyarı
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await page.locator("#plist").fill(["08.10.2026 PERŞEMBE 21:00", "", "1-Orta Ömer", "2-Forvet Fırat"].join("\n"));
+  await expect(page.locator("#paste-date")).toBeVisible();
+  await expect(page.locator('[data-a="pasteNewMatch"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

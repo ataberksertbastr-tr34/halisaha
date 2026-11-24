@@ -304,8 +304,10 @@ test("WhatsApp listesi yapıştırılınca katılım tek seferde işaretlenir; �
   await page.locator('[data-a="createEvent"][data-v="football"]').click();
   await expect(page.locator("#modal")).toBeHidden();
   await page.locator('[data-a="pasteList"]').click();
+  // Başlıkta tarih yok: liste seçili (yeni açılan) etkinliğe işlenir. Tarihli listenin o günün
+  // maçına gitmesi organizer.spec.ts'te ("liste tarihi") sınanır.
   await page.locator("#plist").fill([
-    "⚽ Perşembe 15.10 – 21:00", "📍 Yeşil Vadi Halı Saha", "",
+    "⚽ Halı saha – 21:00", "📍 Yeşil Vadi Halı Saha", "",
     "1. Kaleci Kemal 🧤", "2. orta ömer", "3. İlker İleri", "4. DEFANS DOĞAN", "5. Mehmet Yeni", "6. Eldivn Ercan", "7. ", "",
     "⏳ Yedek: Zeki Zorlu", "🤔 Belki: Ali Aslan",
   ].join("\n"));

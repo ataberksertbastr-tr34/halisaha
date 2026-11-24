@@ -6,7 +6,7 @@
  */
 import type { Guest, Match, Person, State } from "./types";
 import { DAYS, lang, MONTHS, t } from "../i18n";
-import { ddmm, weekday } from "./dates";
+import { ddmm, parseISO, weekday } from "./dates";
 import { getP, lineup, promoted, setAtt } from "./lineup";
 import { lateCancel } from "./roster";
 import { isFree } from "./money";
@@ -273,9 +273,20 @@ interface Found {
   raw: string;
 }
 
-/** Başlık satırlarından (numaralı liste satırları ve Yedek/Belki hariç) ilk tarih ve ilk gün adı. */
-function headerInfo(text: string): { date?: Found; dayIdx?: number; dayRaw?: string } {
-  const out: { date?: Found; dayIdx?: number; dayRaw?: string } = {};
+/** Saat: "22:00", "22.00" (tarihten sonra aynı satırda; "22.00-23.00" aralığında ilki). */
+const TIME = /(?<![\d./])([01]?\d|2[0-3])[:.]([0-5]\d)(?![\d]|[./]\d)/u;
+
+interface Header {
+  date?: Found;
+  dayIdx?: number;
+  dayRaw?: string;
+  /** Tarihin yazıldığı satırdaki ilk saat ("HH:MM") */
+  time?: string;
+}
+
+/** Başlık satırlarından (numaralı liste satırları ve Yedek/Belki hariç) ilk tarih, ilk gün adı ve tarihle aynı satırdaki saat. */
+function headerInfo(text: string): Header {
+  const out: Header = {};
   for (const line of String(text || "").split(/\r?\n/)) {
     if (NUMBERED.test(line) || LABEL.test(line)) continue;
     const words = line.split(/[^\p{L}]+/u).filter(Boolean);
@@ -291,6 +302,7 @@ function headerInfo(text: string): { date?: Found; dayIdx?: number; dayRaw?: str
       const day = Number(n[1]), month = Number(n[2]);
       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
         out.date = { day, month, year: n[3] ? (n[3].length === 2 ? 2000 + Number(n[3]) : Number(n[3])) : undefined, raw: n[0] };
+        out.time = timeIn(line.replace(n[0], " "));
         continue;
       }
     }
@@ -298,10 +310,52 @@ function headerInfo(text: string): { date?: Found; dayIdx?: number; dayRaw?: str
     const tx = DATE_TXT.exec(line);
     if (tx && MONTH_IDX.has(lower(tx[2]))) {
       const day = Number(tx[1]);
-      if (day >= 1 && day <= 31) out.date = { day, month: MONTH_IDX.get(lower(tx[2]))!, year: tx[3] ? Number(tx[3]) : undefined, raw: tx[0] };
+      if (day >= 1 && day <= 31) {
+        out.date = { day, month: MONTH_IDX.get(lower(tx[2]))!, year: tx[3] ? Number(tx[3]) : undefined, raw: tx[0] };
+        out.time = timeIn(line.replace(tx[0], " "));
+      }
     }
   }
   return out;
+}
+
+function timeIn(line: string): string | undefined {
+  const x = TIME.exec(line);
+  return x ? p2(Number(x[1])) + ":" + x[2] : undefined;
+}
+
+/**
+ * Listenin tarihi (ve varsa saati) ISO olarak. Yıl yazılmamışsa bugüne en yakın yıl
+ * ("05.01" Aralık'ta yapıştırılınca gelecek yılın Ocak'ı). Gün adı tarihe uymuyorsa
+ * ("20.12.2026 Cuma" aslında Pazar) hangisinin doğru olduğu bilinemez: null (uyarı ayrıca çıkar).
+ */
+export function listWhen(text: string, today: string): { date: string; time: string } | null {
+  const { date, dayIdx, time } = headerInfo(text);
+  if (!date) return null;
+  const ty = Number(today.slice(0, 4));
+  const isoOf = (y: number) => y + "-" + p2(date.month) + "-" + p2(date.day);
+  const real = (y: number) => {
+    const d = parseISO(isoOf(y));
+    return d.getMonth() + 1 === date.month && d.getDate() === date.day;
+  };
+  const away = (y: number) => Math.abs(parseISO(isoOf(y)).getTime() - parseISO(today).getTime());
+  const years = date.year !== undefined ? [date.year] : [ty - 1, ty, ty + 1].filter(real).sort((a, b) => away(a) - away(b));
+  const y = years.find(real);
+  if (y === undefined) return null;
+  const iso = isoOf(y);
+  if (dayIdx !== undefined && weekday(iso) !== dayIdx) return null;
+  return { date: iso, time: time || "" };
+}
+
+/**
+ * Listenin ait olduğu açık etkinlik: listedeki tarihte; önce aynı saat, sonra seçili etkinlikle
+ * aynı tür. O tarihte açık etkinlik yoksa null (organizatöre yeni maç açması önerilir).
+ */
+export function listTarget(s: State, cur: Match, when: { date: string; time: string }): Match | null {
+  const kind = (m: Match) => m.kind || "football";
+  const same = s.matches.filter((m) => m.status === "open" && m.date === when.date);
+  const score = (m: Match) => (when.time && m.time === when.time ? 0 : 2) + (kind(m) === kind(cur) ? 0 : 1);
+  return same.sort((a, b) => score(a) - score(b) || a.time.localeCompare(b.time))[0] || null;
 }
 
 /**

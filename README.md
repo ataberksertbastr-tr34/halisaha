@@ -281,8 +281,11 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   girilen değer kalır). Katılım
   (Var / Belki / Yok / Geç iptal), yedek listesi, misafir (getiren kişiyle),
   "Geçen haftayı kopyala", "WhatsApp listesini yapıştır" (gruptaki dolu davet
-  listesinden katılım tek seferde; önce önizlenir; listedeki tarih ya da gün seçili etkinlikle
-  tutmuyorsa uyarır; yeniden yapıştırılan listede adı olmayan "Var/Belki"ler önizlemenin
+  listesinden katılım tek seferde; önce önizlenir; listede başka bir günün tarihi yazıyorsa
+  liste o günün açık maçına işlenir (önce aynı saat), o gün maç yoksa önizlemede **… maçı aç
+  ve listeyi işle** ile listedeki tarih ve saatte açılır (geçmiş tarihe ya da oynanmış güne
+  önerilmez); listedeki gün tarihe uymuyorsa ("20.12.2026 Cuma" aslında Pazar) tahmin
+  edilmez, uyarılır; yeniden yapıştırılan listede adı olmayan "Var/Belki"ler önizlemenin
   başında **Listede artık yok** altında "Yok yaz" önerisiyle çıkar, kadro kesinleştiyse geç
   iptal sayılır ve yerine giren söylenir, Kural 1.5; liste kısmiyse kimse önerilmez, sabit
   oyuncu varsayılan olarak kalır), sabit oyuncular, saha haritası/yol tarifi/arama,
