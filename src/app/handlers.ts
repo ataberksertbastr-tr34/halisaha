@@ -21,8 +21,8 @@ import { applyFixed, blockedFor, copyLastWeek, lateCancel, lockAt, type Added } 
 import { lastEntry, logShareText, setSaid, stamp } from "../domain/attlog";
 import { logTitle, openLogSheet, openSaidSheet } from "../ui/views/attlog";
 import { parseBulkLine, type BulkLine } from "../domain/bulk";
-import { applyPlanReport, choose, listDateIssues, parseList, planList, type PlanResult, type PlanRow } from "../domain/signup";
-import { openPasteSheet, showPastePreview } from "../ui/views/signup";
+import { applyPlanReport, choose, listDateIssues, listTarget, listWhen, parseList, planList, type PlanResult, type PlanRow } from "../domain/signup";
+import { openPasteSheet, showPastePreview, type PasteRoute } from "../ui/views/signup";
 import { liabilities } from "../domain/ledger";
 import { balanceText, debtReminderText, guestPayText, personalPayText, promotedText, statementText, waLink } from "../domain/messages";
 import { openRemindSheet } from "../ui/views/remind";
@@ -33,7 +33,7 @@ import { billOf, freezeBill, isFree, lateToCover, replaceLate } from "../domain/
 import { accounts, chargeOf, debts, markPaid, newPayment, settleAll, unmarkPaid, whoIs } from "../domain/ledger";
 import { openLedger } from "../ui/views/pay";
 import { generateTeams, swapPlayers } from "../domain/teams";
-import { applyDefaults, ensureUpcoming, makeMatch, matchDefaults, rememberSkip, reschedule } from "../domain/schedule";
+import { applyDefaults, ensureUpcoming, makeEvent, makeMatch, matchDefaults, rememberSkip, reschedule } from "../domain/schedule";
 import { buildICS, eventOf } from "../domain/calendar";
 import { openCalendarSheet } from "../ui/views/calendar";
 import { orgReminders, remindersICS } from "../domain/reminders";
@@ -501,13 +501,42 @@ registerActions({
     void fromClipboard("list", sheet);
   },
   pastePreview: () => {
-    const m = cur();
+    let m = cur();
     if (!m) return;
     const text = val("#plist");
     const entries = parseList(text);
     if (!entries.length) return toast(t("pasteNone"));
+    // Listedeki tarih başka bir etkinliğinse ona geçilir; o gün etkinlik yoksa açması önerilir
+    let route: PasteRoute | undefined;
+    const when = listWhen(text, today());
+    if (when && when.date !== m.date) {
+      const target = listTarget(store.s, m, when);
+      if (target) {
+        ui.matchId = target.id;
+        m = target;
+        route = { kind: "moved" };
+      } else if (when.date >= today() && !store.s.matches.some((x) => x.date === when.date)) {
+        // Geçmiş tarihin ya da oynanmış/iptal edilmiş günün listesine maç açılması önerilmez (yalnızca uyarı)
+        route = { kind: "missing", date: when.date, time: when.time || m.time };
+      }
+    }
     pendingPaste = { mid: m.id, text, rows: planList(store.s, m, entries, today()) };
-    showPastePreview(store.s, m, pendingPaste.rows, today(), listDateIssues(text, m));
+    showPastePreview(store.s, m, pendingPaste.rows, today(), listDateIssues(text, m), route);
+  },
+  // Listedeki tarihte etkinlik yok: o tarih ve saatte seçili etkinlikle aynı türde açılır, liste ona işlenir
+  pasteNewMatch: (ds) => {
+    const base = cur();
+    const p = pendingPaste;
+    if (!base || !p || !ds.v) return;
+    const nm = makeEvent(store.s, base.kind || "football", today());
+    nm.date = ds.v;
+    nm.time = ds.t || base.time;
+    store.s.matches.push(nm);
+    ui.matchId = nm.id;
+    commit(true);
+    afterModalClose(render);
+    pendingPaste = { mid: nm.id, text: p.text, rows: planList(store.s, nm, parseList(p.text), today()) };
+    showPastePreview(store.s, nm, pendingPaste.rows, today(), listDateIssues(p.text, nm), { kind: "created" });
   },
   pasteApply: () => {
     const m = cur();

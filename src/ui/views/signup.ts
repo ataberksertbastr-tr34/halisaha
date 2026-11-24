@@ -2,6 +2,8 @@
 import { money, t, type MsgKey } from "../../i18n";
 import type { Match, State } from "../../domain/types";
 import { isLocked } from "../../domain/roster";
+import { dayName } from "../../domain/messages";
+import { ddmm } from "../../domain/dates";
 import { esc, norm, trSort } from "../../domain/text";
 import { getP, lineup } from "../../domain/lineup";
 import { liabilities, type Liability } from "../../domain/ledger";
@@ -35,19 +37,37 @@ function note(m: Match, r: PlanRow, debts: Record<string, Liability>): string {
   }
 }
 
+/**
+ * Liste hangi etkinliğe gidiyor: listedeki tarihin etkinliğine geçildi ("moved"), o tarihte
+ * etkinlik açıldı ("created") ya da o tarihte etkinlik yok, açması önerilir ("missing").
+ */
+export type PasteRoute = { kind: "moved" } | { kind: "created" } | { kind: "missing"; date: string; time: string };
+
+const whenLabel = (date: string, time: string) => dayName(date) + " " + ddmm(date) + (time ? " " + time : "");
+
 /** Kişi şu an oynayan kadroda mı (yedekte ya da Belki değil). */
 function lineupHas(s: State, m: Match, id: string): boolean {
   return lineup(s, m).playing.includes(id);
 }
 
 /** Önizleme: her satırda listede yazılan ad, eşleşen kişi, neden ve seçilebilir iş. */
-export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string, issues: string[] = []): void {
+export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: string, issues: string[] = [], route?: PasteRoute): void {
   const debts = liabilities(s, today);
   const opt = (v: string, label: string, sel: boolean) => '<option value="' + esc(v) + '"' + (sel ? " selected" : "") + ">" + esc(label) + "</option>";
   const players = s.players.filter((p) => p.active !== false).slice().sort(trSort);
   let h = sheetHead(t("pasteTitle"));
-  // Yanlış etkinliğe yapıştırma ya da yanlış gün: uyarır, engellemez
-  if (issues.length) h += '<div class="notice warn" role="alert" id="paste-date"><div class="notice-tx"><strong>' + esc(t("pasteDateTitle")) + "</strong>" + issues.map((x) => "<span>" + esc(x) + "</span>").join("") + "</div></div>";
+  // Listedeki tarihin etkinliğine geçildi ya da o tarihte etkinlik açıldı: hangi etkinliğe işleneceği söylenir
+  if (route && route.kind !== "missing") {
+    h += '<div class="notice" role="status" id="paste-route"><div class="notice-tx"><strong>' + esc(t(route.kind === "moved" ? "pasteMovedTitle" : "pasteCreatedTitle")) + "</strong><span>" +
+      esc(t("pasteGoesTo", { e: whenLabel(m.date, m.time) })) + "</span></div></div>";
+  }
+  // Yanlış etkinliğe yapıştırma ya da yanlış gün: uyarır, engellemez. O tarihte etkinlik yoksa açması önerilir.
+  if (issues.length || route?.kind === "missing") {
+    h += '<div class="notice warn" role="alert" id="paste-date"><div class="notice-tx"><strong>' + esc(t("pasteDateTitle")) + "</strong>" + issues.map((x) => "<span>" + esc(x) + "</span>").join("") +
+      (route?.kind === "missing" ? "<span>" + esc(t("pasteNoMatch", { d: whenLabel(route.date, "") })) + "</span>" : "") + "</div>" +
+      (route?.kind === "missing" ? '<div class="row"><button type="button" class="btn sm primary grow" data-a="pasteNewMatch" data-v="' + esc(route.date) + '" data-t="' + esc(route.time) + '">' + esc(t("pasteOpenMatch", { d: whenLabel(route.date, route.time) })) + "</button></div>" : "") +
+      "</div>";
+  }
   // Önce değişen: uygulamada yazılı ama listede adı olmayanlar (organizatör listeden silmiş); Yok yazılır, kesinleştiyse geç iptal
   const gone = rows.map((r, i) => ({ r, i })).filter((x) => x.r.note === "gone");
   if (gone.length) {

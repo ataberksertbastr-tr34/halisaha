@@ -1,6 +1,6 @@
 /** WhatsApp davet listesini yapıştırma: ayrıştırma, eşleştirme, öneri ve uygulama (Kural 1.3, 2.4, 9.1). İsimler uydurmadır. */
 import { describe, expect, it } from "vitest";
-import { applyPlan, applyPlanReport, candidates, choose, listDateIssues, parseList, planList, type PlanRow } from "../src/domain/signup";
+import { applyPlan, applyPlanReport, candidates, choose, listDateIssues, listTarget, listWhen, parseList, planList, type PlanRow } from "../src/domain/signup";
 import { addInfraction } from "../src/domain/discipline";
 import { lineup, setAtt } from "../src/domain/lineup";
 import { allIn, match, player, state } from "./helpers/factory";
@@ -260,5 +260,35 @@ describe("yeniden yapıştırılan listeden düşenler (Kural 1.4–1.5)", () =>
     const rows = planList(s, m, parseList(list(["Cem Deneme"])), TODAY).map((r) => (r.note === "gone" ? choose(r, "skip") : r));
     expect(applyPlanReport(s, m, rows, BEFORE).n).toBe(0);
     expect(m.att.p2).toBe("in");
+  });
+});
+
+describe("listedeki tarih ve saatle etkinliği bulma", () => {
+  it("tarih ve saat okunur; yıl yoksa bugüne en yakın yıl; gün adı tutmuyorsa tahmin edilmez", () => {
+    expect(listWhen("18.12.2026 CUMA 22.00-23.00\n\n1-Ali Deneme", "2026-11-24")).toEqual({ date: "2026-12-18", time: "22:00" });
+    expect(listWhen("⚽ Perşembe 15.10 – 21:00\n1. Ali Deneme", "2026-10-11")).toEqual({ date: "2026-10-15", time: "21:00" });
+    expect(listWhen("05.01 Salı 20:30\n1. Ali Deneme", "2026-12-20")).toEqual({ date: "2027-01-05", time: "20:30" });
+    expect(listWhen("20 Aralık 2026 Pazar\n1. Ali Deneme", "2026-11-24")).toEqual({ date: "2026-12-20", time: "" });
+    // 20.12.2026 aslında Pazar: hangisi doğru bilinemez
+    expect(listWhen("20.12.2026 CUMA 22.00-23.00", "2026-11-24")).toBeNull();
+    // Yılsız ve gün adsız "13.10" saat olabilir; tarih yok
+    expect(listWhen("13.10\n1. Ali Deneme", "2026-10-11")).toBeNull();
+    expect(listWhen("1. Ali Deneme\n2. Berk Deneme", "2026-10-11")).toBeNull();
+  });
+
+  it("aynı tarihteki açık etkinlik: önce aynı saat, sonra aynı tür; oynanmış ve iptal edilmiş seçilmez", () => {
+    const cur = match("cur", { date: "2026-10-15", time: "21:00" });
+    const early = match("early", { date: "2026-10-22", time: "20:00" });
+    const late = match("late", { date: "2026-10-22", time: "22:00" });
+    const pb = match("pb", { date: "2026-10-24", time: "11:00", kind: "paintball" });
+    const fb = match("fb", { date: "2026-10-24", time: "11:00" });
+    const played = match("played", { date: "2026-10-27", status: "played" });
+    const s = state([], [cur, early, late, pb, fb, played]);
+    expect(listTarget(s, cur, { date: "2026-10-22", time: "22:00" })?.id).toBe("late");
+    expect(listTarget(s, cur, { date: "2026-10-22", time: "" })?.id).toBe("early");
+    expect(listTarget(s, cur, { date: "2026-10-24", time: "11:00" })?.id).toBe("fb");
+    expect(listTarget(s, pb, { date: "2026-10-24", time: "11:00" })?.id).toBe("pb");
+    expect(listTarget(s, cur, { date: "2026-10-27", time: "21:00" })).toBeNull();
+    expect(listTarget(s, cur, { date: "2026-10-29", time: "21:00" })).toBeNull();
   });
 });
