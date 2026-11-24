@@ -39,7 +39,7 @@ import { openCalendarSheet } from "../ui/views/calendar";
 import { orgReminders, remindersICS } from "../domain/reminders";
 import { appUrl, openRemindersSheet } from "../ui/views/reminders";
 import { ruleBook } from "../ui/views/rules";
-import { findRule, ruleShareText, stripMd } from "../domain/rules";
+import { bookShareText, sectionShareText, stripMd } from "../domain/rules";
 import { isIOS } from "../pwa/register";
 import { getField } from "../domain/fields";
 import type { TemplateKey } from "../domain/types";
@@ -257,10 +257,13 @@ registerActions({
     render();
     window.scrollTo(0, 0);
   }),
-  shareRule: (ds) => {
-    const it = findRule(ruleBook(), ds.id!);
-    if (it) shareText(ruleShareText(it, t("goldenRule")));
+  // Bölümün bütün maddeleri tek mesajda (ör. 17, 17.1, 17.2 …)
+  shareSection: (ds) => {
+    const txt = sectionShareText(ruleBook(), ds.v || "");
+    if (txt) shareText(txt);
   },
+  // Bütün kural kitabı: Predators tanıtımı, altın kurallar, bölümler, yaptırımlar
+  shareBook: () => shareText(bookShareText(ruleBook())),
   shareGolden: () => {
     const b = ruleBook();
     shareText("⭐ " + b.goldenTitle + "\n\n" + b.goldenGroups.map((g) => (g.title ? g.title + "\n" : "") + g.items.map((x) => x.id.slice(1) + ". " + stripMd(x.text)).join("\n")).join("\n\n"));
@@ -976,10 +979,11 @@ registerActions({
   tglSet: (ds) => {
     const k = ds.k as "gkFree" | "round" | "autoSchedule" | "avoidRepeat" | "perf" | "debtBlock" | "noShowPenalty";
     store.s.settings[k] = !store.s.settings[k];
-    let made = 0;
-    if (k === "autoSchedule" && store.s.settings.autoSchedule) made = reschedule(store.s, new Date()).made.length;
+    // Açılınca maçlar planlanır; kapanınca kendiliğinden açılmış boş maçlar kalkar
+    const r = k === "autoSchedule" ? reschedule(store.s, new Date()) : null;
     commit();
-    if (made) toast(t("scheduled", { n: made }));
+    if (r?.made.length) toast(t("scheduled", { n: r.made.length }));
+    else if (r?.removed.length) toast(t("unscheduled", { r: r.removed.length }));
   },
   newField: () => openFieldEditor(null, null),
   editField: (ds) => openFieldEditor(ds.id!, null),

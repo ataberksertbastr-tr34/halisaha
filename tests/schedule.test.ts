@@ -140,7 +140,7 @@ describe("maç günü değişince plan", () => {
     expect(made.map((m) => m.date + " " + m.time)).toEqual(["2026-10-09 22:00", "2026-10-16 22:00", "2026-10-23 22:00", "2026-10-30 22:00"]);
     expect(s.matches.map((m) => m.date)).toEqual(["2026-10-09", "2026-10-16", "2026-10-23", "2026-10-30"]);
     // Tekrar çalışınca hiçbir şey değişmez
-    expect(reschedule(s, NOW)).toEqual({ made: [], removed: [] });
+    expect(reschedule(s, NOW)).toEqual({ made: [], removed: [], changed: false });
   });
 
   it("içine yazılan, rezerve edilen, mesajı gönderilen, notu olan, misafirli, taşınan ya da kaydı bağlı maç kalır", () => {
@@ -168,6 +168,31 @@ describe("maç günü değişince plan", () => {
       match(slotId("2026-10-20", "21:00"), { date: "2026-10-20", auto: true, status: "cancelled" }),
       match(slotId("2026-10-22", "21:00"), { date: "2026-10-22", auto: true, kind: "paintball" })], { slots: [{ d: 5, t: "22:00" }] });
     expect(pruneSchedule(s)).toEqual([]);
+  });
+
+  it("otomatik planlama kapatılınca el sürülmemiş otomatik maçlar kalkar; içine yazılan kalır", () => {
+    const s = state([player("a", "Sabit Selim", 3, "", { fixed: true }), player("b", "Bora Deneme")]);
+    ensureUpcoming(s, NOW);
+    byDate(s, "2026-10-15").att.b = "in";
+    s.settings.autoSchedule = false;
+    const { made, removed } = reschedule(s, NOW);
+    expect([made.length, removed.map((m) => m.date)]).toEqual([0, ["2026-10-13", "2026-10-20", "2026-10-22"]]);
+    expect(s.matches.map((m) => m.date)).toEqual(["2026-10-15"]);
+  });
+
+  it("ayar başka yerde değiştiyse el sürülmemiş maçlar açılışta güncel format, saha ve ücreti alır; kesinleşmiş ve dokunulmuş maç kalır", () => {
+    const s = state([player("b", "Bora Deneme")], [], { format: 7, price: 3000 });
+    ensureUpcoming(s, NOW); // 13, 15, 20, 22 Ekim (7+1, 3000)
+    s.fields.push({ id: "f1", name: "Deneme Halı Saha", address: "", link: "", phone: "", price: 4480, lat: null, lng: null });
+    s.settings.defaultFieldId = "f1";
+    s.settings.format = 6;
+    byDate(s, "2026-10-20").att.b = "in";
+    // 12 Ekim 22:00: 13 Ekim maçı kesinleşti
+    const r = reschedule(s, new Date(2026, 9, 12, 22, 0));
+    expect(r.changed).toBe(true);
+    expect(s.matches.map((m) => m.date + " " + m.format + " " + m.fieldId + " " + m.price)).toEqual([
+      "2026-10-13 7  3000", "2026-10-15 6 f1 4480", "2026-10-20 7  3000", "2026-10-22 6 f1 4480",
+    ]);
   });
 
   it("maç günleri boşaltılırsa el sürülmemiş otomatik maçlar kalkar, yenisi oluşturulmaz", () => {

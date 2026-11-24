@@ -133,6 +133,10 @@ Eşitlemeye giriş yapmış olmak gerekir; sayfa senin Firebase projende durur.
   mekânı, kadrosu (misafirler etiketli), yedek sırası, Belki sayısı, kadronun
   kesinleşme anı ve **paylaştığın** takımlar görünür. Telefon, IBAN, seviye,
   borç ve disiplin kaydı görünmez.
+- Uygulamanın kendiliğinden açtığı ama senin hiç el sürmediğin maçlar (davet
+  gönderilmemiş, kimse yazılmamış) sayfada görünmez; oyuncular o gün maç var sanmaz.
+  Maç günlerin her hafta değişiyorsa Ayarlar → **Önümüzdeki 4 maçı otomatik oluştur**'u
+  kapat: kendiliğinden açılmış boş maçlar da kalkar.
 - Her değişiklikten birkaç saniye sonra kendiliğinden güncellenir (başka
   cihazda yapılan değişiklik de).
 - Bağlantı tahmin edilemez ama bilen herkes açabilir. **Sayfayı kapat** dersen
@@ -323,7 +327,10 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   maça gelenler, gol krallığı, güvenilirlik puanı, etkinlik tablosu.
 - **Kurallar:** KURALLAR.md uygulamada kapak, kısımlar, altın kurallar,
   "Sıfır tolerans / Güvenlik" vurguları ve yaptırımlar tablosuyla; aranabilir,
-  maddeler arası bağlantılı, her madde numarasıyla ("Kural 2.3") paylaşılır.
+  maddeler arası bağlantılı. Her bölüm yanındaki **Paylaş** ile bütün maddeleriyle
+  (ör. 17, 17.1, 17.2 …) tek mesajda gider; kapaktaki **Kural kitabını paylaş**
+  Predators tanıtımı, altın kurallar, bütün bölümler ve yaptırımlarla tüm kitabı
+  gönderir.
 - **Geri al:** silme, iptal, takım değişikliği gibi her işlemden sonra.
 - Türkçe / İngilizce, açık (fildişi) / koyu (gece) tema; Predators renkleri
   (gece siyahı, altın, bordo, krem). Etkinlik sekmesinde armalı "maç günü"

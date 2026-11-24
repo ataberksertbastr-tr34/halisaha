@@ -180,8 +180,7 @@ function setupSync(): void {
 
 function autoSchedule(): void {
   // Eski maç günlerinde kalmış boş maçlar da temizlenir (ayar başka cihazda değişmiş olabilir)
-  const { made, removed } = reschedule(store.s, new Date());
-  if (made.length || removed.length) commit(true);
+  if (reschedule(store.s, new Date()).changed) commit(true);
 }
 
 function setupReservationReminder(): void {

@@ -189,12 +189,13 @@ function onSlot(s: State, m: Match): boolean {
 
 /**
  * Haftalık maç günü ya da saati değişince eski günlere oluşturulmuş, el sürülmemiş
- * otomatik maçları kaldırır (ör. Salı/Perşembe 21:00 → Cuma 22:00). İçine yazılan,
- * rezerve edilen, taşınan ya da kaydı bağlı maça dokunulmaz. Kaldırılanları döndürür.
+ * otomatik maçları kaldırır (ör. Salı/Perşembe 21:00 → Cuma 22:00). Otomatik planlama
+ * kapatıldıysa el sürülmemiş otomatik maçların hepsi kalkar. İçine yazılan, rezerve
+ * edilen, taşınan ya da kaydı bağlı maça dokunulmaz. Kaldırılanları döndürür.
  */
 export function pruneSchedule(s: State): Match[] {
   const linked = linkedMatches(s);
-  const gone = s.matches.filter((m) => pristineAuto(s, m, linked) && !onSlot(s, m));
+  const gone = s.matches.filter((m) => pristineAuto(s, m, linked) && (!s.settings.autoSchedule || !onSlot(s, m)));
   if (gone.length) {
     const ids = new Set(gone.map((m) => m.id));
     s.matches = s.matches.filter((m) => !ids.has(m.id));
@@ -202,10 +203,37 @@ export function pruneSchedule(s: State): Match[] {
   return gone;
 }
 
-/** Planı ayarlara uydurur: eski günlerdeki el sürülmemiş maçlar kalkar, eksik maçlar oluşturulur. */
-export function reschedule(s: State, now: Date): { made: Match[]; removed: Match[] } {
+/**
+ * Planı ayarlara uydurur: eski günlerdeki el sürülmemiş maçlar kalkar, kalan el sürülmemiş
+ * maçlar (kadrosu henüz kesinleşmediyse) güncel format, saha ve ücreti alır, eksik maçlar
+ * oluşturulur. Kaldırılan ya da güncellenen maç varsa changed true.
+ */
+export function reschedule(s: State, now: Date): { made: Match[]; removed: Match[]; changed: boolean } {
   const removed = pruneSchedule(s);
-  return { made: ensureUpcoming(s, now), removed };
+  const refreshed = refreshPristine(s, now);
+  const made = ensureUpcoming(s, now);
+  return { made, removed, changed: made.length > 0 || removed.length > 0 || refreshed > 0 };
+}
+
+/**
+ * El sürülmemiş otomatik maç, ayar sonradan değiştiyse (ör. başka cihazda ya da eski sürümde
+ * 7+1 → 6+1) bugün oluşturulsa alacağı format, saha ve ücreti alır. Kesinleşmiş maç kalır.
+ */
+function refreshPristine(s: State, now: Date): number {
+  const d = matchDefaults(s);
+  const linked = linkedMatches(s);
+  let n = 0;
+  for (const m of s.matches) {
+    if (!pristineAuto(s, m, linked)) continue;
+    const lock = lockAt(m);
+    if (lock && now.getTime() >= lock.getTime()) continue;
+    if (m.format === d.format && m.fieldId === d.fieldId && Number(m.price) === d.price) continue;
+    m.format = d.format;
+    m.fieldId = d.fieldId;
+    m.price = d.price;
+    n++;
+  }
+  return n;
 }
 
 /** Yeni halı saha maçının ayarlardan aldığı varsayılanlar. */
