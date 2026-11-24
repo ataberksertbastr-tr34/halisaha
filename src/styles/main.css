@@ -561,6 +561,9 @@ details[open] > summary::after { transform: rotate(-135deg); }
 .res-later > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; }
 .res-later > summary .meta { display: block; font-size: 13px; color: var(--muted); }
 .res-later[open] > summary { margin-bottom: 8px; }
+/* Liste önizlemesi: listeden düşenler en üstte, bordo kenarlı uyarı bloğu */
+.paste-gone { margin: 4px 0 14px; padding: 10px 12px 12px; border: 1px solid var(--line); border-left: 4px solid var(--crimson); border-radius: 12px; }
+.paste-gone h3 { margin: 0 0 4px; }
 .seg2 { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
 .seg2 button { min-height: 44px; border: none; background: var(--surface); font-weight: 700; color: var(--muted); }
 .seg2 button + button { border-left: 1px solid var(--line-2); }

@@ -7,7 +7,9 @@
 import type { Guest, Match, Person, State } from "./types";
 import { DAYS, lang, MONTHS, t } from "../i18n";
 import { ddmm, weekday } from "./dates";
-import { getP, setAtt } from "./lineup";
+import { getP, lineup, promoted, setAtt } from "./lineup";
+import { lateCancel } from "./roster";
+import { isFree } from "./money";
 import { cleanBulkLine, cleanName, norm, uid } from "./text";
 import { joinBlock, type Block } from "./discipline";
 import { liabilityMap } from "./ledger";
@@ -84,7 +86,7 @@ export function candidates(pool: Person[], name: string): string[] {
     .map((p) => p.id);
 }
 
-export type Act = "in" | "maybe" | "skip" | "guest" | "player";
+export type Act = "in" | "maybe" | "skip" | "guest" | "player" | "out";
 
 export interface PlanRow {
   /** Listede yazılan ad */
@@ -96,8 +98,11 @@ export interface PlanRow {
   cands: string[];
   /** Önerilen iş (organizatör değiştirebilir) */
   act: Act;
-  /** Neden: zaten aynı yanıt, geç iptal etmiş, engelli, listede iki kez, kayıtlı değil, belirsiz, önceki misafirliğinden borç/ceza */
-  note: "" | "already" | "late" | "blocked" | "dup" | "none" | "ambiguous" | "guestPrev";
+  /**
+   * Neden: zaten aynı yanıt, geç iptal etmiş, engelli, listede iki kez, kayıtlı değil, belirsiz,
+   * önceki misafirliğinden borç/ceza; "gone": uygulamada Var/Belki ama yapıştırılan listede yok
+   */
+  note: "" | "already" | "late" | "blocked" | "dup" | "none" | "ambiguous" | "guestPrev" | "gone";
   block?: Block;
   /** Aynı adla gelmiş önceki misafirin ödenmemiş borcu (Kural 1.8) */
   prevDebt?: number;
@@ -109,6 +114,35 @@ export interface PlanRow {
  * atlanır, organizatör yine de yazabilir (12.1). Kayıtlı olmayan misafir önerilir.
  */
 export function planList(s: State, m: Match, entries: Entry[], today: string): PlanRow[] {
+  const rows = entryRows(s, m, entries, today);
+  return [...rows, ...goneRows(s, m, rows)];
+}
+
+/**
+ * Listeden düşenler: uygulamada Var ya da Belki olup yapıştırılan listede adı olmayanlar.
+ * Organizatör "gelemiyorum" diyeni listeden silip listeyi yeniden atıyor; yeniden yapıştırınca
+ * bunlar "Yok yaz" önerisiyle gelir (kesinleştiyse geç iptal, Kural 1.5). Liste kısmiyse (şu an
+ * yazılı olanların yarısından azı ya da birden azı listede) kimse önerilmez. Sabit oyuncu varsayılan olarak kalır:
+ * uygulama onu kendiliğinden yazmıştır, listede olmayabilir.
+ */
+function goneRows(s: State, m: Match, rows: PlanRow[]): PlanRow[] {
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (r.id) seen.add(r.id);
+    r.cands.forEach((c) => seen.add(c));
+  }
+  const active = new Set([...s.players.filter((p) => p.active !== false).map((p) => p.id), ...m.guests.map((g) => g.id)]);
+  const yes = [...lineup(s, m).playing, ...lineup(s, m).wait, ...Object.keys(m.att).filter((id) => m.att[id] === "maybe")].filter((id, i, a) => active.has(id) && a.indexOf(id) === i);
+  // Kısmi liste değil, tam liste olmalı: şu an yazılı olanlardan en az ikisi ve yarısı listede
+  const present = yes.filter((id) => seen.has(id)).length;
+  if (present < 2 || present * 2 < yes.length) return [];
+  return yes.filter((id) => !seen.has(id)).map((id): PlanRow => {
+    const fixed = !!s.players.find((p) => p.id === id)?.fixed;
+    return { name: getP(s, m, id)?.name || "", st: m.att[id] === "maybe" ? "maybe" : "in", id, cands: [], act: fixed ? "skip" : "out", note: "gone" };
+  });
+}
+
+function entryRows(s: State, m: Match, entries: Entry[], today: string): PlanRow[] {
   const pool: Person[] = [...s.players.filter((p) => p.active !== false), ...m.guests];
   // Borç: kendi borcu ve getirdiği misafirlerin ödenmemiş payı (Kural 2.4, 1.8)
   const debts = liabilityMap(s, today);
@@ -141,7 +175,7 @@ export function planList(s: State, m: Match, entries: Entry[], today: string): P
   });
 }
 
-const ACTS = new Set<string>(["in", "maybe", "skip", "guest", "player"]);
+const ACTS = new Set<string>(["in", "maybe", "skip", "guest", "player", "out"]);
 
 /** Önizlemede seçilen iş: "p:<id>" kayıtlı bir kişiyi seçer (listedeki yanıtla yazılır). */
 export function choose(r: PlanRow, v: string): PlanRow {
@@ -149,15 +183,42 @@ export function choose(r: PlanRow, v: string): PlanRow {
   return ACTS.has(v) ? { ...r, act: v as Act } : r;
 }
 
+/** Uygulamanın sonucu: işaretlenen kişi sayısı, geç iptal edenler ve yerlerine kadroya girenler. */
+export interface PlanResult {
+  n: number;
+  late: string[];
+  /** late[i]'nin yerine giren (sırayla; yoksa eksik) */
+  covered: string[];
+}
+
 /**
  * Seçilen işleri liste sırasıyla uygular. Misafir bu maça, yeni oyuncu kadroya eklenir;
  * aynı adlı (pasif) bir oyuncu varsa yenisi açılmaz, o yeniden aktif olur.
  * Döner: işaretlenen kişi sayısı.
  */
-export function applyPlan(s: State, m: Match, rows: PlanRow[]): number {
+export function applyPlan(s: State, m: Match, rows: PlanRow[], now: Date = new Date()): number {
+  return applyPlanReport(s, m, rows, now).n;
+}
+
+/**
+ * applyPlan ve listeden düşenler: "Yok" yazılır; kadro kesinleştiyse ve oynuyorsa geç iptal
+ * (Kural 1.4–1.5). Yerine biri kadroya girdiyse (yedekten ya da listeye yeni yazılan) payı o
+ * öder ve geç iptal eden muaf olur; ✕ ile tek tek çıkarmakla aynı sonuç.
+ */
+export function applyPlanReport(s: State, m: Match, rows: PlanRow[], now: Date = new Date()): PlanResult {
+  const before = lineup(s, m).playing;
+  const late: string[] = [];
   let n = 0;
   for (const r of rows) {
     if (r.act === "skip") continue;
+    if (r.act === "out") {
+      if (!r.id || !getP(s, m, r.id) || (m.att[r.id] !== "in" && m.att[r.id] !== "maybe")) continue;
+      const st = lateCancel(m, "out", before.includes(r.id), now) ? "late" : "out";
+      setAtt(m, r.id, st, true);
+      if (st === "late") late.push(r.id);
+      n++;
+      continue;
+    }
     let id = r.id;
     if (r.act === "guest") {
       // Daha önce gelmiş misafirin getireni, seviyesi ve mevkii korunur (Kural 1.8)
@@ -182,7 +243,17 @@ export function applyPlan(s: State, m: Match, rows: PlanRow[]): number {
     setAtt(m, id, st, true);
     n++;
   }
-  return n;
+  // Kural 1.5: kadroya yeni girenlerin muafiyeti kalkar; geç iptal edenin yerine giren varsa geç iptal eden muaf olur
+  const entered = promoted(before, lineup(s, m).playing).filter((x) => !late.includes(x));
+  for (const x of entered) delete m.exempt[x];
+  const covered: string[] = [];
+  late.forEach((id, i) => {
+    const by = entered[i];
+    if (!by) return;
+    covered.push(by);
+    if (!isFree(s, m, by) && !isFree(s, m, id)) m.exempt[id] = true;
+  });
+  return { n, late, covered };
 }
 
 /* ---------- Listedeki tarih ve gün (yanlış etkinliğe yapıştırmayı önlemek için) ---------- */
