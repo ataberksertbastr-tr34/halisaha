@@ -4,9 +4,10 @@
  * Şablonda {yer_tutucu} yazılır. Kural: bir satırdaki tüm yer tutucular boşsa
  * satır düşer (ör. saha seçilmemişse "📍 {saha}"); bir paragraftaki (boş satırla
  * ayrılan blok) tüm yer tutucular boşsa paragraf tümüyle düşer
- * (ör. "Ödemeyenler:\n{odemeyenler}" herkes ödediyse).
+ * (ör. "Ödemeyenler:\n{odemeyenler}" herkes ödediyse). Büyük harfle yazılan yer
+ * tutucu değeri büyük harfle yazar: {GUN} → "CUMA".
  */
-import type { Lang } from "../i18n";
+import { lang, type Lang } from "../i18n";
 import type { TemplateKey } from "./types";
 
 export const TEMPLATE_KEYS: TemplateKey[] = ["invite", "squad", "teams", "brief", "result", "pay", "personalPay", "guestPay", "statement", "promoted", "cars", "cancel"];
@@ -89,11 +90,11 @@ export const EVENT_TEMPLATES: Record<Lang, Record<TemplateKey, string>> = {
   },
 };
 
-const BASE = ["ikon", "baslik", "gun", "tarih", "saat", "saha", "harita"];
+const BASE = ["ikon", "baslik", "gun", "tarih", "tamtarih", "saat", "bitis", "saha", "harita"];
 
 /** Her şablonda kullanılabilen yer tutucular (Ayarlar'da gösterilir). */
 export const PLACEHOLDERS: Record<TemplateKey, string[]> = {
-  invite: [...BASE, "kisi", "format", "sayi", "kontenjan", "pay", "liste", "yedek", "belki", "kesinlesme", "iban"],
+  invite: [...BASE, "kisi", "format", "sayi", "kontenjan", "pay", "liste", "tireliliste", "yedek", "belki", "kesinlesme", "iban"],
   squad: [...BASE, "kisi", "kadro", "yedek", "pay", "kuralgec", "iyi", "iban"],
   teams: [...BASE, "renka", "takima", "sarilar", "renkb", "takimb", "turuncular", "anlasmalar", "kapanis"],
   brief: [...BASE, "kurallar", "anlasmalar", "not", "kesinlesme", "pay", "kisi"],
@@ -108,6 +109,16 @@ export const PLACEHOLDERS: Record<TemplateKey, string[]> = {
 };
 
 /**
+ * Davet için hazır kısa liste biçimi: organizatörün WhatsApp'ta kullandığı kalıp
+ * ("20.12.2026 CUMA 22:00-23:00", "1-İsim" satırları, boş yerler "14-", sonda kişi ve ücret).
+ * Ayarlar'daki davet şablonu düzenlenirken tek dokunuşla yazılır; varsayılan şablon değişmez.
+ */
+export const LIST_PRESET: Record<Lang, string> = {
+  tr: "{tamtarih} {GUN} {saat}-{bitis}\n\n{tireliliste}\n\n⏳ Yedek: {yedek}\n🤔 Belki: {belki}\n\n{kontenjan} kişi, kişi başı {pay}",
+  en: "{tamtarih} {GUN} {saat}-{bitis}\n\n{tireliliste}\n\n⏳ Waitlist: {yedek}\n🤔 Maybe: {belki}\n\n{kontenjan} players, {pay} each",
+};
+
+/**
  * Kullanılacak şablon. Ayarlardan düzenlenen şablonlar halı saha maçları içindir
  * (kişisel borç, misafir borcu ve borç dökümü mesajları her yerde); diğer etkinlikler türe göre hazır şablonu kullanır.
  */
@@ -117,11 +128,18 @@ export function templateOf(templates: Partial<Record<TemplateKey, string>>, key:
   return (football ? DEFAULT_TEMPLATES : EVENT_TEMPLATES)[lang][key];
 }
 
-const PH = /\{([a-zçğıöşü_]+)\}/gi;
+const PH = /\{([a-zçğıöşüÇĞİÖŞÜ_]+)\}/gi;
 
 /** Şablonu doldurur; boş kalan satırları/paragrafları atar. */
 export function render(tpl: string, vars: Record<string, string>): string {
-  const val = (k: string) => vars[k.toLocaleLowerCase("tr")] ?? vars[k] ?? null;
+  // Türkçe küçültmede "I" → "ı" olur: {TAMTARIH} de {TAMTARİH} de "tamtarih"i bulsun
+  const val = (k: string) => vars[k.toLocaleLowerCase("tr")] ?? vars[k.toLowerCase()] ?? vars[k] ?? null;
+  // {GUN} gibi tamamı büyük harfle yazılmış yer tutucu: değer büyük harfle ("Cuma" → "CUMA")
+  const loc = lang() === "tr" ? "tr" : "en";
+  const shown = (k: string) => {
+    const v = String(val(k));
+    return k.length > 1 && k === k.toLocaleUpperCase("tr") && k !== k.toLocaleLowerCase("tr") ? v.toLocaleUpperCase(loc) : v;
+  };
   const paragraphs = String(tpl).replace(/\r\n/g, "\n").split(/\n\s*\n/);
   const out: string[] = [];
   for (const para of paragraphs) {
@@ -131,7 +149,7 @@ export function render(tpl: string, vars: Record<string, string>): string {
     for (const line of para.split("\n")) {
       const lk = [...line.matchAll(PH)].map((m) => m[1]).filter((k) => val(k) !== null);
       if (lk.length && lk.every((k) => !String(val(k)).trim())) continue;
-      lines.push(line.replace(PH, (whole, k: string) => (val(k) !== null ? String(val(k)) : whole)));
+      lines.push(line.replace(PH, (whole, k: string) => (val(k) !== null ? shown(k) : whole)));
     }
     const text = lines.join("\n").replace(/[ \t]+$/gm, "");
     if (text.trim()) out.push(text);

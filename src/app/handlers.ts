@@ -1,5 +1,5 @@
 /** Tüm kullanıcı eylemleri. Eski uygulamadaki act() / onField() ile aynı davranış. */
-import { t } from "../i18n";
+import { lang, t } from "../i18n";
 import { commit, mutate, rebaseLog, render, replaceState, store, today, ui, type FilterKey } from "./store";
 import { back, go, route, tabOf, type RouteName, type Tab } from "./router";
 import { dispatch, registerActions } from "./actions";
@@ -46,6 +46,7 @@ import type { TemplateKey } from "../domain/types";
 import { shareText, type ShareResult } from "../ui/share";
 import { teamsSig } from "../domain/todo";
 import { buildMessage, isDefaultTemplate, openShareSheet, openTemplateSheet, updateTemplatePreview } from "../ui/views/templates";
+import { LIST_PRESET } from "../domain/templates";
 import { applyFilter, blockReason } from "../ui/components";
 import { guestHistory, pastGuests } from "../domain/guests";
 import { afterModalClose, closeModal, isModalOpen } from "../ui/modal";
@@ -710,6 +711,14 @@ registerActions({
     ta.value = ta.value.slice(0, a) + ins + ta.value.slice(b);
     ta.focus();
     ta.setSelectionRange(a + ins.length, a + ins.length);
+    updateTemplatePreview();
+  },
+  // Davet şablonuna organizatörün kısa liste biçimi ("1-İsim"); kaydetmeden önce önizlenir
+  tplPreset: () => {
+    const ta = $<HTMLTextAreaElement>("#tpl-text");
+    if (!ta) return;
+    ta.value = LIST_PRESET[lang()];
+    ta.focus();
     updateTemplatePreview();
   },
   tplSave: (ds) => {

@@ -8,7 +8,8 @@ import { DAYS, DAYS_SHORT, lang, money, t } from "../i18n";
 import type { Match, State, TemplateKey } from "./types";
 import { POSITIONS } from "./types";
 import { render, templateOf } from "./templates";
-import { ddmm, weekday } from "./dates";
+import { ddmm, matchStart, weekday } from "./dates";
+import { MATCH_MINUTES } from "./calendar";
 import { fieldOf, mapsUrl } from "./fields";
 import { capOf, cleanTeams, getP, isGK, lineup } from "./lineup";
 import { billOf, estShare } from "./money";
@@ -67,10 +68,13 @@ export function matchVars(s: State, m: Match): Record<string, string> {
   const label = (id: string) => nameOf(s, m, id) + (fb && isGK(getP(s, m, id)) ? " 🧤" : "");
   const cap = capOf(s, m);
   const k = kindOf(m);
+  const end = new Date(matchStart(m.date, m.time).getTime() + (fb ? MATCH_MINUTES : k.minutes) * 60 * 1000);
   return {
     gun: dayName(m.date),
     tarih: ddmm(m.date),
+    tamtarih: ddmm(m.date) + "." + m.date.slice(0, 4),
     saat: m.time,
+    bitis: String(end.getHours()).padStart(2, "0") + ":" + String(end.getMinutes()).padStart(2, "0"),
     saha: f ? f.name + (f.address ? ", " + f.address : "") : "",
     harita: mapsUrl(f),
     format: fb ? (m.format || s.settings.format) + "+1" : "",
@@ -101,18 +105,26 @@ function tpl(s: State, key: TemplateKey, m?: Match): string {
   return templateOf(s.settings.templates, key, lang(), !m || isFootball(m));
 }
 
-export function msgInvite(s: State, m: Match): string {
-  const v = matchVars(s, m);
+/**
+ * Davetteki numaralı liste: kontenjan kadar satır, boş yerler numarasıyla. {liste} "1. İsim",
+ * {tireliliste} "1-İsim" (WhatsApp'ta elle tutulan liste biçimi; geri yapıştırınca aynen okunur).
+ */
+function inviteList(s: State, m: Match, sep: string): string {
   const { playing } = lineup(s, m);
   const c = capOf(s, m);
   const lines: string[] = [];
   const n = c || playing.length;
   for (let i = 0; i < n; i++) {
     const id = playing[i];
-    lines.push(i + 1 + ". " + (id ? nameOf(s, m, id) + (isFootball(m) && isGK(getP(s, m, id)) ? " 🧤" : "") : ""));
+    lines.push(i + 1 + sep + (id ? nameOf(s, m, id) + (isFootball(m) && isGK(getP(s, m, id)) ? " 🧤" : "") : ""));
   }
-  if (!c) lines.push(n + 1 + ". ");
-  return render(tpl(s, "invite", m), { ...v, liste: lines.join("\n") });
+  if (!c) lines.push(n + 1 + sep);
+  return lines.map((l) => l.trimEnd()).join("\n");
+}
+
+export function msgInvite(s: State, m: Match): string {
+  const v = matchVars(s, m);
+  return render(tpl(s, "invite", m), { ...v, liste: inviteList(s, m, ". "), tireliliste: inviteList(s, m, "-") });
 }
 
 /** Kadro kesinleşti duyurusu (Kural 1.4, 15.3). */

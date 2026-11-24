@@ -323,6 +323,15 @@ Eşitleme açıksa veriler bulutta da durur; yine de arada bir yedek almak iyidi
   tek dokunuşla WhatsApp'a. Halı saha şablonları Ayarlar'dan düzenlenebilir;
   diğer etkinliklerin mesajları türüne göre hazır gelir. Takım adları ve yelek
   renkleri Ayarlar'dan seçilir.
+- **Kısa liste biçimi:** Ayarlar → Mesaj şablonları → Davet → **Kısa liste biçimi
+  (1-İsim)** davet şablonunu WhatsApp'ta elle tutulan kalıba çevirir:
+  "18.12.2026 CUMA 22:00-23:00", "1-İsim" satırları, boş yerler ("14-"), yedekler,
+  "14 kişi, kişi başı 320 ₺". Yer tutucular: `{tamtarih}` (gün.ay.yıl), `{bitis}`
+  (bitiş saati), `{tireliliste}`; büyük harfle yazılan yer tutucu büyük harf yazar
+  (`{GUN}` → CUMA). Davet bir kez gönderildikten sonra aynı düğme **Güncel listeyi
+  paylaş** olur: "gelemiyorum" diyeni ✕ ile çıkarınca (haber saati o an kaydedilir,
+  Kural 1.5) güncel liste tek dokunuşla gruba gider. Paylaşılan liste geri
+  yapıştırılınca aynen okunur.
 - **İstatistik:** oyuncu kartı (disiplin sicili dahil), sezon tablosu, en çok
   maça gelenler, gol krallığı, güvenilirlik puanı, etkinlik tablosu.
 - **Kurallar:** KURALLAR.md uygulamada kapak, kısımlar, altın kurallar,
