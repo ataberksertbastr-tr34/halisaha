@@ -353,7 +353,11 @@ test("maç sonu: sonucu girilmemiş maç uyarısı, Ödemeler'de biten maç, son
   await expect(banner).not.toContainText("Sonuç bekleniyor");
   // Ertesi sabah: 15 Ekim 21:00 maçı bitirilmedi (tarayıcının saat diliminden bağımsız olarak 3 saatten fazla geçti)
   await page.clock.setSystemTime(new Date("2026-10-16T10:00:00+03:00"));
+  // Maç işi şeridi yalnızca Etkinlik'te: diğer sayfaların üstünü kaplamaz
   await page.locator('#tabs [data-v="players"]').click();
+  await expect(page.locator("#view")).not.toBeEmpty();
+  await expect(banner).not.toContainText("Sonuç bekleniyor");
+  await page.locator('#tabs [data-v="match"]').click();
   await expect(banner).toContainText("Sonuç bekleniyor");
   await expect(banner).toContainText("Perşembe 15.10 21:00");
   await noHorizontalScroll(page);
@@ -428,7 +432,8 @@ test("misafir: getiren sorumlu; borcu getirenin engeline sayılır, hatırlatma 
   await noHorizontalScroll(page);
   // Maç oynandı, misafir payını ödemedi
   await page.clock.setSystemTime(new Date("2026-10-16T10:00:00+03:00"));
-  await page.locator('#tabs [data-v="players"]').click();
+  // "Sonuç bekleniyor" şeridi Etkinlik'te çıkar
+  await page.locator('#tabs [data-v="match"]').click();
   await page.locator('#banner [data-a="openResult"]').click();
   await page.locator("#scA").fill("1");
   await page.locator("#scB").fill("0");

@@ -193,7 +193,7 @@ function setupReservationReminder(): void {
       icon: IC.alert, tone: "warn", title: esc(t("reserveTitle")), text: esc(t("reserveText", { d: dayName(m.date) + " " + ddmm(m.date) + " " + m.time + (f ? ", " + f.name : "") })),
       actions: (tel ? '<a class="btn sm" href="tel:' + esc(tel) + '">' + IC.phone + esc(t("call")) + "</a>" : "") + '<button type="button" class="btn sm primary" data-a="reserve" data-id="' + esc(m.id) + '">' + esc(t("reservedDone")) + "</button>",
     });
-  });
+  }, ["match"]);
 }
 
 /** Saati geçmiş ama bitirilmemiş maç: sonucu, kalıcı sıra cezasını (1.6) ve kesin ödeme listesini bekler. */
@@ -205,7 +205,7 @@ function setupResultReminder(): void {
       icon: IC.scoreboard, tone: "warn", title: esc(t("unfinishedTitle")), text: esc(t("unfinishedText", { d: (isFootball(m) ? "" : eventTitle(m) + " · ") + dayName(m.date) + " " + ddmm(m.date) + " " + m.time })),
       actions: '<button type="button" class="btn sm primary" data-a="openResult" data-id="' + esc(m.id) + '">' + esc(t("unfinishedGo")) + "</button>",
     });
-  });
+  }, ["match"]);
 }
 
 function setupBackupReminder(): void {

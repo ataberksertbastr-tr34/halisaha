@@ -3,19 +3,26 @@
  * Her sağlayıcı ya HTML ya da boş metin döndürür.
  */
 import { storageMode } from "../data/persist";
+import { route, type RouteName } from "../app/router";
 
 type Provider = () => string;
-const providers: Provider[] = [];
+const providers: { p: Provider; only?: RouteName[] }[] = [];
 
-export function addBanner(p: Provider): void {
-  providers.push(p);
+/**
+ * Şerit ekler. only verilirse yalnızca o sayfalarda görünür: maçla ilgili iş şeritleri (saha
+ * rezervasyonu, sonuç) Etkinlik'te iş listesinin yanında durur, Kurallar ya da Ayarlar'da
+ * ekranın üstünü kaplamaz. Güncelleme, eşitleme, depolama ve yedek uyarıları her sayfada.
+ */
+export function addBanner(p: Provider, only?: RouteName[]): void {
+  providers.push({ p, only });
 }
 
 export function renderBanners(): void {
   if (storageMode() === "blocked") return;
   const el = document.getElementById("banner");
   if (!el) return;
-  const html = providers.map((p) => p()).filter(Boolean).join("");
+  const here = route().name;
+  const html = providers.filter((x) => !x.only || x.only.includes(here)).map((x) => x.p()).filter(Boolean).join("");
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 

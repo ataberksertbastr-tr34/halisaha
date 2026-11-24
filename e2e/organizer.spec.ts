@@ -1001,3 +1001,21 @@ test("liste tarihi: başka günün listesi o günün maçına işlenir; o gün m
   await expect(page.locator('[data-a="pasteNewMatch"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("maç işi şeritleri (saha rezervasyonu, sonuç) yalnızca Etkinlik'te; Kurallar ve Ayarlar'ın üstünü kaplamaz", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  // Perşembe 15.10 maçına bir gün kala saha rezerve edilmemiş
+  await page.clock.setSystemTime(new Date("2026-10-14T12:00:00+03:00"));
+  await page.goto("/#/match");
+  const banner = page.locator("#banner");
+  await expect(banner).toContainText("Saha rezerve edilmedi");
+  for (const r of ["rules", "settings", "players", "pay"]) {
+    await page.goto("/#/" + r);
+    await expect(page.locator("#view")).not.toBeEmpty();
+    await expect(banner).not.toContainText("Saha rezerve edilmedi");
+  }
+  await page.goto("/#/match");
+  await expect(banner).toContainText("Saha rezerve edilmedi");
+  expect(errors).toEqual([]);
+});
