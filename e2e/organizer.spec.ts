@@ -929,3 +929,38 @@ test("listeden düşen: yeniden yapıştırılan listede adı olmayan 'Listede a
   await expect(attBtn(page, "Golcü Gökhan", "in")).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });
+
+test("panodan al: kopyalanan liste ya da banka bildirimi düğmeye dokununca doğrudan önizlenir; pano okunamazsa kutu açılır (Kural 1.2, 2.3)", async ({ page }) => {
+  const errors = watchErrors(page);
+  await importBackupText(page, V2);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  const copy = (txt: string) => page.evaluate((x) => navigator.clipboard.writeText(x), txt);
+  await openThursday(page);
+  // WhatsApp'ta kopyalanan liste: "WhatsApp listesini yapıştır" doğrudan önizlemeyi açar
+  await copy(["15.10.2026 PERŞEMBE 21:00-22:00", "", "1-Kaleci Kemal", "2-Golcü Gökhan", "3-Orta Ömer", "4-Forvet Fırat", "5-Mehmet Yeni", "6-"].join("\n"));
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await expect(page.locator('[data-a="pasteApply"]')).toBeVisible();
+  await expect(page.locator("#modal")).toContainText("5 isim bulundu");
+  // "Metni düzenle" panoya bakmaz, yazılan metni gösterir
+  await page.locator('#modal [data-a="pasteList"][data-v="edit"]').click();
+  await expect(page.locator("#plist")).toHaveValue(/5-Mehmet Yeni/);
+  await page.locator('[data-a="closeModal"]').first().click();
+  // Banka bildirimi kopyalanmış ama liste düğmesine dokunulmuş: banka önizlemesi açılır, bildirim söyler
+  await copy("Hesabınıza 14.10.2026 20:15'te İLKER İLERİ tarafından 150,00 TL FAST ile gönderildi.");
+  await page.locator('#view [data-a="pasteList"]').last().click();
+  await expect(page.locator('[data-a="bankApply"]')).toBeVisible();
+  await expect(page.locator("#toast")).toContainText("banka bildirimi");
+  await page.locator('[data-a="closeModal"]').first().click();
+  // Ödemeler'den: banka bildirimi doğrudan önizlenir
+  await page.locator('#tabs [data-v="pay"]').click();
+  await page.locator('#view [data-a="bankOpen"]').first().click();
+  await expect(page.locator('[data-a="bankApply"]')).toBeVisible();
+  await expect(page.locator("#modal")).toContainText("İLKER İLERİ");
+  await page.locator('[data-a="closeModal"]').first().click();
+  // Panoda tanınmayan metin: yapıştırma kutusu açılır
+  await copy("Akşam maç var mı?");
+  await page.locator('#view [data-a="bankOpen"]').first().click();
+  await expect(page.locator("#bank-text")).toBeVisible();
+  await noHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});

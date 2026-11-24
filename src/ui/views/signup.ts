@@ -84,6 +84,6 @@ export function showPastePreview(s: State, m: Match, rows: PlanRow[], today: str
       '<select id="pr-' + i + '" aria-label="' + esc(who) + '">' + o + "</select></label>";
   });
   h += "</div>";
-  h += '<div class="row mt"><button type="button" class="btn primary grow" data-a="pasteApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="pasteList">' + esc(t("pasteEdit")) + "</button></div>";
+  h += '<div class="row mt"><button type="button" class="btn primary grow" data-a="pasteApply">' + esc(t("pasteApply")) + '</button><button type="button" class="btn" data-a="pasteList" data-v="edit">' + esc(t("pasteEdit")) + "</button></div>";
   updateModal(h);
 }
